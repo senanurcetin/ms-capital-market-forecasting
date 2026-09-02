@@ -1,0 +1,133 @@
+# MSCapital - Real Financial Market Forecasting
+# Tum yollar ve sabitler burada. Kod OneDrive'da, veri OneDrive DISINDA.
+
+project:
+  name: ms-capital-market-forecasting
+  competition: ms-capital-real-financial-market-forecasting
+
+paths:
+  data_root: "C:/mscapital_data"
+  raw: "C:/mscapital_data/raw"
+  parquet: "C:/mscapital_data/parquet"
+  features: "C:/mscapital_data/features"
+  mlruns: "C:/mscapital_data/mlruns"
+
+# Kimlik dosyalari REPO DISINDA tutulur ve ortam degiskeniyle gecersiz kilinabilir:
+#   MSCAPITAL_GCP_KEY  veya  GOOGLE_APPLICATION_CREDENTIALS
+credentials:
+  gcp_service_account: "C:/mscapital_data/gcp-key.json"
+  kaggle_json: "~/.kaggle/kaggle.json"
+
+bigquery:
+  project: workintech-working
+  location: US
+  datasets:
+    raw: mscapital_raw
+    staging: mscapital_staging
+    features: mscapital_features
+    mart: mscapital_mart
+
+# Arrow footer'dan olculen KESIN satir sayilari - ingest dogrulamasinda kullanilir
+expected_rows:
+  train:
+    market: 221756611
+    order: 170056583
+    transaction: 103970264
+    label: 1257637
+  test:
+    market: 118359166
+    order: 119465287
+    transaction: 70909408
+  submission: 647896
+
+expected_bytes:
+  train:
+    market: 4396491768
+    order: 1296050852
+    transaction: 499265544
+    label: 10012456
+  test:
+    market: 2497837624
+    order: 906047012
+    transaction: 337477704
+  submission: 7015767
+
+samples:
+  train: 1257637   # sample_id 0..1257636
+  test: 647896     # sample_id 0..647895  (AYRI id uzayi!)
+  months: 71       # month 0..70
+
+# PENCERE UZUNLUKLARI TABLOYA GORE FARKLI - 1.26M sample uzerinde olculdu:
+#   market      : max 599.911 sn  -> 600 sn (10 dk) pencere, 1,257,631/1,257,637 sample 60sn'yi asiyor
+#   order       : max  59.999 sn  ->  60 sn pencere
+#   transaction : max  59.999 sn  ->  60 sn pencere
+# seconds_before_predict sample icinde AZALAN siradadir; 0 = tahmin anina en yakin tick.
+#
+# Market snapshot sikligi: 176.3 satir / 600 sn = ~3.4 saniyede bir snapshot.
+# Bu yuzden market icin 1 sn'lik pencere kullanilmaz (orneklerin ~%71'inde bos kalirdi).
+window:
+  seconds:
+    market: 600.0
+    order: 60.0
+    transaction: 60.0
+  # Sample-ici ic ice zaman pencereleri (feature engineering'in temeli)
+  nested:
+    market: [5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0]
+    order: [1.0, 5.0, 10.0, 30.0, 60.0]
+    transaction: [1.0, 5.0, 10.0, 30.0, 60.0]
+
+# order ve transaction sample basina TAM 999 satirda tavan yapiyor (market'te 212, tavan yok).
+# Yani bu iki tablo kirpilmis; kirpilan sample'larda gercek pencere 60 sn'den kisadir.
+# Bu bir veri kalitesi sinyali -> feature olarak kodlanir (ord_is_truncated, txn_is_truncated).
+truncation:
+  row_cap: 999
+  tables: [order, transaction]
+
+# EDA ile AMPIRIK olarak cozulen kodlamalar (varsayim degil - olculdu).
+# order tablosu, 170M olay uzerinden:
+#   side=0 ort.fiyat 0.9979/0.9943 (mid=1.0'in ALTINDA)  -> BID / alis
+#   side=1 ort.fiyat 1.0036/1.0065 (mid=1.0'in USTUNDE)  -> ASK / satis
+#   action=0 128.1M (%75), mid'e yakin                    -> NEW
+#   action=1  42.0M (%25), mid'den uzak, daha buyuk hacim -> CANCEL
+#   Dogrulama dengesi: NEW(128.1M) ~ CANCEL(42.0M) + TRANSACTION(104.0M)
+encoding:
+  order_side:
+    bid: 0
+    ask: 1
+  order_action:
+    new: 0
+    cancel: 1
+  # transaction.side (agresor tarafi) market mid ile capraz dogrulanacak - Faz 2
+  transaction_side:
+    buy: 0
+    sell: 1
+    verified: false
+
+ingestion:
+  # market.feather tek record batch (221.7M satir, acilinca 11.53 GB) -> kolon grubu ile okunur
+  parquet_row_group: 1000000
+  rows_per_file: 5000000
+  compression: zstd
+  column_groups:
+    market:
+      g1: [sample_id, seconds_before_predict, transaction_avgprice, transaction_volume, transaction_count]
+      g2: [sample_id, seconds_before_predict, ask_price_1, ask_volume_1, bid_price_1, bid_volume_1]
+      g3: [sample_id, seconds_before_predict, ask_price_2, ask_volume_2, bid_price_2, bid_volume_2]
+    order:
+      g1: [sample_id, seconds_before_predict, price, volume, side, order_action]
+    transaction:
+      g1: [sample_id, seconds_before_predict, price, volume, side]
+
+validation:
+  # Walk-forward, genisleyen pencere, 1 ay embargo (ortusen 60sn pencerelerini keser)
+  embargo_months: 1
+  folds:
+    - {train_end: 34, val_start: 36, val_end: 40}
+    - {train_end: 40, val_start: 42, val_end: 46}
+    - {train_end: 46, val_start: 48, val_end: 52}
+    - {train_end: 52, val_start: 54, val_end: 58}
+    - {train_end: 58, val_start: 60, val_end: 64}
+  holdout: {start: 65, end: 70}   # DOKUNULMAZ - sadece bir kez olculur
+
+mlflow:
+  experiment: mscapital-forecasting

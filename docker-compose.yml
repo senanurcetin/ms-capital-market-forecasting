@@ -1,0 +1,63 @@
+# MSCapital - FastAPI + Streamlit + MLflow
+#
+# Veri ve model artefaktlari OneDrive DISINDAKI C:/mscapital_data'dan mount edilir;
+# repo icinde 20 GB'lik veri tutulmaz (bkz. configs/config.yaml -> paths.data_root).
+services:
+  api:
+    build: .
+    image: mscapital:latest
+    container_name: mscapital-api
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      MSCAPITAL_MODEL_DIR: /data/models/current
+      MSCAPITAL_DIRECTION_DEADBAND: "0"
+    volumes:
+      - ${MSCAPITAL_DATA_ROOT:-C:/mscapital_data}:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  streamlit:
+    build: .
+    image: mscapital:latest
+    container_name: mscapital-streamlit
+    command:
+      - streamlit
+      - run
+      - streamlit_app/app.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+      - --server.headless=true
+    ports:
+      - "8501:8501"
+    environment:
+      MSCAPITAL_API_URL: http://api:8000
+      MSCAPITAL_DATA_ROOT: /data
+    volumes:
+      - ${MSCAPITAL_DATA_ROOT:-C:/mscapital_data}:/data
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  mlflow:
+    build: .
+    image: mscapital:latest
+    container_name: mscapital-mlflow
+    command:
+      - mlflow
+      - server
+      - --host=0.0.0.0
+      - --port=5000
+      - --backend-store-uri=sqlite:////data/mlflow/mlflow.db
+      - --default-artifact-root=/data/mlflow/artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - ${MSCAPITAL_DATA_ROOT:-C:/mscapital_data}:/data
+    restart: unless-stopped

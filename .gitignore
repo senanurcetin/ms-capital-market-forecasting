@@ -1,0 +1,24 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.feather
+*.parquet
+data/raw/*
+data/processed/*
+data/features/*
+!data/**/.gitkeep
+mlruns/
+mlartifacts/
+.pytest_cache/
+.ruff_cache/
+*.log
+secrets/
+
+# Kimlik bilgileri - asla commit edilmez
+*service-account*.json
+*credentials*.json
+kaggle.json
+gcp-key.json
+.env*
