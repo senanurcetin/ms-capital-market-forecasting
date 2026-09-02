@@ -1,4 +1,4 @@
-"""Ensemble testleri - ozellikle 'OLS = cosine-optimal' iddiasi."""
+"""Ensemble tests - above all the claim that OLS weights are cosine-optimal."""
 import numpy as np
 import pytest
 
@@ -9,7 +9,7 @@ rng = np.random.default_rng(7)
 
 
 def test_ols_weights_are_cosine_optimal():
-    """Rastgele agirliklar OLS cozumunu gecememeli (negatif serbest halde)."""
+    """No random weight vector may beat the OLS solution (unconstrained case)."""
     y = rng.normal(0, 1, 500)
     P = np.column_stack([y + rng.normal(0, 1, 500) for _ in range(3)])
     ens = CosineOptimalEnsemble(["a", "b", "c"], non_negative=False).fit(P, y)

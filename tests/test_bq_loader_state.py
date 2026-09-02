@@ -1,8 +1,8 @@
-"""Yukleme state'inin bayatlama korumasi - CANLI BQ CAGRISI YAPMADAN.
+"""Stale-state protection for the uploader - WITHOUT ANY LIVE BQ CALLS.
 
-Senaryo gercek: staging kurulduktan sonra maliyet icin mscapital_raw dusuruldu,
-_loaded.json dosyalari kaldi. Koruma olmazsa load_group sessizce hicbir sey
-yuklemez ve sonra anlasilmaz bir hatayla patlar.
+The scenario is real: mscapital_raw was dropped for cost reasons after staging was
+built, leaving the _loaded.json files behind. Without this guard load_group would
+silently upload nothing and then fail with a confusing error.
 """
 from google.cloud.exceptions import NotFound
 
@@ -34,7 +34,7 @@ def test_state_kept_when_table_exists():
 
 
 def test_empty_state_skips_lookup_entirely():
-    """Hic parca yuklenmemisse bos yere BQ'ya sorulmamali."""
+    """With no parts loaded, BigQuery should not be queried at all."""
     bq = FakeBQ(exists=True)
     out = reset_state_if_table_missing(bq, "p.d.t", {"table_id": "p.d.t", "loaded": []})
     assert out["loaded"] == [] and bq.calls == 0

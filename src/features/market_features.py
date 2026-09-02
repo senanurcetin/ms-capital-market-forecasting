@@ -1,15 +1,16 @@
-"""Market (L2 order book snapshot) feature'lari - sample basina tek satir.
+"""Market (L2 order-book snapshot) features - one row per sample.
 
-221.8M snapshot / 1.26M sample = ortalama 176.3 snapshot.
+221.8M snapshots / 1.26M samples = 176.3 snapshots on average.
 
-DIKKAT - market penceresi 600 SANIYE (10 dk), order/transaction'in 60 sn'sinden farkli.
-1.26M sample'in 1,257,631'i 60 sn'yi asiyor; max 599.911 sn. Snapshot sikligi
-176.3/600 = ~3.4 saniyede bir, bu yuzden 1 sn'lik pencere KULLANILMAZ (orneklerin
-~%71'inde bos kalirdi). Pencereler: {5, 10, 30, 60, 120, 300, 600} sn.
-Market'te satir tavani yok (max 212), order/transaction'daki 999 kirpmasi burada yok.
+NOTE - the market window is 600 SECONDS, unlike the 60 s of order/transaction.
+1,257,631 of 1,257,637 samples exceed 60 s; the maximum observed is 599.911 s.
+Snapshot cadence is 176.3/600 = one every ~3.4 s, so a 1-second window is NOT
+used (it would be empty in ~71% of samples). Windows: {5,10,30,60,120,300,600} s.
+Market has no row cap (max 212); the 999-row truncation of the other two tables
+does not apply here.
 
-EN YUKSEK SINYAL BEKLENEN GRUP: "son snapshot" degerleri
-(seconds_before_predict -> 0), yani tahmin anina en yakin defter durumu.
+HIGHEST-SIGNAL GROUP: the "last snapshot" values (seconds_before_predict -> 0),
+i.e. the book state closest to the prediction instant.
 """
 from __future__ import annotations
 
@@ -17,14 +18,14 @@ from src.features.common import cond, feature_table, safe_div, staged, wlabel, w
 
 NEWLINE_SEP = ",\n"
 
-# Satir basina turetilen buyuklukler. Fiyatlar sample bazinda ~1.0'a normalize.
-# 1. asama: BOS SEVIYE SENTINEL'INI TEMIZLE.
-# Olculdu (221.8M satir): price = 0 HER ZAMAN volume = 0 ile birlikte gelir
-#   bid_1 = 0 -> 133,781 satir | ask_1 = 0 -> 898,820 satir
-# Gercek fiyatlar 0.90919 - 1.052 araliginda; 0 bir fiyat degil, "bu seviye bos" sentinel'i.
-# GERCEK CAPRAZ DEFTER YOK: bid_1 > 0 AND ask_1 > 0 AND bid_1 >= ask_1 -> 0 satir.
-# Sentinel temizlenmezse mid/spread/microprice cop uretir (ornegin rel_spread = -2.0)
-# ve tum ortalamalari, std'leri, getirileri bozar.
+# Stage 1: CLEAN THE EMPTY-LEVEL SENTINEL.
+# Measured over 221.8M rows: price = 0 ALWAYS coincides with volume = 0
+#   bid_1 = 0 -> 133,781 rows | ask_1 = 0 -> 898,820 rows
+# Real prices live in 0.90919 - 1.052, so 0 is not a price but a "this level is
+# empty" sentinel. There are NO genuinely crossed books:
+# bid_1 > 0 AND ask_1 > 0 AND bid_1 >= ask_1 returns 0 rows.
+# Left uncleaned, mid/spread/microprice produce garbage (e.g. rel_spread = -2.0)
+# and corrupt every mean, standard deviation and return built on them.
 CLEAN = """
     sample_id,
     seconds_before_predict,
@@ -43,8 +44,8 @@ CLEAN = """
     IF(ask_price_1 = 0, 1, 0) AS is_empty_ask
 """
 
-# 2. asama: temizlenmis kolonlardan mikroyapi buyuklukleri.
-# Herhangi bir taraf bos ise mid/spread/microprice NULL olur - dogru davranis.
+# Stage 2: microstructure quantities from the cleaned columns.
+# If either side is empty, mid/spread/microprice become NULL - the correct behaviour.
 ROW_DERIVED = """
     sample_id,
     seconds_before_predict,
@@ -53,21 +54,21 @@ ROW_DERIVED = """
     (ap1 + bp1) / 2                                          AS mid,
     ap1 - bp1                                                AS spread,
     SAFE_DIVIDE(ap1 - bp1, (ap1 + bp1) / 2)                  AS rel_spread,
-    -- Mikro fiyat: karsit hacimle agirliklandirilmis mid; kisa vadede mid'den
-    -- daha iyi bir "gercek deger" tahmincisidir.
+    -- Microprice: mid weighted by the opposite side's volume. A better short-horizon
+    -- fair-value estimate than the plain mid.
     SAFE_DIVIDE(ap1 * bv1 + bp1 * av1, NULLIF(bv1 + av1, 0)) AS microprice,
-    -- Derinlik dengesizligi YALNIZ cift tarafli defterde anlamli. Tek tarafli
-    -- snapshot'ta (ornegin ask_price_1 = 0 -> ask_volume_1 = 0) formul otomatik
-    -- olarak +-1 verir; bu gecerli ama DEJENERE bir sayidir ve iki tarafli
-    -- degerlerle ayni dagilima karistirilmamalidir. Bos taraf sinyali zaten
-    -- mkt_empty_bid_share / mkt_empty_ask_share ile ayrica tutuluyor.
+    -- Depth imbalance is only meaningful on a TWO-SIDED book. On a one-sided
+    -- snapshot (e.g. ask_price_1 = 0 -> ask_volume_1 = 0) the formula degenerates
+    -- to +-1: a valid but meaningless number that must not be mixed into the same
+    -- distribution as two-sided values. The empty-side signal is kept separately
+    -- as mkt_empty_bid_share / mkt_empty_ask_share.
     IF(ap1 IS NULL OR bp1 IS NULL, NULL,
        SAFE_DIVIDE(bv1 - av1, NULLIF(bv1 + av1, 0)))         AS depth_imb_1,
     IF(ap1 IS NULL OR bp1 IS NULL, NULL,
        SAFE_DIVIDE(bv1 + bv2 - av1 - av2,
                    NULLIF(bv1 + bv2 + av1 + av2, 0)))        AS depth_imb_12,
     bv1 + bv2 + av1 + av2                                    AS total_depth,
-    -- Defter egimi: 2. seviyenin 1. seviyeden uzakligi (likidite dagilimi)
+    -- Book slope: how far level 2 sits from level 1 (liquidity distribution).
     ap2 - ap1                                                AS ask_slope,
     bp1 - bp2                                                AS bid_slope,
     transaction_avgprice,
@@ -96,13 +97,12 @@ def build_sql(split: str = "train") -> str:
             f"    {avg('microprice - mid')} AS mkt_micro_minus_mid_{t}",
             f"    {avg('ask_slope')} AS mkt_ask_slope_{t}",
             f"    {avg('bid_slope')} AS mkt_bid_slope_{t}",
-            # Gerceklesmis volatilite vekili: mid'in standart sapmasi
+            # Realised volatility proxy: standard deviation of the mid.
             f"    STDDEV(IF({c}, mid, NULL)) AS mkt_mid_std_{t}",
             f"    MAX(IF({c}, mid, NULL)) - MIN(IF({c}, mid, NULL)) AS mkt_mid_range_{t}",
             f"    STDDEV(IF({c}, depth_imb_1, NULL)) AS mkt_depth_imb1_std_{t}",
-            # Derinlik: seviye olarak degil, sample icinde normalize edilerek
             f"    {avg('total_depth')} AS mkt_total_depth_mean_{t}",
-            # Islem agresyonu: gerceklesen ortalama fiyat mid'in neresinde?
+            # Trade aggression: where the executed average price sits versus the mid.
             f"    {avg('SAFE_DIVIDE(transaction_avgprice - mid, NULLIF(spread, 0))')}"
             f" AS mkt_trade_aggression_{t}",
             f"    {safe_div(f'SUM(IF({c}, transaction_volume, 0))', str(w))}"
@@ -110,20 +110,20 @@ def build_sql(split: str = "train") -> str:
             f"    {safe_div(f'SUM(IF({c}, transaction_count, 0))', str(w))}"
             f" AS mkt_trade_count_rate_{t}",
             f"    {safe_div(f'COUNTIF({c})', str(w))} AS mkt_snapshot_rate_{t}",
-            # Pencere basindaki mid: getiri hesabi icin
+            # Mid at the start of the window - used for the return calculation.
             f"    ARRAY_AGG(IF({c}, mid, NULL) IGNORE NULLS"
             f" ORDER BY seconds_before_predict DESC LIMIT 1)[SAFE_OFFSET(0)]"
             f" AS mkt_mid_start_{t}",
         ]
 
-    # SON GECERLI SNAPSHOT - TEK BIR SATIRDAN.
+    # LAST VALID SNAPSHOT - TAKEN FROM A SINGLE ROW.
     #
-    # Alan basina ayri ARRAY_AGG(... IGNORE NULLS) KULLANILMAZ: her alan kendi
-    # ilk non-null degerini secerdi ve alanlar FARKLI snapshot'lardan gelirdi.
-    # Olculdu: bu hata mkt_depth_imb1_last'te bagimsiz yeniden hesaba gore
-    # 1.994 (yani [-1,1] araliginin tamami kadar) sapma uretiyordu.
-    # Cozum: gecerli (cift tarafli) snapshot'lar arasindan tahmin anina en
-    # yakini bir STRUCT olarak alinir, tum *_last alanlari ondan okunur.
+    # A separate ARRAY_AGG(... IGNORE NULLS) per field is NOT used: each field
+    # would pick its own first non-null value and the fields would come from
+    # DIFFERENT snapshots. Measured: that bug made mkt_depth_imb1_last deviate by
+    # 1.994 from an independent recomputation - the full width of [-1, 1].
+    # Fix: take the valid (two-sided) snapshot closest to the prediction instant
+    # as one STRUCT and read every *_last field from it.
     LAST_FIELDS = [
         ("mid", "mkt_mid_last"),
         ("spread", "mkt_spread_last"),
@@ -151,7 +151,8 @@ def build_sql(split: str = "train") -> str:
         "    COUNT(*) AS mkt_n_snapshots",
     ]
 
-    # Getiriler ve son-snapshot turevleri ust sorguda (alias kullanimi icin)
+    # Returns and last-snapshot derivatives go in an outer query so they can
+    # reference the aliases above.
     ws = windows("market")
     long_label = wlabel(ws[-1])
     derived = [
@@ -162,7 +163,7 @@ def build_sql(split: str = "train") -> str:
         "  mkt_microprice_last - mkt_mid_last AS mkt_micro_minus_mid_last",
         f"  {safe_div('mkt_microprice_last - mkt_mid_last', 'mkt_spread_last')}"
         " AS mkt_micro_edge_norm_last",
-        # Anlik spread'in pencere ortalamasina orani: likidite stresi gostergesi
+        # Instantaneous spread versus its window average: a liquidity-stress gauge.
         f"  {safe_div('mkt_spread_last', 'mkt_spread_mean_' + long_label)}"
         " AS mkt_spread_last_vs_mean",
         f"  {safe_div('mkt_total_depth_last', 'mkt_total_depth_mean_' + long_label)}"
@@ -201,9 +202,8 @@ def build_sql(split: str = "train") -> str:
         "  FROM rows_\n"
         "  GROUP BY sample_id\n"
         "),\n"
-        # last_snap STRUCT'ini duz kolonlara ac: turetilmis ifadeler
-        # (mkt_mid_return_*, mkt_micro_edge_norm_last, ...) bu alias'lari
-        # kullanabilsin diye ayri bir katman gerekiyor.
+        # Flatten the last_snap STRUCT so the derived expressions
+        # (mkt_mid_return_*, mkt_micro_edge_norm_last, ...) can use the aliases.
         "flat AS (\n"
         "  SELECT\n"
         "    agg.* EXCEPT (last_snap),\n"

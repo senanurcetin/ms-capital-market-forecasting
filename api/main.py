@@ -1,11 +1,11 @@
-"""MSCapital model servisi (FastAPI).
+"""MSCapital model serving API (FastAPI).
 
-Egitim kodundan BAGIMSIZ: yalnizca src.inference.predictor uzerinden
-kaydedilmis artefakti okur. Model yoksa uygulama yine de ayaga kalkar ama
-/health "degraded" doner ve tahmin uclari 503 verir - boylece container
-saglik kontrolu anlamli kalir ve deploy sirasi modele bagimli olmaz.
+INDEPENDENT OF THE TRAINING CODE: it only reads a saved artefact through
+src.inference.predictor. If no model is present the app still starts, /health
+reports "degraded" and the prediction endpoints return 503 - so the container
+health check stays meaningful and deployment order does not depend on the model.
 
-ARASTIRMA AMACLIDIR - yatirim tavsiyesi degildir.
+FOR RESEARCH ONLY - not investment advice.
 """
 from __future__ import annotations
 
@@ -31,11 +31,11 @@ def _try_load() -> None:
     try:
         state["predictor"] = Predictor.from_dir(MODEL_DIR)
         state["error"] = None
-        log.info("model yuklendi: %s", state["predictor"].info())
+        log.info("model loaded: %s", state["predictor"].info())
     except (ModelNotLoadedError, FileNotFoundError) as exc:
         state["predictor"] = None
         state["error"] = str(exc)
-        log.warning("model yuklenemedi (%s) - servis degraded modda", exc)
+        log.warning("could not load model (%s) - serving in degraded mode", exc)
 
 
 @asynccontextmanager
@@ -46,14 +46,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="MSCapital Market Forecasting API",
-    description="Kisa vadeli getiri tahmini. Arastirma amaclidir; yatirim tavsiyesi degildir.",
+    description="Short-horizon return prediction. For research only; not investment advice.",
     version="0.1.0",
     lifespan=lifespan,
 )
 
 
 class PredictRequest(BaseModel):
-    features: dict[str, float] = Field(..., description="Feature adi -> deger")
+    features: dict[str, float] = Field(..., description="Feature name -> value")
 
 
 class BatchPredictRequest(BaseModel):
@@ -72,7 +72,7 @@ def _predictor() -> Predictor:
         raise HTTPException(
             status_code=503,
             detail=(
-                "Servis edilebilir model yok: "
+                "No servable model available: "
                 + str(state["error"])
                 + f". MSCAPITAL_MODEL_DIR={MODEL_DIR}"
             ),
@@ -130,6 +130,6 @@ def batch_predict(req: BatchPredictRequest) -> dict:
 
 @app.post("/reload")
 def reload_model() -> dict:
-    """Yeni model kaydedildikten sonra servisi yeniden baslatmadan yukler."""
+    """Pick up a newly saved model without restarting the service."""
     _try_load()
     return health()

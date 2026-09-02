@@ -1,14 +1,14 @@
-"""Parquet -> BigQuery yukleyici (GCS'siz, dogrudan load job).
+"""Parquet -> BigQuery loader (direct load jobs, no GCS staging).
 
-Servis hesabinin GCS erisimi yok (storage.buckets.list denied), bu yuzden
-standart local -> GCS -> BQ yolu kapali. Bunun yerine
-bigquery.Client.load_table_from_file() kullanilir:
-  * bucket gerektirmez,
-  * batch load job'lar UCRETSIZ,
-  * tablo basina gunde 1500 load limiti (bizim ihtiyacimiz ~200).
+The service account had no project-level GCS access when this was built, so the
+usual local -> GCS -> BQ path was unavailable. bigquery.Client.load_table_from_file()
+is used instead:
+  * no bucket required,
+  * batch load jobs are FREE,
+  * limit is 1,500 loads per table per day (we need ~200).
 
-Yukleme parca parca ve RESUME EDILEBILIR: her basarili parca yerel bir
-state dosyasina yazilir, tekrar calistirmada atlanir.
+Uploads are chunked and RESUMABLE: every successful part is recorded in a local
+state file and skipped on a re-run.
 """
 from __future__ import annotations
 
@@ -28,8 +28,8 @@ log = logging.getLogger(__name__)
 
 _STATE = "_loaded.json"
 
-# Ev baglantisinda tek akista upload ~1.26 MB/s olculdu; indirmede paralellik
-# hizi ~4x artirdigi icin yuklemede de es zamanli load job kullaniliyor.
+# Measured on a home connection: ~1.26 MB/s single-stream. Parallel downloads were
+# ~4x faster, so uploads use concurrent load jobs too (measured 1.89-2.32 MB/s).
 DEFAULT_WORKERS = 8
 
 
@@ -47,19 +47,19 @@ def ensure_datasets(bq: bigquery.Client | None = None) -> list[str]:
     for key, name in cfg.bigquery.datasets.items():
         ref = bigquery.Dataset(f"{cfg.bigquery.project}.{name}")
         ref.location = cfg.bigquery.location
-        ref.description = f"MSCapital - {key} katmani"
+        ref.description = f"MSCapital - {key} layer"
         bq.create_dataset(ref, exists_ok=True)
         made.append(name)
     return made
 
 
 def reset_state_if_table_missing(bq: bigquery.Client, table_id: str, state: dict) -> dict:
-    """State "yuklendi" diyor ama HEDEF TABLO yoksa state BAYATTIR - sifirla.
+    """If the state says "loaded" but the TARGET TABLE is gone, the state is STALE.
 
-    Bu senaryo gercekten yasandi: staging kurulduktan sonra maliyet icin
-    mscapital_raw dusuruldu, ama parquet dizinlerindeki _loaded.json dosyalari
-    kaldi. Kontrol edilmezse load_group her parcayi atlar, hicbir sey yuklemez,
-    sonra get_table'da anlasilmaz bir hata verir.
+    This actually happened: mscapital_raw was dropped for cost reasons once staging
+    was built, but the _loaded.json files stayed behind. Without this check
+    load_group would skip every part, upload nothing, and then fail with a
+    confusing error from get_table.
     """
     if not state.get("loaded"):
         return state
@@ -68,8 +68,8 @@ def reset_state_if_table_missing(bq: bigquery.Client, table_id: str, state: dict
         return state
     except NotFound:
         log.warning(
-            "[%s] state '%d parca yuklendi' diyor ama tablo yok - "
-            "state sifirlaniyor, hepsi yeniden yuklenecek",
+            "[%s] state claims %d parts loaded but the table is missing - "
+            "resetting state, everything will be re-uploaded",
             table_id, len(state["loaded"]),
         )
         return {"table_id": table_id, "loaded": []}
@@ -84,13 +84,13 @@ def load_group(
     split: str, table: str, group: str, *, bq: bigquery.Client | None = None,
     overwrite: bool = False,
 ) -> dict:
-    """Bir kolon grubunun Parquet parcalarini BQ tablosuna yukler (resume edilebilir)."""
+    """Upload one column group's Parquet parts into a BigQuery table (resumable)."""
     bq = bq or client()
     src_dir = parquet_dir(split, table, group)
     manifest = json.loads((src_dir / "_manifest.json").read_text(encoding="utf-8"))
     parts = sorted(src_dir.glob("*.parquet"))
     if not parts:
-        raise FileNotFoundError(f"{src_dir} icinde parquet yok")
+        raise FileNotFoundError(f"no parquet files in {src_dir}")
 
     table_id = raw_table_id(split, table, group)
     state_path = src_dir / _STATE
@@ -130,7 +130,7 @@ def load_group(
                 mb / max(time.perf_counter() - t0, 1e-9),
             )
 
-    # Ilk parca tabloyu olusturur/temizler; kalanlar paralel APPEND edilir.
+    # The first part creates/truncates the table; the rest are appended in parallel.
     if pending:
         first_disposition = "WRITE_TRUNCATE" if not loaded else "WRITE_APPEND"
         _upload(pending[0], first_disposition, bq)
@@ -156,8 +156,8 @@ def load_group(
         "uploaded_mb": round(total_bytes / 1e6, 1),
     }
     if not result["match"]:
-        raise RuntimeError(f"{table_id}: satir uyusmuyor {got:,} != {expected:,}")
-    log.info("[%s] TAMAM %s satir, %.1f sn", table_id, f"{got:,}", elapsed)
+        raise RuntimeError(f"{table_id}: row count mismatch {got:,} != {expected:,}")
+    log.info("[%s] DONE %s rows, %.1f s", table_id, f"{got:,}", elapsed)
     return result
 
 
@@ -171,7 +171,7 @@ def load_table(split: str, table: str, *, overwrite: bool = False) -> list[dict]
 
 
 def load_label(*, bq: bigquery.Client | None = None) -> dict:
-    """label.feather kucuk (1.26M satir) - tek seferde yuklenir."""
+    """label.feather is small (1.26M rows) - uploaded in a single shot."""
     import io
 
     import pyarrow.feather as feather

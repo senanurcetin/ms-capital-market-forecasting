@@ -1,8 +1,9 @@
-"""XGBoost - ikinci agac modeli.
+"""XGBoost - the second tree model.
 
-LightGBM'den farkli bolme stratejisi (level-wise + histogram) kullandigi icin
-ensemble'da tamamlayici hata yapisi saglamasi beklenir. Ayni cosine erken
-durdurmasi; XGBoost minimize ettigi icin metrik NEGATIF cosine olarak verilir.
+It uses a different split strategy (level-wise histogram) from LightGBM, so its
+errors are expected to be partly complementary, which is what makes the ensemble
+worth building. Same cosine-driven early stopping; since XGBoost minimises, the
+metric is supplied as NEGATIVE cosine.
 """
 from __future__ import annotations
 
@@ -64,7 +65,7 @@ class XGBoostModel:
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         if self.booster_ is None:
-            raise RuntimeError("once fit() cagrilmali")
+            raise RuntimeError("fit() must be called first")
         dm = xgb.DMatrix(X[self.features_], nthread=-1)
         rng = (0, self.best_iteration_ + 1) if self.best_iteration_ is not None else None
         return self.booster_.predict(dm, iteration_range=rng)

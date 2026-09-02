@@ -1,17 +1,18 @@
 """Temporal (walk-forward) validation.
 
-NEDEN RANDOM SPLIT YASAK:
-    Ardisik sample'larin 60 saniyelik pencereleri kesisebilir. Random split
-    bu neredeyse-kopya satirlari farkli fold'lara dagitir ve skoru sisirir.
-    Tek mesru zaman ekseni label.month (0..70).
+WHY RANDOM SPLITS ARE FORBIDDEN:
+    Consecutive samples can have overlapping lookback windows. A random split
+    scatters those near-duplicate rows across folds and inflates the score.
+    The only legitimate time axis is label.month (0..70).
 
 EMBARGO:
-    train ve validation araligi arasinda embargo_months kadar ay tamamen
-    disarida birakilir; bu, sinirdaki ortusen pencerelerin sizmasini keser
-    (Lopez de Prado, purged/embargoed CV).
+    embargo_months are dropped entirely between the train and validation ranges,
+    which cuts leakage from overlapping windows at the boundary
+    (purged/embargoed CV, Lopez de Prado).
 
 HOLD-OUT:
-    Ay 65-70 hicbir tuning'de kullanilmaz; secim bittikten sonra BIR KEZ olculur.
+    Months 65-70 are never used for tuning; they are measured ONCE after model
+    selection is complete.
 """
 from __future__ import annotations
 
@@ -26,20 +27,20 @@ from src.config import load_config
 @dataclass(frozen=True)
 class Fold:
     index: int
-    train_months: tuple[int, int]      # (dahil, dahil)
-    val_months: tuple[int, int]        # (dahil, dahil)
-    embargo_months: tuple[int, int]    # (dahil, dahil) - hicbir tarafta kullanilmaz
+    train_months: tuple[int, int]      # (inclusive, inclusive)
+    val_months: tuple[int, int]        # (inclusive, inclusive)
+    embargo_months: tuple[int, int]    # (inclusive, inclusive) - used by neither side
 
     def describe(self) -> str:
         return (
-            f"Fold {self.index}: train ay {self.train_months[0]}-{self.train_months[1]} "
+            f"Fold {self.index}: train months {self.train_months[0]}-{self.train_months[1]} "
             f"| embargo {self.embargo_months[0]}-{self.embargo_months[1]} "
-            f"| val ay {self.val_months[0]}-{self.val_months[1]}"
+            f"| val months {self.val_months[0]}-{self.val_months[1]}"
         )
 
 
 def build_folds() -> list[Fold]:
-    """config.yaml'deki genisleyen-pencere fold tanimlarini Fold nesnelerine cevirir."""
+    """Turn the expanding-window fold definitions in config.yaml into Fold objects."""
     cfg = load_config()
     embargo = cfg.validation.embargo_months
     folds: list[Fold] = []
@@ -49,8 +50,8 @@ def build_folds() -> list[Fold]:
         gap = (train_end + 1, val_start - 1)
         if val_start - train_end - 1 < embargo:
             raise ValueError(
-                f"Fold {i}: train_end={train_end} ile val_start={val_start} arasinda "
-                f"en az {embargo} ay embargo olmali"
+                f"Fold {i}: need at least {embargo} embargo month(s) between "
+                f"train_end={train_end} and val_start={val_start}"
             )
         folds.append(
             Fold(
@@ -69,7 +70,7 @@ def holdout_months() -> tuple[int, int]:
 
 
 def split_indices(months: np.ndarray, fold: Fold) -> tuple[np.ndarray, np.ndarray]:
-    """Ay vektorunden (n_samples,) train/val indekslerini uretir."""
+    """Derive train/validation indices from a (n_samples,) month vector."""
     months = np.asarray(months)
     tr = np.flatnonzero((months >= fold.train_months[0]) & (months <= fold.train_months[1]))
     va = np.flatnonzero((months >= fold.val_months[0]) & (months <= fold.val_months[1]))
@@ -89,23 +90,23 @@ def holdout_indices(months: np.ndarray) -> np.ndarray:
 
 
 def assert_no_overlap(months: np.ndarray) -> None:
-    """Guvenlik agi: hicbir fold'da train ve val aylari kesismemeli ve
-    hold-out aylari hicbir fold'un train'inde gorunmemeli."""
+    """Safety net: no fold may overlap train with validation, and hold-out months
+    must never appear in any fold."""
     lo, hi = holdout_months()
     for fold in build_folds():
         tr_lo, tr_hi = fold.train_months
         va_lo, va_hi = fold.val_months
         if tr_hi >= va_lo:
-            raise AssertionError(f"{fold.describe()}: train val ile kesisiyor")
+            raise AssertionError(f"{fold.describe()}: train overlaps validation")
         if tr_hi >= lo:
-            raise AssertionError(f"{fold.describe()}: train hold-out'a ({lo}-{hi}) tasiyor")
+            raise AssertionError(f"{fold.describe()}: train reaches into hold-out ({lo}-{hi})")
         if va_hi >= lo:
-            raise AssertionError(f"{fold.describe()}: val hold-out'a ({lo}-{hi}) tasiyor")
+            raise AssertionError(f"{fold.describe()}: validation reaches into hold-out ({lo}-{hi})")
 
 
 def stability(scores: list[float]) -> dict[str, float]:
-    """Fold'lar arasi kararlilik. Aylik volatilite 2.69x oynadigi icin
-    ortalama kadar onemli bir model secim kriteridir."""
+    """Across-fold stability. Monthly target volatility swings by 2.69x, which makes
+    this as important a selection criterion as the mean."""
     arr = np.asarray(scores, dtype=float)
     return {
         "mean": float(arr.mean()),

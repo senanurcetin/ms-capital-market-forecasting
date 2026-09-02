@@ -1,4 +1,4 @@
-"""SHAP yardimcilarinin testleri - gercek model veya veri gerektirmez."""
+"""Tests for the SHAP helpers - no real model or data required."""
 import numpy as np
 import pandas as pd
 import pytest
@@ -12,7 +12,7 @@ FEATURES = ["mkt_mid_last", "ord_ofi_60s", "txn_intensity_60s", "mkt_spread_last
 def values():
     rng = np.random.default_rng(5)
     v = rng.normal(0, 0.1, (200, len(FEATURES)))
-    v[:, 1] *= 10  # ord_ofi_60s belirgin sekilde en onemli olmali
+    v[:, 1] *= 10  # make ord_ofi_60s clearly the most important feature
     return v
 
 
@@ -35,7 +35,7 @@ def test_family_extracted_from_prefix(values):
 
 
 def test_sign_does_not_affect_global_importance():
-    """Global onem BUYUKLUK olcusudur; isaret cevirmek siralamayi degistirmemeli."""
+    """Global importance is a MAGNITUDE measure; flipping signs must not reorder it."""
     rng = np.random.default_rng(1)
     v = rng.normal(0, 1, (100, len(FEATURES)))
     a = global_importance(v, FEATURES)["feature"].tolist()

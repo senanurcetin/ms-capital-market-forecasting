@@ -1,7 +1,10 @@
-"""Transaction (gerceklesen islem) feature'lari - sample basina tek satir.
+"""Transaction (executed trade) features - one row per sample.
 
-104.0M islem / 1.26M sample = ortalama 82.7 islem. side alani agresor tarafini
-gosterir; kodlama Faz 2'de market mid ile capraz dogrulanir (config.encoding).
+104.0M trades / 1.26M samples = 82.7 trades on average, over a 60 s window.
+
+The `side` column is the aggressor side. Verified against the prevailing market
+mid over 1.71M trades: side=0 trades sit 87.5% above mid (mean +5.26 bps) -> BUY;
+side=1 sit 88.7% below mid (mean -5.27 bps) -> SELL.
 """
 from __future__ import annotations
 
@@ -11,6 +14,8 @@ from src.features.common import (
 
 NEWLINE_SEP = ",\n"
 
+BUY, SELL = 0, 1
+
 
 def build_sql(split: str = "train") -> str:
     src = staged("transaction", split)
@@ -19,30 +24,31 @@ def build_sql(split: str = "train") -> str:
     for w in windows("transaction"):
         t = wlabel(w)
         c = cond(w)
-        buy_v = f"SUM(IF({c} AND side = 0, volume, 0))"
-        sell_v = f"SUM(IF({c} AND side = 1, volume, 0))"
-        buy_n = f"COUNTIF({c} AND side = 0)"
-        sell_n = f"COUNTIF({c} AND side = 1)"
+        buy_v = f"SUM(IF({c} AND side = {BUY}, volume, 0))"
+        sell_v = f"SUM(IF({c} AND side = {SELL}, volume, 0))"
+        buy_n = f"COUNTIF({c} AND side = {BUY})"
+        sell_n = f"COUNTIF({c} AND side = {SELL})"
         n = f"COUNTIF({c})"
         vol = f"SUM(IF({c}, volume, 0))"
         notional = f"SUM(IF({c}, price * volume, 0))"
 
         base += [
-            # Yogunluk (ham sayim degil): islem/saniye -> train/test rejim farkina dayanikli
+            # Rates, not raw counts - robust to the train/test density difference.
             f"    {safe_div(n, str(w))} AS txn_intensity_{t}",
             f"    {safe_div(vol, str(w))} AS txn_volume_rate_{t}",
-            # Dengesizlikler: [-1,1], olcek-bagimsiz
+            # Imbalances in [-1, 1], scale-free.
             f"    {imbalance(buy_v, sell_v)} AS txn_volume_imbalance_{t}",
             f"    {imbalance(buy_n, sell_n)} AS txn_count_imbalance_{t}",
-            # VWAP ve ortalama islem buyuklugu
+            # VWAP and average trade size.
             f"    {safe_div(notional, vol)} AS txn_vwap_{t}",
             f"    {safe_div(vol, n)} AS txn_avg_size_{t}",
-            # Fiyat dagilimi (gerceklesmis volatilite vekili)
+            # Price dispersion - a realised volatility proxy.
             f"    STDDEV(IF({c}, price, NULL)) AS txn_price_std_{t}",
             f"    MAX(IF({c}, price, NULL)) - MIN(IF({c}, price, NULL)) AS txn_price_range_{t}",
         ]
 
-    # seconds_before_predict AZALAN sirada: MIN(seconds) = tahmin anina EN YAKIN islem.
+    # seconds_before_predict is sorted descending, so MIN(seconds) is the trade
+    # CLOSEST to the prediction instant.
     last_price = "ARRAY_AGG(price ORDER BY seconds_before_predict ASC LIMIT 1)[OFFSET(0)]"
     first_price = "ARRAY_AGG(price ORDER BY seconds_before_predict DESC LIMIT 1)[OFFSET(0)]"
     base += [
@@ -51,8 +57,9 @@ def build_sql(split: str = "train") -> str:
         f"    {safe_div(last_price, first_price)} - 1 AS txn_window_return",
         "    MIN(seconds_before_predict) AS txn_last_seconds_gap",
         "    COUNT(*) AS txn_n_total",
-        # Kirpma sinyali: sample basina TAM row_cap() satirda tavan var. Kirpilan
-        # sample'larda pencere fiilen 60 sn'den kisadir -> gercek kapsanan sureyi de tut.
+        # Truncation signal: samples cap at exactly row_cap rows, so a capped
+        # sample effectively covers less than the full 60 s. Keep both the flag
+        # and the actual covered span.
         f"    IF(COUNT(*) >= {row_cap()}, 1, 0) AS txn_is_truncated",
         "    MAX(seconds_before_predict) AS txn_window_covered",
         f"    {safe_div('SUM(price * volume)', 'SUM(volume)')} AS txn_vwap_total",
@@ -60,8 +67,8 @@ def build_sql(split: str = "train") -> str:
         " AS txn_large_volume_share",
     ]
 
-    # Momentum/hizlanma: kisa pencere / uzun pencere orani.
-    # Ayni SELECT icinde alias kullanilamadigi icin ust sorguda hesaplanir.
+    # Momentum / acceleration: short window over long window. Aliases cannot be
+    # referenced in the same SELECT, so these go in an outer query.
     ws = windows("transaction")
     long_label = wlabel(ws[-1])
     accel = [

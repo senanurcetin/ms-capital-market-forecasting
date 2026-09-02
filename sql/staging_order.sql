@@ -1,4 +1,4 @@
--- staging.order_{split}: tek kolon grubu, sadece month zenginlestirmesi.
+-- staging.order_{split}: single column group, enriched with month on train.
 CREATE OR REPLACE TABLE `{project}.{staging}.order_{split}`
 {partition_clause}
 CLUSTER BY sample_id

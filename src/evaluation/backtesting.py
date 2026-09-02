@@ -1,16 +1,16 @@
-"""Arastirma amacli backtest modulu.
+"""Research-only backtesting module.
 
-BU BIR YATIRIM TAVSIYESI ARACI DEGILDIR. Amaci, model tahminlerinin
-istatistiksel anlamliligini islem-benzeri bir cerceveede degerlendirmektir.
+THIS IS NOT AN INVESTMENT TOOL. Its purpose is to assess whether the model's
+predictions carry statistically meaningful ranking power, framed in trading terms.
 
-VERI YAPISININ DAYATTIGI MODELLEME KARARI:
-  Ardisik sample'lar arasi target otokorelasyonu ~0 (lag1: 0.0011, lag5: 0.0021)
-  ve sembol kolonu yok. Bu yuzden pozisyon TASINMAZ; her sample bagimsiz bir
-  bahis olarak modellenir. "Turnover" da bu cerceveede islem yapilan sample
-  orani olarak tanimlanir.
+A MODELLING CHOICE FORCED BY THE DATA:
+    Target autocorrelation between consecutive samples is ~0 (lag1: 0.0011,
+    lag5: 0.0021) and there is no symbol column, so positions are NOT carried:
+    each sample is modelled as an independent bet. "Turnover" is therefore
+    defined as the fraction of samples that are traded.
 
-LOOK-AHEAD YOK: her tahmin yalnizca kendi penceresinin gecmisini kullanir,
-ve backtest sadece HOLD-OUT aylarinda (65-70) calistirilir.
+NO LOOK-AHEAD: every prediction uses only its own window's history, and the
+backtest is run exclusively on the HOLD-OUT months.
 """
 from __future__ import annotations
 
@@ -19,19 +19,20 @@ import pandas as pd
 
 
 def make_signals(pred: np.ndarray, threshold: float) -> np.ndarray:
-    """pred > +t -> +1 (BUY), pred < -t -> -1 (SELL), aksi 0 (HOLD)."""
+    """pred > +t -> +1 (BUY), pred < -t -> -1 (SELL), otherwise 0 (HOLD)."""
     p = np.asarray(pred, dtype=np.float64)
     return np.where(p > threshold, 1, np.where(p < -threshold, -1, 0)).astype(np.int8)
 
 
 def threshold_from_quantile(pred: np.ndarray, trade_fraction: float) -> float:
-    """Tahminlerin en uc `trade_fraction` kadarinda islem acacak esigi verir.
+    """Threshold that trades the most extreme `trade_fraction` of predictions.
 
-    Sabit bir esik yerine kullanilir: cosine olcek-degismez oldugu icin
-    modelin tahmin buyuklugu kalibre DEGILDIR; mutlak esik anlamsiz olurdu.
+    Used instead of a fixed absolute threshold because cosine similarity is
+    scale-invariant, so prediction MAGNITUDE is not calibrated - an absolute cut
+    would be meaningless.
     """
     if not 0 < trade_fraction <= 1:
-        raise ValueError("trade_fraction (0, 1] araliginda olmali")
+        raise ValueError("trade_fraction must be in (0, 1]")
     return float(np.quantile(np.abs(pred), 1.0 - trade_fraction))
 
 
@@ -43,11 +44,11 @@ def backtest(
     trade_fraction: float = 0.2,
     cost_bps: float = 0.0,
 ) -> dict:
-    """Sinyal basina getiri = yon * gerceklesen getiri - islem maliyeti."""
+    """Per-signal return = direction * realised return - transaction cost."""
     p = np.asarray(pred, dtype=np.float64)
     a = np.asarray(actual, dtype=np.float64)
     if p.shape != a.shape:
-        raise ValueError(f"sekil uyusmuyor: {p.shape} vs {a.shape}")
+        raise ValueError(f"shape mismatch: {p.shape} vs {a.shape}")
 
     t = threshold_from_quantile(p, trade_fraction) if threshold is None else threshold
     sig = make_signals(p, t)
@@ -75,7 +76,7 @@ def backtest(
         "total_return": float(equity[-1]),
         "mean_return": float(trade_pnl.mean()),
         "volatility": vol,
-        # Islem basina Sharpe (yillik degil): sample'lar bagimsiz bahisler.
+        # Per-trade Sharpe (not annualised): samples are independent bets.
         "sharpe": float(trade_pnl.mean() / vol) if vol > 0 else 0.0,
         "max_drawdown": float(drawdown.min()),
         "win_rate": float((trade_pnl > 0).mean()),
@@ -88,7 +89,7 @@ def cost_sensitivity(
     pred: np.ndarray, actual: np.ndarray, *,
     trade_fraction: float = 0.2, costs_bps: tuple[float, ...] = (0.0, 1.0, 2.0, 5.0),
 ) -> pd.DataFrame:
-    """Stratejinin islem maliyetine dayanikliligi - sinyalin gercek gucunun testi."""
+    """How the strategy holds up as costs rise - a direct test of real signal strength."""
     rows = []
     for c in costs_bps:
         r = backtest(pred, actual, trade_fraction=trade_fraction, cost_bps=c)
@@ -101,8 +102,8 @@ def sweep_trade_fraction(
     pred: np.ndarray, actual: np.ndarray, *,
     fractions: tuple[float, ...] = (0.05, 0.1, 0.2, 0.5, 1.0), cost_bps: float = 1.0,
 ) -> pd.DataFrame:
-    """Sinyal gucu tahmin siralamasiyla artiyor mu? En uc tahminler en karli olmali;
-    olmuyorsa model siralama gucu tasimiyor demektir."""
+    """Does signal strength increase with prediction rank? The most extreme
+    predictions should be the most profitable; if not, the model has no ranking power."""
     rows = []
     for f in fractions:
         r = backtest(pred, actual, trade_fraction=f, cost_bps=cost_bps)

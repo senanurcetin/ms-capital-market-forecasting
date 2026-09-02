@@ -1,8 +1,11 @@
-"""Baseline modeller: referans noktasi.
+"""Baseline models - the reference points every other score is judged against.
 
-ZeroPredictor kasitli olarak dahil: cosine similarity sabit tahminde tanimsiz
-(norm 0) veya anlamsizdir; metrigin 0 dondugunu gormek diger skorlarin
-gercekten sinyal tasidigini dogrulamak icin gerekli bir kontrol.
+ZeroPredictor is deliberately included: cosine similarity is undefined (norm 0)
+for a constant-zero prediction and returns 0.0 here. Seeing that 0.0 is a
+necessary control that the other scores really do carry signal.
+
+MeanPredictor is the empirical demonstration that cosine is NOT shift-invariant:
+predicting the training mean scores NEGATIVE (-0.0036 on the walk-forward folds).
 """
 from __future__ import annotations
 
@@ -25,8 +28,7 @@ class ZeroPredictor:
 
 
 class MeanPredictor:
-    """Train ortalamasini tahmin eder. Cosine KAYDIRMA-degismez olmadigi icin
-    sabit-bias tahminin metrigi nasil bozdugunu gosteren referans."""
+    """Predicts the training mean - shows how a constant bias damages the metric."""
 
     name = "mean"
 
@@ -39,9 +41,10 @@ class MeanPredictor:
 
 
 class RidgeModel:
-    """Standardize + medyan imputation + Ridge.
+    """Median imputation + standardisation + Ridge.
 
-    Imputer ve scaler YALNIZ train fold'unda fit edilir (bkz. base.py NaN politikasi).
+    The imputer and the scaler are fitted on the TRAINING FOLD ONLY
+    (see the NaN policy in base.py).
     """
 
     name = "ridge"

@@ -1,4 +1,4 @@
-"""API sozlesme testleri - sahte bir model artefakti ile (egitim gerektirmez)."""
+"""API contract tests - driven by a fake model artefact (no training required)."""
 import importlib
 import json
 
@@ -11,7 +11,7 @@ FEATURES = ["mkt_mid_last", "ord_ofi_60s", "txn_intensity_60s"]
 
 
 class DummyModel:
-    """predict() ilk iki feature'in farkini doner - deterministik ve bagimliliksiz."""
+    """predict() returns the difference of the first two features - deterministic."""
 
     def predict(self, X):
         return (X.iloc[:, 0] - X.iloc[:, 1]).to_numpy()
@@ -56,7 +56,7 @@ def client_with_model(tmp_path, monkeypatch):
 
 @pytest.fixture
 def client_without_model(tmp_path, monkeypatch):
-    with _client(monkeypatch, tmp_path / "yok") as c:
+    with _client(monkeypatch, tmp_path / "missing") as c:
         yield c
 
 
@@ -66,7 +66,7 @@ def test_health_ok_when_model_present(client_with_model):
 
 
 def test_health_degraded_without_model_but_app_still_up(client_without_model):
-    """Model yokken bile uygulama ayaga kalkmali - deploy sirasi bagimsiz olsun."""
+    """The app must start even without a model so deployment order does not matter."""
     r = client_without_model.get("/health")
     assert r.status_code == 200
     assert r.json()["status"] == "degraded" and r.json()["model_loaded"] is False
@@ -108,9 +108,9 @@ def test_predict_direction_down_and_flat(client_with_model):
 
 
 def test_missing_feature_is_rejected_not_silently_filled(client_with_model):
-    """Eksik feature SESSIZCE doldurulmamali - acik 422 donmeli."""
+    """A missing feature must NOT be silently filled in - it must return 422."""
     r = client_with_model.post("/predict", json={"features": {"mkt_mid_last": 1.0}})
-    assert r.status_code == 422 and "eksik" in r.json()["detail"]
+    assert r.status_code == 422 and "missing" in r.json()["detail"]
 
 
 def test_batch_predict(client_with_model):
@@ -129,7 +129,7 @@ def test_batch_predict_rejects_empty(client_with_model):
 
 
 def test_reload_picks_up_model(tmp_path, monkeypatch):
-    """Model sonradan yazildiginda /reload servisi yeniden baslatmadan yuklemeli."""
+    """When a model appears later, /reload must pick it up without a restart."""
     model_dir = tmp_path / "current"
     with _client(monkeypatch, model_dir) as c:
         assert c.get("/health").json()["status"] == "degraded"
@@ -159,5 +159,5 @@ def test_extra_features_are_ignored_not_fatal(tmp_path):
         features=FEATURES, name="x", version="v1",
     )
     p = Predictor.from_dir(d)
-    row = {"mkt_mid_last": 3.0, "ord_ofi_60s": 1.0, "txn_intensity_60s": 0.0, "bilinmeyen": 99.0}
+    row = {"mkt_mid_last": 3.0, "ord_ofi_60s": 1.0, "txn_intensity_60s": 0.0, "unknown_feature": 99.0}
     assert p.predict([row])[0] == pytest.approx(2.0)

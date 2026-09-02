@@ -1,13 +1,13 @@
-"""Walk-forward egitim harness'i + MLflow takibi.
+"""Walk-forward training harness with MLflow tracking.
 
-Tek giris noktasi: run_walk_forward(). Her model ayni fold yapisini kullanir,
-boylece karsilastirma adil olur.
+Single entry point: run_walk_forward(). Every model sees the same fold structure,
+which is what makes the comparison fair.
 
-LEAKAGE KORUMASI (calisma aninda dogrulanir, sessizce guvenilmez):
-  * fold'un train aylari val aylarindan KESINLIKLE once
-  * aralarinda embargo ayi var (ortusen 60sn pencerelerini keser)
-  * hold-out aylari (65-70) hicbir fold'da gorunmez
-  assert_fold_integrity() bunlari her fold'da yeniden kontrol eder.
+LEAKAGE GUARD (re-checked at runtime, never merely trusted):
+  * a fold's train months are STRICTLY before its validation months
+  * the embargo months in between are used by neither side
+  * hold-out months (65-70) appear in no fold
+  assert_fold_integrity() re-verifies all of this against the data on every fold.
 """
 from __future__ import annotations
 
@@ -35,26 +35,26 @@ def load_dataset(split: str = "train", columns: list[str] | None = None) -> pd.D
     path = Path(cfg.paths.features) / f"dataset_{split}.parquet"
     if not path.exists():
         raise FileNotFoundError(
-            f"{path} yok - once src/features/assemble.py:download('{split}') calistirin"
+            f"{path} not found - run src/features/assemble.py:download('{split}') first"
         )
     return pd.read_parquet(path, columns=columns)
 
 
 def assert_fold_integrity(months: np.ndarray, fold: Fold,
                           tr: np.ndarray, va: np.ndarray) -> None:
-    """Split'in dogrulugunu VERI uzerinde dogrular (config'e guvenmez)."""
+    """Verify the split against the DATA, not against the config."""
     ho_lo, ho_hi = holdout_months()
     m_tr, m_va = months[tr], months[va]
     if m_tr.max() >= m_va.min():
-        raise AssertionError(f"{fold.describe()}: train, val'den once degil")
+        raise AssertionError(f"{fold.describe()}: train is not strictly before validation")
     gap_lo, gap_hi = fold.embargo_months
     for m in range(gap_lo, gap_hi + 1):
         if (m_tr == m).any() or (m_va == m).any():
-            raise AssertionError(f"{fold.describe()}: embargo ayi {m} kullanilmis")
+            raise AssertionError(f"{fold.describe()}: embargo month {m} was used")
     if (m_tr >= ho_lo).any() or (m_va >= ho_lo).any():
-        raise AssertionError(f"{fold.describe()}: hold-out ({ho_lo}-{ho_hi}) sizmis")
+        raise AssertionError(f"{fold.describe()}: hold-out ({ho_lo}-{ho_hi}) leaked in")
     if set(tr) & set(va):
-        raise AssertionError(f"{fold.describe()}: train/val indeksleri kesisiyor")
+        raise AssertionError(f"{fold.describe()}: train and validation indices overlap")
 
 
 def run_walk_forward(
@@ -69,13 +69,14 @@ def run_walk_forward(
     months = df["month"].to_numpy()
     y_all = df["target"].to_numpy()
     feats = feature_columns(df)
-    log.info("dataset: %s satir x %s feature", f"{len(df):,}", len(feats))
+    log.info("dataset: %s rows x %s features", f"{len(df):,}", len(feats))
 
     mlflow = None
     if log_mlflow:
         import mlflow as _mlflow
 
         mlflow = _mlflow
+        Path(cfg.paths.mlruns).mkdir(parents=True, exist_ok=True)
         mlflow.set_tracking_uri(Path(cfg.paths.mlruns).as_uri())
         mlflow.set_experiment(experiment or cfg.mlflow.experiment)
 
@@ -131,20 +132,20 @@ def run_walk_forward(
         cos = [r["cosine"] for r in rows]
         summary[name] = {"per_fold": rows, "stability": stability(cos)}
         s = summary[name]["stability"]
-        log.info("%-10s cosine ort=%+.5f std=%.5f min=%+.5f (en kotu fold %d)",
+        log.info("%-10s cosine mean=%+.5f std=%.5f min=%+.5f (worst fold %d)",
                  name, s["mean"], s["std"], s["min"], s["worst_fold"])
 
-    # Ensemble: fold bazinda tek modeli gercekten geciyor mu?
+    # Ensemble: does it genuinely beat the best single model, fold by fold?
     ens_rows = []
     for i, (preds, truth) in enumerate(zip(fold_preds, fold_truth), start=1):
         if len(preds) > 1:
             gain = evaluate_ensemble_gain(preds, truth)
             gain["fold"] = i
             ens_rows.append(gain)
-            log.info("fold %d ensemble=%+.5f vs en iyi tek (%s)=%+.5f  kazanc=%+.5f  %s",
+            log.info("fold %d ensemble=%+.5f vs best single (%s)=%+.5f  gain=%+.5f  %s",
                      i, gain["ensemble_score"], gain["best_single"],
                      gain["best_single_score"], gain["gain"],
-                     "GECIYOR" if gain["beats_best_single"] else "gecmiyor")
+                     "BEATS IT" if gain["beats_best_single"] else "does not beat it")
     if ens_rows:
         summary["ensemble"] = {
             "per_fold": ens_rows,
@@ -184,7 +185,7 @@ def build_model_factories(names: list[str], quick: bool) -> dict:
     }
     unknown = set(names) - set(available)
     if unknown:
-        raise SystemExit(f"bilinmeyen model: {sorted(unknown)}; secenekler {sorted(available)}")
+        raise SystemExit(f"unknown model(s): {sorted(unknown)}; choose from {sorted(available)}")
     return {n: available[n] for n in names}
 
 
@@ -194,24 +195,24 @@ def main(argv: list[str] | None = None) -> None:
     import warnings
 
     warnings.filterwarnings("ignore")
-    ap = argparse.ArgumentParser(description="MSCapital walk-forward egitimi")
+    ap = argparse.ArgumentParser(description="MSCapital walk-forward training")
     ap.add_argument("--models", default="zero,mean,ridge,lightgbm,xgboost")
-    ap.add_argument("--quick", action="store_true", help="az agac, hizli dogrulama")
-    ap.add_argument("--folds", type=int, default=0, help="0 = tum fold'lar, N = son N fold")
-    ap.add_argument("--sample-frac", type=float, default=0.0, help="0 = tam veri")
+    ap.add_argument("--quick", action="store_true", help="fewer trees, fast sanity run")
+    ap.add_argument("--folds", type=int, default=0, help="0 = all folds, N = last N folds")
+    ap.add_argument("--sample-frac", type=float, default=0.0, help="0 = full data")
     ap.add_argument("--no-mlflow", action="store_true")
-    ap.add_argument("--out", default=None, help="ozet JSON yolu")
+    ap.add_argument("--out", default=None, help="summary JSON path")
     args = ap.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     cfg = load_config()
     df = load_dataset("train")
     if args.sample_frac:
-        # Ay yapisini KORUYARAK ornekle - temporal split bozulmamali
+        # Sample WITHIN each month so the temporal structure is preserved.
         df = df.groupby("month", group_keys=False).sample(
             frac=args.sample_frac, random_state=42
         )
-        log.info("ornekleme: %s satir (frac=%.3f)", f"{len(df):,}", args.sample_frac)
+        log.info("sampled: %s rows (frac=%.3f)", f"{len(df):,}", args.sample_frac)
 
     if args.folds:
         from src.evaluation import temporal_validation as tv
@@ -236,7 +237,7 @@ def main(argv: list[str] | None = None) -> None:
     }
     out.write_text(json.dumps(serialisable, indent=2, default=str), encoding="utf-8")
     table.to_csv(out.with_suffix(".csv"), index=False)
-    log.info("ozet yazildi: %s", out)
+    log.info("summary written: %s", out)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
-"""Merkezi konfigurasyon yukleyici.
+"""Central configuration loader.
 
-Tum modüller yollari ve sabitleri buradan alir; hicbir yerde hardcoded path yok.
+Every module reads paths and constants from here; no hardcoded paths anywhere else.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ CONFIG_PATH = REPO_ROOT / "configs" / "config.yaml"
 
 
 class Config(dict):
-    """Nokta notasyonu ile de erisilebilen dict (cfg.paths.raw)."""
+    """A dict that also supports attribute access (cfg.paths.raw)."""
 
     def __getattr__(self, item: str) -> Any:
         try:
@@ -33,10 +33,10 @@ def load_config(path: str | os.PathLike[str] | None = None) -> Config:
 
 
 def gcp_key_path() -> str:
-    """GCP anahtar yolu. Ortam degiskeni config'i EZER.
+    """Path to the GCP service-account key. Environment OVERRIDES the config file.
 
-    Boylece repo makineye ozel bir mutlak yol tasimaz ve CI/Docker'da
-    ayni kod farkli bir anahtarla calisabilir.
+    This keeps a machine-specific absolute path out of the repository and lets the
+    same code run in CI or Docker against a different key.
     """
     for env in ("MSCAPITAL_GCP_KEY", "GOOGLE_APPLICATION_CREDENTIALS"):
         value = os.environ.get(env)
@@ -46,12 +46,12 @@ def gcp_key_path() -> str:
 
 
 def raw_path(split: str, table: str) -> Path:
-    """split: 'train' | 'test'  ->  C:/mscapital_data/raw/<split>/<table>.feather"""
+    """split: 'train' | 'test'  ->  <data_root>/raw/<split>/<table>.feather"""
     return Path(load_config().paths.raw) / split / f"{table}.feather"
 
 
 def parquet_dir(split: str, table: str, group: str) -> Path:
-    """Bir kolon grubunun Parquet parcalarinin yazildigi dizin."""
+    """Directory holding the Parquet parts for one column group."""
     return Path(load_config().paths.parquet) / split / table / group
 
 

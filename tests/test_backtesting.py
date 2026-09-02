@@ -1,4 +1,4 @@
-"""Backtest testleri - ozellikle look-ahead ve maliyet davranisi."""
+"""Backtest tests - especially the no-look-ahead and cost behaviour."""
 import numpy as np
 import pytest
 
@@ -33,11 +33,12 @@ def test_inverted_prediction_loses():
 
 
 def test_pure_noise_is_within_sampling_error():
-    """Sinyalsiz tahmin kar uretmemeli.
+    """A signal-free prediction must not produce profit.
 
-    Sabit bir esik kullanilamaz: n bagimsiz bahsin toplami sqrt(n) ile buyur,
-    yani 4000 islemde dogal std = sqrt(4000) * 0.0026 ~ 0.164. Dogru test,
-    toplamin bu orneklem hatasinin 3 katini asmamasidir.
+    A fixed threshold will not do: the sum of n independent bets grows with
+    sqrt(n), so across 4000 trades the natural standard deviation is
+    sqrt(4000) * 0.0026 ~ 0.164. The correct test is that the total stays within
+    three times that sampling error.
     """
     a = rng.normal(0, 0.0026, 20_000)
     r = backtest(rng.normal(0, 1, 20_000), a, trade_fraction=0.2, cost_bps=0.0)

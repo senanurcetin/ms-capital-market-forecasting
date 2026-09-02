@@ -1,7 +1,8 @@
-"""Feature katmanlarini birlestirir ve egitim icin lokale indirir.
+"""Joins the feature blocks and downloads the result for local training.
 
-market (114) + order (81) + transaction (52) = ~247 feature, sample basina tek satir.
-Train'de label (month, target) eklenir; test'te month YOKTUR (yarisma vermemistir).
+market (159) + order (82) + transaction (53) = 294 features, one row per sample.
+Train also carries month and target; test has NEITHER (the competition does not
+provide them).
 """
 from __future__ import annotations
 
@@ -36,15 +37,15 @@ def build_blocks(split: str = "train", *, bq: bigquery.Client | None = None) -> 
         tbl = bq.get_table(tid)
         if tbl.num_rows != cfg.samples[split]:
             raise AssertionError(
-                f"{tid}: {tbl.num_rows:,} satir, beklenen {cfg.samples[split]:,}"
+                f"{tid}: {tbl.num_rows:,} rows, expected {cfg.samples[split]:,}"
             )
         out[name] = {
             "table": tid,
             "rows": tbl.num_rows,
-            "columns": len(tbl.schema) - 1,  # sample_id haric
+            "columns": len(tbl.schema) - 1,  # excluding sample_id
             "gb_scanned": round(job.total_bytes_processed / 1e9, 2),
         }
-        log.info("[%s] %s satir x %s feature", name, f"{tbl.num_rows:,}", out[name]["columns"])
+        log.info("[%s] %s rows x %s features", name, f"{tbl.num_rows:,}", out[name]["columns"])
     return out
 
 
@@ -89,13 +90,16 @@ def assemble(split: str = "train", *, bq: bigquery.Client | None = None) -> dict
     tbl = bq.get_table(tid)
     if tbl.num_rows != cfg.samples[split]:
         raise AssertionError(f"{tid}: {tbl.num_rows:,} != {cfg.samples[split]:,}")
-    log.info("[dataset_%s] %s satir x %s kolon", split, f"{tbl.num_rows:,}", len(tbl.schema))
+    log.info("[dataset_%s] %s rows x %s columns", split, f"{tbl.num_rows:,}", len(tbl.schema))
     return {"table": tid, "rows": tbl.num_rows, "columns": len(tbl.schema)}
 
 
 def download(split: str = "train", *, bq: bigquery.Client | None = None) -> Path:
-    """Kompakt feature tablosunu lokale Parquet olarak indirir (~1.3 GB).
-    Egitim BigQuery'de degil lokalde yapilir; tablo artik yeterince kucuk."""
+    """Download the compact feature table locally as Parquet (~1.4 GB).
+
+    Training runs locally, not in BigQuery - by this point the table is small
+    enough that pulling it down is cheaper than querying it repeatedly.
+    """
     bq = bq or client()
     cfg = load_config()
     tid = f"{cfg.bigquery.project}.{cfg.bigquery.datasets.features}.dataset_{split}"
@@ -106,5 +110,5 @@ def download(split: str = "train", *, bq: bigquery.Client | None = None) -> Path
 
     arrow = bq.list_rows(bq.get_table(tid)).to_arrow(create_bqstorage_client=True)
     pq.write_table(arrow, dst, compression="zstd")
-    log.info("[%s] indirildi: %.2f GB", dst.name, dst.stat().st_size / 1e9)
+    log.info("[%s] downloaded: %.2f GB", dst.name, dst.stat().st_size / 1e9)
     return dst

@@ -1,4 +1,4 @@
-"""Metrik birim testleri - ozellikle cosine'in olcek/kaydirma davranisi."""
+"""Metric unit tests - in particular cosine's scale and shift behaviour."""
 import numpy as np
 import pytest
 from sklearn.metrics.pairwise import cosine_similarity as sk_cosine
@@ -18,7 +18,7 @@ def test_cosine_matches_sklearn():
 
 
 def test_cosine_is_scale_invariant():
-    """Tahminleri sabitle carpmak skoru DEGISTIRMEMELI."""
+    """Scaling the predictions must NOT change the score."""
     y = rng.normal(0, 0.0026, 1000)
     p = rng.normal(0, 0.0026, 1000)
     base = cosine_similarity(y, p)
@@ -27,14 +27,14 @@ def test_cosine_is_scale_invariant():
 
 
 def test_cosine_is_not_shift_invariant():
-    """Bias eklemek skoru BOZMALI - Pearson'dan ayrildigi nokta."""
+    """Adding a bias MUST hurt - this is where cosine differs from Pearson."""
     y = rng.normal(0, 0.0026, 1000)
     p = y.copy()
     perfect = cosine_similarity(y, p)
     shifted = cosine_similarity(y, p + 0.01)
     assert perfect == pytest.approx(1.0, abs=1e-12)
     assert shifted < perfect - 0.05
-    # Pearson ise kaymadan etkilenmez
+    # Pearson, by contrast, is unaffected by the shift.
     assert pearson(y, p + 0.01) == pytest.approx(pearson(y, p), abs=1e-10)
 
 
@@ -55,7 +55,7 @@ def test_cosine_shape_mismatch_raises():
 
 
 def test_directional_accuracy_ignores_exact_zero_targets():
-    """Target'in %5.5'i tam sifir; bunlar isaret dogrulugunu sasirtmamali."""
+    """5.54% of targets are exactly zero; they must not skew sign accuracy."""
     y = np.array([0.0, 0.0, 1.0, -1.0])
     p = np.array([5.0, 5.0, 1.0, -1.0])
     assert directional_accuracy(y, p) == pytest.approx(1.0)

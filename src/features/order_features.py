@@ -1,13 +1,13 @@
-"""Order (emir akisi) feature'lari - sample basina tek satir.
+"""Order (order-flow event) features - one row per sample.
 
-170.1M emir olayi / 1.26M sample = ortalama 135.2 olay.
+170.1M order events / 1.26M samples = 135.2 events on average, over a 60 s window.
 
-KODLAMA (EDA ile ampirik cozuldu, configs/config.yaml -> encoding):
-    side   0 = BID (alis)   1 = ASK (satis)
-    action 0 = NEW          1 = CANCEL
+ENCODING (resolved empirically, see configs/config.yaml -> encoding):
+    side   0 = BID (buy side)   1 = ASK (sell side)
+    action 0 = NEW              1 = CANCEL
 
-DIKKAT: test'te sample basina emir yogunlugu %36 daha yuksek (135.2 -> 184.4).
-Bu yuzden ham sayimlar degil, ORAN ve YOGUNLUK formlari uretilir.
+NOTE: test has ~36% more order events per sample than train (135.2 -> 184.4), so
+this module emits RATIOS and RATES rather than raw counts.
 """
 from __future__ import annotations
 
@@ -42,35 +42,35 @@ def build_sql(split: str = "train") -> str:
         n_all = f"COUNTIF({c})"
 
         base += [
-            # Gelme / iptal hizlari (olay/saniye)
+            # Arrival and cancellation rates (events per second).
             f"    {safe_div(f'{new_bid} + {new_ask}', str(w))} AS ord_new_rate_{t}",
             f"    {safe_div(f'{cxl_bid} + {cxl_ask}', str(w))} AS ord_cancel_rate_{t}",
-            # Iptal / yeni orani: likidite saglayicilarinin geri cekilme sinyali
+            # Cancel-to-new ratio: liquidity providers pulling back.
             f"    {safe_div(f'{cxl_bid} + {cxl_ask}', f'{new_bid} + {new_ask}')}"
             f" AS ord_cancel_new_ratio_{t}",
-            # Order Flow Imbalance: net eklenen derinlik (bid) - (ask)
+            # Order Flow Imbalance: net depth added on the bid minus the ask.
             f"    {safe_div(f'({nv_bid} - {cv_bid}) - ({nv_ask} - {cv_ask})', f'{nv_bid} + {cv_bid} + {nv_ask} + {cv_ask}')}"
             f" AS ord_ofi_{t}",
-            # Yeni emir dengesizligi (sayim ve hacim)
+            # New-order imbalance, by count and by volume.
             f"    {imbalance(new_bid, new_ask)} AS ord_new_count_imbalance_{t}",
             f"    {imbalance(nv_bid, nv_ask)} AS ord_new_volume_imbalance_{t}",
-            # Iptal dengesizligi: tek tarafli cekilme yon sinyali tasir
+            # Cancellation imbalance: one-sided withdrawal carries directional info.
             f"    {imbalance(cxl_bid, cxl_ask)} AS ord_cancel_count_imbalance_{t}",
             f"    {imbalance(cv_bid, cv_ask)} AS ord_cancel_volume_imbalance_{t}",
-            # Emir buyuklugu
+            # Order size.
             f"    {safe_div(f'{nv_bid} + {nv_ask}', f'{new_bid} + {new_ask}')}"
             f" AS ord_avg_new_size_{t}",
             f"    {safe_div(f'{cv_bid} + {cv_ask}', f'{cxl_bid} + {cxl_ask}')}"
             f" AS ord_avg_cancel_size_{t}",
             f"    {safe_div(n_all, str(w))} AS ord_event_rate_{t}",
-            # Fiyat konumu: emirlerin agirlikli ortalama fiyati (mid ~ 1.0'a gore)
+            # Price placement: volume-weighted order price per side (mid ~ 1.0).
             f"    {safe_div(f'SUM(IF({c} AND side = {BID}, price * volume, 0))', f'SUM(IF({c} AND side = {BID}, volume, 0))')}"
             f" AS ord_bid_vwap_{t}",
             f"    {safe_div(f'SUM(IF({c} AND side = {ASK}, price * volume, 0))', f'SUM(IF({c} AND side = {ASK}, volume, 0))')}"
             f" AS ord_ask_vwap_{t}",
         ]
 
-    # Ustel zaman agirligi: yakin olaylara daha fazla agirlik (lambda = 1/10 sn)
+    # Exponential time decay: weight recent events more heavily (lambda per second).
     for lam in (0.1, 0.5):
         tag = f"{lam:g}".replace(".", "p")
         wb = f"SUM(IF(side = {BID} AND order_action = {NEW}, volume * EXP(-{lam} * seconds_before_predict), 0))"
@@ -79,11 +79,10 @@ def build_sql(split: str = "train") -> str:
 
     base += [
         "    COUNT(*) AS ord_n_total",
-        # Kirpma sinyali: sample basina TAM row_cap() satirda tavan var. Kirpilan
-        # sample'larda pencere fiilen 60 sn'den kisadir -> gercek kapsanan sureyi de tut.
+        "    MIN(seconds_before_predict) AS ord_last_seconds_gap",
+        # Truncation signal - see transaction_features for the rationale.
         f"    IF(COUNT(*) >= {row_cap()}, 1, 0) AS ord_is_truncated",
         "    MAX(seconds_before_predict) AS ord_window_covered",
-        "    MIN(seconds_before_predict) AS ord_last_seconds_gap",
         f"    {safe_div(f'COUNTIF(order_action = {CANCEL})', 'COUNT(*)')} AS ord_cancel_share_total",
         "    STDDEV(volume) AS ord_volume_std",
         f"    {safe_div('MAX(volume)', 'AVG(volume)')} AS ord_max_to_avg_size",

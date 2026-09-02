@@ -1,14 +1,14 @@
 """Cosine-optimal ensemble.
 
-ONEMLI MATEMATIK: cosine similarity olcek-degismez oldugu icin, model
-tahminlerinin span'i icinde y'ye en yuksek cosine'i veren vektor, y'nin o
-span'e DIK IZDUSUMUDUR. Bu izdusum de tam olarak OLS cozumudur:
+THE KEY MATHS: because cosine similarity is scale-invariant, the vector inside the
+span of the model predictions with the highest cosine to y is the ORTHOGONAL
+PROJECTION of y onto that span - which is exactly the OLS solution:
 
-    argmax_w  cos(y, P w)  =  argmin_w ||y - P w||   (pozitif olcek farkiyla)
+    argmax_w  cos(y, P w)  =  argmin_w ||y - P w||   (up to a positive scale factor)
 
-Yani ensemble agirliklari icin grid search'e gerek yok - kapali form var.
-Negatif agirliklar validation'a asiri uyum riski tasidigi icin varsayilan
-olarak NNLS (non-negative least squares) kullanilir.
+So the ensemble weights have a closed form; no grid search is needed. Negative
+weights risk overfitting the validation set, so NNLS (non-negative least squares)
+is the default.
 """
 from __future__ import annotations
 
@@ -27,23 +27,25 @@ class CosineOptimalEnsemble:
         self.weights_: np.ndarray | None = None
 
     def fit(self, preds: np.ndarray, y: np.ndarray) -> "CosineOptimalEnsemble":
-        """preds: (n_samples, n_models) validation tahminleri."""
+        """preds: (n_samples, n_models) validation predictions."""
         P = np.asarray(preds, dtype=np.float64)
         yv = np.asarray(y, dtype=np.float64).ravel()
         if P.shape[0] != yv.shape[0]:
-            raise ValueError(f"sekil uyusmuyor: {P.shape} vs {yv.shape}")
+            raise ValueError(f"shape mismatch: {P.shape} vs {yv.shape}")
         if self.non_negative:
             w, _ = nnls(P, yv)
         else:
             w, *_ = np.linalg.lstsq(P, yv, rcond=None)
         total = np.abs(w).sum()
-        # Olcek onemsiz (cosine olcek-degismez); okunabilirlik icin normalize
-        self.weights_ = w / total if total > 0 else np.full(len(self.model_names), 1 / len(self.model_names))
+        # The scale is irrelevant (cosine is scale-invariant); normalised for readability.
+        self.weights_ = (
+            w / total if total > 0 else np.full(len(self.model_names), 1 / len(self.model_names))
+        )
         return self
 
     def predict(self, preds: np.ndarray) -> np.ndarray:
         if self.weights_ is None:
-            raise RuntimeError("once fit() cagrilmali")
+            raise RuntimeError("fit() must be called first")
         return np.asarray(preds, dtype=np.float64) @ self.weights_
 
     def weight_map(self) -> dict[str, float]:
@@ -53,10 +55,10 @@ class CosineOptimalEnsemble:
 def evaluate_ensemble_gain(
     preds: dict[str, np.ndarray], y: np.ndarray, *, non_negative: bool = True
 ) -> dict:
-    """Ensemble'in en iyi TEK modeli gercekten gecip gecmedigini olcer.
+    """Measure whether the ensemble actually beats the best single model.
 
-    Plan geregi: gecmiyorsa ensemble kullanilmaz. Bu fonksiyon karari
-    veriye birakir, varsayima degil.
+    Per the project plan: if it does not, the ensemble is not used. This function
+    leaves that decision to the data rather than to assumption.
     """
     names = list(preds)
     P = np.column_stack([preds[n] for n in names])

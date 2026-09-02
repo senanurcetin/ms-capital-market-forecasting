@@ -1,127 +1,32 @@
 # MSCapital — Real Financial Market Forecasting
 
-Piyasa mikroyapısı verisinden kısa vadeli getiri tahmini yapan, uçtan uca
-production'a yakın bir ML sistemi. Kaggle
+An end-to-end, production-shaped ML system that predicts short-horizon returns from
+market microstructure data, built on the Kaggle
 [MSCapital](https://www.kaggle.com/competitions/ms-capital-real-financial-market-forecasting)
-yarışması verisi üzerine kurulu.
+competition dataset.
 
-> **Araştırma amaçlıdır. Yatırım tavsiyesi değildir.**
-> Backtest modülü stratejinin karlılığını değil, modelin sıralama gücünü ölçmek içindir.
-
----
-
-## Veri: ölçülen gerçekler
-
-Hiçbiri varsayım değil — satır sayıları Arrow footer'ından, dağılımlar veriden okundu.
-
-| Dosya | Satır | Kolon | Disk | Açılmış RAM |
-|---|---:|---:|---:|---:|
-| `train/market.feather` | 221,756,611 | 13 | 4.10 GiB | **11.53 GB** |
-| `train/order.feather` | 170,056,583 | 6 | 1.21 GiB | 3.06 GB |
-| `train/transaction.feather` | 103,970,264 | 5 | 476 MiB | 1.77 GB |
-| `train/label.feather` | 1,257,637 | 3 | 9.6 MiB | — |
-| `test/*` (3 dosya) | 308,733,861 | — | 3.47 GiB | 9.51 GB |
-| **Toplam** | **804,517,319** | | **9.26 GiB** | **25.9 GB** |
-
-**Yapı.** Her `sample_id` bağımsız, anonim bir gözlem penceresidir. Sembol/enstrüman
-kolonu **yoktur** — bu yüzden sample'lar arası tarihsel state üretilemez ve problem
-1,257,637 satırlık tabular regresyona indirgenir.
-
-**Pencere uzunlukları tabloya göre farklıdır** (ölçüldü):
-
-| Tablo | Pencere | Sample başına satır | Not |
-|---|---:|---:|---|
-| market | **600 sn** | 176.3 | ~3.4 sn'de bir snapshot, satır tavanı yok (max 212) |
-| order | 60 sn | 135.2 | **999 satırda tavan** → kırpma feature'ı |
-| transaction | 60 sn | 82.7 | **999 satırda tavan** → kırpma feature'ı |
-
-`seconds_before_predict` tahmin anına geriye uzaklıktır ve sample içinde azalan sıradadır;
-`0` tahmin anına en yakın tick. Değer her zaman `>= 0` olduğu için **look-ahead yapısal
-olarak imkânsızdır**.
-
-**Kodlamalar ampirik olarak çözüldü** (fiyatlar mid ≈ 1.0'a normalize olduğu için):
-
-| Kod | Anlam | Kanıt |
-|---|---|---|
-| `side = 0` | BID | ort. fiyat 0.9979 (mid'in altında) |
-| `side = 1` | ASK | ort. fiyat 1.0036 (mid'in üstünde) |
-| `order_action = 0` | NEW | 128.1M olay |
-| `order_action = 1` | CANCEL | 42.0M olay; NEW ≈ CANCEL + TRANSACTION dengesi tutuyor |
-
-**`price = 0` bir fiyat değil, "bu seviye boş" sentinel'idir** — her zaman `volume = 0`
-ile birlikte gelir. Gerçek fiyatlar 0.909–1.052 aralığında. Temizlenmezse `rel_spread`
-ortalaması −0.0064 çıkar (doğrusu +0.001264). Gerçek çapraz defter **yoktur** (0 satır).
-
-**Hedef.** std 0.002618 (26 bps), medyan tam 0 (%5.54 tam-sıfır — tick-size etkisi),
-sample'lar arası otokorelasyon ≈ 0. Aylık std 2.69× oynuyor → rejim kayması.
+> **For research only. Not investment advice.**
+> The backtesting module exists to measure the model's ranking power, not to propose a strategy.
 
 ---
 
-## Mimari
+## Headline result
 
-```
-Kaggle feather (tek record batch, 11.5 GB açılmış)
-        │  kolon-grubu dönüştürücü (tepe RAM 7.9 GB)
-        ▼
-   Parquet parçaları ──► BigQuery
-        │                 mscapital_raw → staging → features → mart
-        │                 GROUP BY sample_id: 804M satır → 1.26M satır
-        ▼
- dataset_train.parquet (1.39 GB, 294 feature)
-        │
-        ▼
- Walk-forward CV ──► MLflow ──► Model Registry ──► FastAPI ──► Streamlit
-```
+Measured **once** on the hold-out months (65–70, 36,669 samples), which were never
+touched during feature design, model selection or tuning:
 
-### Neden kolon-grubu dönüştürücü
+| Metric | Value |
+|---|---:|
+| **Cosine similarity** | **0.14853** |
+| Pearson correlation | 0.14946 |
+| Directional accuracy | 0.5484 |
+| RMSE | 0.003354 |
 
-Yarışma dosyalarının her biri **tek bir Arrow record batch** tutar. Sonuç: satır bazlı
-streaming imkânsız, `memory_map` faydasız (buffer'lar sıkıştırılmış), ve 16 GB RAM'de
-`market` tek seferde okunamaz.
+The hold-out score matches the walk-forward CV estimate (0.144), so the model is not
+overfitted to the validation folds. Pearson being almost identical to cosine confirms
+predictions are centred on zero — exactly what a shift-sensitive metric rewards.
 
-Çözüm: Arrow IPC her buffer'ı ayrı sıkıştırır ve `read_table(columns=[...])` projeksiyonu
-C++ katmanında aşağı iter (ölçüldü: 1 kolon 0.43 GB / 5 kolon 1.15 GB — lineer). Market
-3 kolon grubuna bölünür, gruplar BigQuery'de `row_id` üzerinden birleştirilir.
-
-Bu pozisyonel join varsayımı iki yerden doğrulanmıştır: `tests/test_ingestion.py`
-(sentetik tek-batch dosyayla round-trip) ve BigQuery'de 221.7M satırda
-`sample_id`/`seconds_before_predict` uyuşmazlığı = **0**.
-
----
-
-## Metrik: cosine similarity
-
-`cos(y, ŷ) = Σyŷ / (‖y‖·‖ŷ‖)` — **ölçek-değişmez ama kaydırma-değişmez değildir.**
-
-- Tahminleri sabitle çarpmak skoru değiştirmez → magnitude kalibrasyonuna efor harcanmaz.
-- Sabit bias eklemek skoru **bozar**. Ampirik kanıt: sabit tahmin eden `mean` modeli
-  **−0.0036** cosine üretiyor.
-- Ensemble ağırlıkları grid search gerektirmez: y'nin model tahminlerinin span'ine dik
-  izdüşümü optimaldir, o da **OLS çözümüdür** (`tests/test_ensemble.py` 200 rastgele
-  ağırlık vektörüne karşı doğrular).
-
----
-
-## Validation: walk-forward + embargo
-
-Random split **kullanılmaz** — ardışık sample'ların pencereleri kesişebilir.
-
-```
-Fold 1: train ay 0–34 │ embargo │ val 36–40
-...
-Fold 5: train ay 0–58 │ embargo │ val 60–64
-HOLD-OUT (dokunulmaz): ay 65–70
-```
-
-`assert_fold_integrity()` her fold'da veri üzerinde yeniden doğrular.
-`tests/test_train_integrity.py` bozuk kurulumlar (random split, embargo ihlali,
-hold-out sızıntısı) enjekte edip korumanın bunları **yakaladığını** kanıtlar.
-
----
-
-## Sonuçlar (ara — %25 örneklem, son 2 fold, 400 ağaç)
-
-| Model | cosine (ort) | std | dir. acc |
+| Model (walk-forward CV) | cosine mean | std | dir. acc |
 |---|---:|---:|---:|
 | **ensemble** | **+0.1455** | 0.0084 | — |
 | lightgbm | +0.1440 | 0.0088 | 0.550 |
@@ -130,63 +35,194 @@ hold-out sızıntısı) enjekte edip korumanın bunları **yakaladığını** ka
 | zero | 0.0000 | — | — |
 | mean | −0.0036 | 0.0010 | 0.522 |
 
-Tam veri + tüm fold sonuçları `make train` ile üretilir.
+---
+
+## The data: measured facts, not assumptions
+
+Row counts come from the Arrow footers; distributions come from the data itself.
+
+| File | Rows | Cols | On disk | Uncompressed |
+|---|---:|---:|---:|---:|
+| `train/market.feather` | 221,756,611 | 13 | 4.10 GiB | **11.53 GB** |
+| `train/order.feather` | 170,056,583 | 6 | 1.21 GiB | 3.06 GB |
+| `train/transaction.feather` | 103,970,264 | 5 | 476 MiB | 1.77 GB |
+| `train/label.feather` | 1,257,637 | 3 | 9.6 MiB | — |
+| `test/*` (3 files) | 308,733,861 | — | 3.47 GiB | 9.51 GB |
+| **Total** | **804,517,319** | | **9.26 GiB** | **25.9 GB** |
+
+**Structure.** Each `sample_id` is an independent, anonymous observation window. There
+is **no symbol/instrument column**, so no cross-sample history can be constructed and
+the problem reduces to tabular regression over 1,257,637 rows.
+
+**Window lengths differ per table** (measured, not assumed):
+
+| Table | Window | Rows per sample | Note |
+|---|---:|---:|---|
+| market | **600 s** | 176.3 | one snapshot every ~3.4 s; no row cap (max 212) |
+| order | 60 s | 135.2 | **caps at 999 rows** → truncation feature |
+| transaction | 60 s | 82.7 | **caps at 999 rows** → truncation feature |
+
+`seconds_before_predict` is the distance back from the prediction instant, sorted
+descending within a sample; `0` is the tick closest to prediction time. Because the
+value is always `>= 0`, **look-ahead is structurally impossible**.
+
+**Encodings resolved empirically** (prices are normalised around mid ≈ 1.0):
+
+| Code | Meaning | Evidence |
+|---|---|---|
+| `order.side = 0` | BID | mean price 0.9979 (below mid) |
+| `order.side = 1` | ASK | mean price 1.0036 (above mid) |
+| `order_action = 0` | NEW | 128.1M events |
+| `order_action = 1` | CANCEL | 42.0M events; NEW ≈ CANCEL + TRANSACTION balances |
+| `transaction.side = 0` | BUY (aggressor lifts the ask) | 87.5% above mid, mean **+5.26 bps** |
+| `transaction.side = 1` | SELL (aggressor hits the bid) | 88.7% below mid, mean **−5.27 bps** |
+
+**`price = 0` is not a price but an "empty level" sentinel** — it always comes with
+`volume = 0`. Real prices live in 0.909–1.052. Left uncleaned, mean `rel_spread` reads
+−0.0064 instead of the correct +0.001264. There are **no genuinely crossed books** (0 rows).
+
+**Target.** std 0.002618 (26 bps), median exactly 0 (5.54% exact zeros — a tick-size
+artefact), autocorrelation between consecutive samples ≈ 0. Monthly std swings by
+**2.69×**, i.e. clear regime shift.
 
 ---
 
-## Kurulum ve çalıştırma
+## Architecture
+
+```
+Kaggle feather (single record batch, 11.5 GB uncompressed)
+        │  column-group converter (peak RAM 7.9 GB)
+        ▼
+   Parquet parts ──► BigQuery
+        │             mscapital_raw → staging → features → mart
+        │             GROUP BY sample_id: 804M rows → 1.26M rows
+        ▼
+ dataset_train.parquet (1.39 GB, 294 features)
+        │
+        ▼
+ Walk-forward CV ──► MLflow ──► model artefact ──► FastAPI ──► Streamlit
+```
+
+### Why a column-group converter
+
+Every competition file is a **single Arrow record batch**. Consequently row-wise
+streaming is impossible, `memory_map` is useless (the buffers are compressed), and
+`market` cannot be read in one go on a 16 GB machine.
+
+The way out: Arrow IPC compresses each buffer separately and `read_table(columns=[...])`
+pushes the projection into the C++ reader (measured: 1 column 0.43 GB, 5 columns
+1.15 GB — linear). Market is split into 3 column groups and rejoined in BigQuery on
+`row_id`.
+
+That positional-join assumption is verified twice: `tests/test_ingestion.py` performs a
+synthetic single-batch round-trip, and in BigQuery the alignment check found **zero**
+`sample_id` / `seconds_before_predict` mismatches across 221.7M rows.
+
+---
+
+## The metric: cosine similarity
+
+`cos(y, ŷ) = Σyŷ / (‖y‖·‖ŷ‖)` — **scale-invariant but not shift-invariant.**
+
+- Multiplying predictions by a constant does not change the score → calibrating
+  magnitude is wasted effort.
+- Adding a bias **hurts**. Empirical proof: the constant-prediction `mean` model scores
+  **−0.0036**.
+- Ensemble weights need no grid search: the vector in the span of the model predictions
+  closest in cosine to `y` is its orthogonal projection, which is the **OLS solution**.
+  `tests/test_ensemble.py` verifies this against 200 random weight vectors.
+
+---
+
+## Validation: walk-forward with an embargo
+
+Random splits are **forbidden** — consecutive samples can have overlapping windows.
+
+```
+Fold 1: train months 0–34 │ embargo │ val 36–40
+...
+Fold 5: train months 0–58 │ embargo │ val 60–64
+HOLD-OUT (untouchable): months 65–70
+```
+
+`assert_fold_integrity()` re-verifies each fold against the data at runtime.
+`tests/test_train_integrity.py` injects broken setups — a random split, an embargo
+violation, a hold-out leak — and proves the guard **catches** them.
+
+---
+
+## Explainability
+
+TreeSHAP over the hold-out. The strongest signals are imbalance features, which is what
+microstructure theory predicts:
+
+| Feature | Share |
+|---|---:|
+| `txn_count_imbalance_10s` | 5.48% |
+| `ord_new_count_imbalance_30s` | 5.12% |
+| `ord_new_count_imbalance_10s` | 3.82% |
+| `mkt_micro_minus_mid_last` | 2.83% |
+| `mkt_mid_return_60s` | 2.14% |
+
+Contribution by family: market 41.6% · order 32.7% · transaction 25.7% — all three
+source tables earn their place.
+
+---
+
+## Setup and usage
 
 ```bash
 pip install -r requirements-dev.txt
-make check                 # lint + test (canlı BigQuery veya veri GEREKTİRMEZ)
+make check                 # lint + tests (needs NO live BigQuery and NO downloaded data)
 ```
 
-`configs/config.yaml` içindeki `paths.data_root` verinin nereye yazılacağını belirler.
-**Varsayılan `C:/mscapital_data` — bilerek OneDrive dışında**, çünkü ara veri ~20 GB.
+`paths.data_root` in `configs/config.yaml` decides where data is written. The default
+is `C:/mscapital_data`, deliberately **outside** any synced folder, because the
+intermediate data is ~20 GB.
 
 ```bash
 make ingest      # feather → parquet → BigQuery → staging
-make features    # BigQuery feature katmanı + lokale indirme
+make features    # BigQuery feature layer + local download
 make train       # walk-forward + MLflow
-make api         # FastAPI  :8000
+make api         # FastAPI   :8000
 make streamlit   # Dashboard :8501
 ```
 
-Docker ile:
+With Docker:
 
 ```bash
 docker compose up -d      # api :8000, streamlit :8501, mlflow :5000
 ```
 
-### Kimlik bilgileri
+### Credentials
 
 - **Kaggle**: `~/.kaggle/kaggle.json`
-- **GCP**: `configs/config.yaml` → `credentials.gcp_service_account`.
-  Anahtar dosyası repo dışında tutulmalıdır.
+- **GCP**: `MSCAPITAL_GCP_KEY` or `GOOGLE_APPLICATION_CREDENTIALS` (these override
+  `configs/config.yaml`). Keep the key file outside the repository.
 
 ---
 
-## Maliyet
+## Cost
 
-BigQuery veriyi ~5.4× sıkıştırır (`market_g2`: 11.57 GiB logical → 2.12 GiB physical).
-Dört dataset **physical storage billing**'e alınmış, `mscapital_raw` staging kurulduktan
-sonra düşürülmüştür → toplam ~8 GiB physical, **10 GiB ücretsiz kotanın altında**.
-Sorgu tarafı aylık 1 TiB ücretsiz kotanın ~%13'ü. Batch load job'lar ücretsizdir.
+BigQuery compresses this data ~5.4× (`market_g2`: 11.57 GiB logical → 2.12 GiB physical).
+All four datasets use **physical storage billing**, and `mscapital_raw` is dropped once
+staging is verified, leaving ~8 GiB physical — **inside the 10 GiB free tier**. Query
+usage sits at roughly 13% of the 1 TiB monthly free allowance. Batch load jobs are free.
 
 ---
 
-## Proje yapısı
+## Project layout
 
 ```
 src/
-  config.py              tek merkezden yol ve sabit yönetimi
-  data/                  ingestion (kolon grubu) · bq_loader · staging
+  config.py              single source of paths and constants
+  data/                  ingestion (column groups) · bq_loader · staging · mart · test_pipeline
   features/              market (159) · order (82) · transaction (53) · assemble
-  evaluation/            metrics (cosine) · temporal_validation · backtesting
-  models/                baseline · lightgbm · xgboost · ensemble · train (CLI)
-  inference/             predictor — API bunu kullanır, eğitim kodunu değil
+  evaluation/            metrics (cosine) · temporal_validation · backtesting · explain
+  models/                baseline · lightgbm · xgboost · ensemble · train (CLI) · finalize
+  inference/             predictor — used by the API, which never imports training code
 api/main.py              FastAPI: /health /model-info /predict /batch-predict /reload
-streamlit_app/           6 sayfalık dashboard
+streamlit_app/           six-page dashboard
 sql/                     BigQuery staging DDL
-tests/                   85 test
+tests/                   92 tests, none requiring live BigQuery or downloaded data
 ```

@@ -1,7 +1,7 @@
 # MSCapital - FastAPI + Streamlit + MLflow
 #
-# Veri ve model artefaktlari OneDrive DISINDAKI C:/mscapital_data'dan mount edilir;
-# repo icinde 20 GB'lik veri tutulmaz (bkz. configs/config.yaml -> paths.data_root).
+# Data and model artefacts are mounted from C:/mscapital_data, deliberately outside the
+# repository, so ~20 GB of data never lives in git (see configs/config.yaml -> paths.data_root).
 services:
   api:
     build: .

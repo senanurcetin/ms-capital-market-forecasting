@@ -1,12 +1,12 @@
-"""LightGBM - ana aday model.
+"""LightGBM - the primary candidate model.
 
-Neden ana aday: A.11 geregi sembol kolonu yok, problem 1.26M satirlik tabular
-regresyona indirgeniyor; ~289 heterojen olcekli feature ve yogun NaN var
-(ornegin txn_volume_imbalance_1s orneklerin %68'inde NULL). GBDT bunlarin
-hepsini dogal isler.
+Why primary: there is no symbol column, so the problem reduces to tabular
+regression over 1.26M rows with ~294 features on wildly different scales and with
+heavy NaN density (e.g. txn_volume_imbalance_1s is NULL in 68% of samples). GBDT
+handles all of that natively.
 
-ERKEN DURDURMA COSINE UZERINDEN yapilir: yarismanin metrigi bu, ve cosine
-olcek-degismez oldugu icin RMSE ile ayni siralamayi vermek zorunda degil.
+EARLY STOPPING IS DRIVEN BY COSINE, because that is the competition metric and,
+being scale-invariant, it does not have to rank models the same way RMSE does.
 """
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ from src.evaluation.metrics import cosine_similarity
 from src.models.base import feature_columns
 
 DEFAULT_PARAMS: dict = {
-    "objective": "regression",       # L2; hedef ~N(0, 0.0026), agir kuyruklu degil
-    "metric": "None",                # yerine custom cosine
+    "objective": "regression",       # L2; target ~N(0, 0.0026), not heavy-tailed
+    "metric": "None",                # replaced by the custom cosine metric
     "learning_rate": 0.03,
     "num_leaves": 127,
-    "min_data_in_leaf": 500,         # 1.26M satir -> asiri bolunmeyi engelle
+    "min_data_in_leaf": 500,         # 1.26M rows -> guard against over-splitting
     "feature_fraction": 0.7,
     "bagging_fraction": 0.8,
     "bagging_freq": 1,
@@ -73,7 +73,7 @@ class LightGBMModel:
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         if self.booster_ is None:
-            raise RuntimeError("once fit() cagrilmali")
+            raise RuntimeError("fit() must be called first")
         return self.booster_.predict(X[self.features_], num_iteration=self.best_iteration_)
 
     def importance(self, kind: str = "gain") -> pd.Series:

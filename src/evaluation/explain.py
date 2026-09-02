@@ -1,10 +1,10 @@
-"""SHAP ile aciklanabilirlik: global feature onemi + tekil tahmin aciklamasi.
+"""SHAP explainability: global feature importance + per-prediction explanations.
 
-Neden TreeSHAP: ana modeller GBDT ve TreeSHAP tam (exact) degerler uretir -
-KernelSHAP'in orneklem gurultusu yok.
+Why TreeSHAP: the primary models are GBDTs and TreeSHAP produces exact values,
+without the sampling noise of KernelSHAP.
 
-Aciklamalar HOLD-OUT verisi uzerinde uretilir; boylece rapor edilen onem
-siralamasi modelin ezberledigi degil, genellestirdigi sinyali yansitir.
+Explanations are computed on HOLD-OUT data, so the reported importance ranking
+reflects signal the model generalises rather than signal it memorised.
 """
 from __future__ import annotations
 
@@ -27,18 +27,18 @@ LOCAL_FILE = "shap_local_examples.csv"
 
 
 def shap_values(model, X: pd.DataFrame) -> np.ndarray:
-    """Model tipinden bagimsiz TreeSHAP degerleri (n_samples, n_features)."""
+    """TreeSHAP values, independent of model type: (n_samples, n_features)."""
     import shap
 
     explainer = shap.TreeExplainer(model)
     values = explainer.shap_values(X, check_additivity=False)
-    if isinstance(values, list):  # bazi surumler liste doner
+    if isinstance(values, list):  # some versions return a list
         values = values[0]
     return np.asarray(values)
 
 
 def global_importance(values: np.ndarray, features: list[str]) -> pd.DataFrame:
-    """Ortalama |SHAP| - feature'in tahmine ortalama katki BUYUKLUGU."""
+    """Mean |SHAP| - the average MAGNITUDE of a feature's contribution."""
     mean_abs = np.abs(values).mean(axis=0)
     df = pd.DataFrame({"feature": features, "mean_abs_shap": mean_abs})
     df["family"] = df["feature"].str.split("_").str[0]
@@ -49,7 +49,7 @@ def global_importance(values: np.ndarray, features: list[str]) -> pd.DataFrame:
 def local_explanations(
     values: np.ndarray, X: pd.DataFrame, sample_ids: np.ndarray, top_k: int = 20
 ) -> pd.DataFrame:
-    """Secilen ornekler icin en etkili top_k feature."""
+    """The top_k most influential features for the selected samples."""
     rows = []
     for i, sid in enumerate(sample_ids):
         order = np.argsort(-np.abs(values[i]))[:top_k]
@@ -64,10 +64,10 @@ def local_explanations(
 
 
 def main(argv: list[str] | None = None) -> None:
-    ap = argparse.ArgumentParser(description="SHAP aciklamalari uret")
+    ap = argparse.ArgumentParser(description="Generate SHAP explanations")
     ap.add_argument("--n-background", type=int, default=20_000,
-                    help="global onem icin hold-out'tan kac satir")
-    ap.add_argument("--n-local", type=int, default=25, help="kac tekil ornek aciklansin")
+                    help="rows sampled from the hold-out for global importance")
+    ap.add_argument("--n-local", type=int, default=25, help="how many individual samples to explain")
     args = ap.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
@@ -79,29 +79,29 @@ def main(argv: list[str] | None = None) -> None:
     lo, hi = holdout_months()
     holdout = df[(df["month"] >= lo) & (df["month"] <= hi)]
     if holdout.empty:
-        raise SystemExit("hold-out bos - dataset_train eksik olabilir")
+        raise SystemExit("hold-out is empty - dataset_train may be missing")
 
     sample = holdout.sample(n=min(args.n_background, len(holdout)), random_state=42)
     X = sample[bundle.features].astype("float64")
-    log.info("SHAP hesaplaniyor: %s satir x %s feature (hold-out ay %d-%d)",
+    log.info("computing SHAP: %s rows x %s features (hold-out months %d-%d)",
              f"{len(X):,}", len(bundle.features), lo, hi)
 
     values = shap_values(bundle.model, X)
     glob = global_importance(values, list(bundle.features))
     glob.to_csv(model_dir / GLOBAL_FILE, index=False)
-    log.info("global onem yazildi: %s", model_dir / GLOBAL_FILE)
+    log.info("global importance written: %s", model_dir / GLOBAL_FILE)
 
     fam = glob.groupby("family")["share"].sum().sort_values(ascending=False)
-    log.info("aile bazinda katki: %s",
+    log.info("contribution by family: %s",
              {k: f"{v * 100:.1f}%" for k, v in fam.items()})
-    log.info("ilk 10 feature: %s", glob.head(10)["feature"].tolist())
+    log.info("top 10 features: %s", glob.head(10)["feature"].tolist())
 
     n_local = min(args.n_local, len(X))
     local = local_explanations(
         values[:n_local], X.iloc[:n_local], sample["sample_id"].to_numpy()[:n_local]
     )
     local.to_csv(model_dir / LOCAL_FILE, index=False)
-    log.info("tekil aciklamalar yazildi: %s", model_dir / LOCAL_FILE)
+    log.info("local explanations written: %s", model_dir / LOCAL_FILE)
 
 
 if __name__ == "__main__":

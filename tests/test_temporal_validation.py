@@ -1,4 +1,4 @@
-"""Temporal split testleri - leakage'in onlendigini kanitlar."""
+"""Temporal split tests - proof that leakage is prevented."""
 import numpy as np
 import pytest
 
@@ -10,7 +10,7 @@ from src.evaluation.temporal_validation import (
 
 @pytest.fixture
 def months():
-    """71 ay x 100 sample, ay basina esit dagilim."""
+    """71 months x 100 samples, evenly distributed."""
     return np.repeat(np.arange(71), 100)
 
 
@@ -24,7 +24,7 @@ def test_folds_built_from_config():
 def test_every_fold_has_embargo_gap():
     for f in build_folds():
         gap_lo, gap_hi = f.embargo_months
-        assert gap_hi >= gap_lo, f"{f.describe()} embargo bosluğu yok"
+        assert gap_hi >= gap_lo, f"{f.describe()} has no embargo gap"
         assert f.train_months[1] < gap_lo <= gap_hi < f.val_months[0]
 
 
@@ -42,15 +42,15 @@ def test_holdout_never_touched_by_any_fold(months):
     ho = set(holdout_indices(months))
     assert ho
     for fold, tr, va in iter_folds(months):
-        assert not ho & set(tr), f"{fold.describe()} hold-out'u egitimde kullaniyor"
-        assert not ho & set(va), f"{fold.describe()} hold-out'u validasyonda kullaniyor"
+        assert not ho & set(tr), f"{fold.describe()} trains on hold-out data"
+        assert not ho & set(va), f"{fold.describe()} validates on hold-out data"
 
 
 def test_embargo_months_excluded_from_both_sides(months):
     for fold, tr, va in iter_folds(months):
         used = set(months[tr]) | set(months[va])
         for m in range(fold.embargo_months[0], fold.embargo_months[1] + 1):
-            assert m not in used, f"{fold.describe()} embargo ayi {m} kullanilmis"
+            assert m not in used, f"{fold.describe()} used embargo month {m}"
 
 
 def test_expanding_window_grows(months):
@@ -59,7 +59,7 @@ def test_expanding_window_grows(months):
 
 
 def test_assert_no_overlap_passes_on_config(months):
-    assert_no_overlap(months)   # exception atmamali
+    assert_no_overlap(months)   # must not raise
 
 
 def test_holdout_range_matches_config(months):

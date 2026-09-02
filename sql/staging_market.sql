@@ -1,7 +1,7 @@
--- staging.market_{split}: kolon gruplarini row_id uzerinden birlestirir.
--- row_id = kaynak feather dosyasindaki satir sirasi. Ayni dosyanin farkli kolon
--- projeksiyonlari ayni satir sirasini verdigi icin pozisyonel join guvenlidir
--- (staging.py icindeki assert_group_alignment bunu ayrica dogrular).
+-- staging.market_{split}: rejoins the column groups on row_id.
+-- row_id is the row position in the source feather file. Different column
+-- projections of the same file return the same row order, so the positional join
+-- is safe (staging.py:assert_group_alignment proves it on the real data).
 CREATE OR REPLACE TABLE `{project}.{staging}.market_{split}`
 {partition_clause}
 CLUSTER BY sample_id

@@ -1,8 +1,8 @@
-"""Streamlit sayfalari icin ortak veri erisimi.
+"""Shared data access for the Streamlit pages.
 
-Tasarim: her yukleyici EKSIK VERIDE COKMEZ, None doner. Boylece dashboard
-pipeline'in herhangi bir asamasinda ayakta kalir ve kullaniciya ne eksik
-oldugunu soyler - "bos ekran" yerine acik durum.
+Design: every loader returns None instead of crashing on missing data, so the
+dashboard stays usable at any stage of the pipeline and tells the user what is
+missing - an explicit state rather than a blank screen.
 """
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ FEATURES_DIR = DATA_ROOT / "features"
 MODELS_DIR = DATA_ROOT / "models"
 
 DISCLAIMER = (
-    "Bu panel **arastirma ve model degerlendirme** amaclidir. "
-    "Yatirim tavsiyesi degildir."
+    "This dashboard is for **research and model evaluation**. "
+    "It is not investment advice."
 )
 
 
@@ -33,7 +33,7 @@ def page_header(title: str, subtitle: str = "") -> None:
 
 
 def missing(what: str, how: str) -> None:
-    st.info(f"**{what}** henuz yok.\n\nUretmek icin: `{how}`")
+    st.info(f"**{what}** is not available yet.\n\nTo produce it, run: `{how}`")
 
 
 @st.cache_data(show_spinner=False)
@@ -56,7 +56,7 @@ def load_results_table() -> pd.DataFrame | None:
 
 @st.cache_data(show_spinner=False)
 def load_features(n_rows: int = 50_000, columns: list[str] | None = None) -> pd.DataFrame | None:
-    """Feature setinden bir dilim. Tam dosya 1.4 GB - dashboard'a tamami yuklenmez."""
+    """A slice of the feature set. The full file is ~1.4 GB and is never fully loaded."""
     p = FEATURES_DIR / "dataset_train.parquet"
     if not p.exists():
         return None

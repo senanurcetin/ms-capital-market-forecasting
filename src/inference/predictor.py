@@ -1,10 +1,10 @@
-"""Model servisi icin tahmin katmani - EGITIM KODUNDAN BAGIMSIZ.
+"""Prediction layer for model serving - INDEPENDENT OF THE TRAINING CODE.
 
-Tasarim kurallari:
-  * API, egitim modullerini import etmez; yalnizca kaydedilmis artefakti okur.
-  * Feature sirasi artefaktla birlikte saklanir; gelen istek eksik/fazla
-    feature icerirse SESSIZCE doldurulmaz, acik hata verilir.
-  * Model yoksa uygulama COKMEZ; /health degrade durumu bildirir.
+Design rules:
+  * The API never imports training modules; it only reads a saved artefact.
+  * The feature order is stored alongside the model. If a request is missing or
+    has extra features, nothing is silently filled in - it fails loudly.
+  * A missing model does NOT crash the app; /health reports a degraded state.
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ METADATA_FILE = "model_meta.json"
 
 
 class ModelNotLoadedError(RuntimeError):
-    """Servis edilebilir bir model yok."""
+    """No servable model is available."""
 
 
 @dataclass
@@ -52,15 +52,15 @@ def _load_booster(path: Path, kind: str):
 
 
 def load_bundle(model_dir: str | Path) -> ModelBundle:
-    """model_dir icinde METADATA_FILE + model dosyasi bekler."""
+    """Expects METADATA_FILE plus the model file inside model_dir."""
     model_dir = Path(model_dir)
     meta_path = model_dir / METADATA_FILE
     if not meta_path.exists():
-        raise ModelNotLoadedError(f"{meta_path} yok")
+        raise ModelNotLoadedError(f"{meta_path} does not exist")
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     model_path = model_dir / meta["model_file"]
     if not model_path.exists():
-        raise ModelNotLoadedError(f"{model_path} yok")
+        raise ModelNotLoadedError(f"{model_path} does not exist")
     return ModelBundle(
         model=_load_booster(model_path, meta["kind"]),
         features=list(meta["features"]),
@@ -73,7 +73,7 @@ def load_bundle(model_dir: str | Path) -> ModelBundle:
 
 def save_bundle(model_dir: str | Path, *, model, kind: str, features: list[str],
                 name: str, version: str, metrics: dict | None = None) -> Path:
-    """Egitim tarafinda cagrilir; artefakti servis edilebilir formatta yazar."""
+    """Called from the training side; writes the artefact in servable form."""
     import datetime as _dt
 
     model_dir = Path(model_dir)
@@ -112,12 +112,12 @@ class Predictor:
         missing = [c for c in expected if c not in df.columns]
         if missing:
             raise ValueError(
-                f"{len(missing)} feature eksik (ilk 5: {missing[:5]}). "
-                "Feature seti model artefaktinda sabittir; eksikler doldurulmaz."
+                f"{len(missing)} feature(s) missing (first 5: {missing[:5]}). "
+                "The feature set is fixed by the model artefact; gaps are not filled in."
             )
         extra = [c for c in df.columns if c not in expected]
         if extra:
-            log.warning("istekte %d fazla alan yok sayildi: %s", len(extra), extra[:5])
+            log.warning("ignored %d unexpected field(s) in request: %s", len(extra), extra[:5])
         return df[expected].astype("float64")
 
     def predict(self, rows: list[dict]) -> np.ndarray:

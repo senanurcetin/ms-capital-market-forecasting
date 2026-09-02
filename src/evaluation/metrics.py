@@ -1,15 +1,17 @@
-"""Degerlendirme metrikleri.
+"""Evaluation metrics.
 
-ANA METRIK: cosine similarity.
+PRIMARY METRIC: cosine similarity.
     cos(y, yhat) = sum(y*yhat) / (||y|| * ||yhat||)
 
-Onemli ozellikleri (modelleme kararlarini dogrudan etkiler):
-  * OLCEK-DEGISMEZ: yhat'i pozitif bir sabitle carpmak skoru DEGISTIRMEZ
-    -> tahmin buyuklugu kalibrasyonuna efor harcamak anlamsiz.
-  * KAYDIRMA-DEGISMEZ DEGIL: yhat'a sabit bias eklemek skoru BOZAR.
-    (Pearson korelasyonundan farki budur; Pearson once ortalamayi cikarir.)
-    -> tahminler sifir etrafinda tutulmali.
-  * MSE/Huber egitimi mesru bir vekildir ama model SECIMI cosine ile yapilir.
+Its properties drive several modelling decisions:
+  * SCALE-INVARIANT: multiplying yhat by a positive constant does NOT change the
+    score, so calibrating prediction magnitude is wasted effort.
+  * NOT SHIFT-INVARIANT: adding a constant bias to yhat DOES hurt the score.
+    (This is where it differs from Pearson correlation, which centres first.)
+    Empirically confirmed: a constant-mean predictor scores -0.0036.
+    -> predictions should stay centred on zero.
+  * Training on MSE/Huber is a legitimate surrogate, but model SELECTION is done
+    on cosine.
 """
 from __future__ import annotations
 
@@ -19,15 +21,14 @@ _EPS = 1e-12
 
 
 def _as_1d(a) -> np.ndarray:
-    arr = np.asarray(a, dtype=np.float64).ravel()
-    return arr
+    return np.asarray(a, dtype=np.float64).ravel()
 
 
 def cosine_similarity(y_true, y_pred) -> float:
-    """Yarismanin ana metrigi. Iki vektor de sifirsa 0 doner."""
+    """The competition's primary metric. Returns 0.0 if either vector is all zeros."""
     y, p = _as_1d(y_true), _as_1d(y_pred)
     if y.shape != p.shape:
-        raise ValueError(f"sekil uyusmuyor: {y.shape} vs {p.shape}")
+        raise ValueError(f"shape mismatch: {y.shape} vs {p.shape}")
     denom = np.linalg.norm(y) * np.linalg.norm(p)
     if denom < _EPS:
         return 0.0
@@ -50,8 +51,8 @@ def pearson(y_true, y_pred) -> float:
 
 
 def directional_accuracy(y_true, y_pred, *, ignore_zeros: bool = True) -> float:
-    """Isaret dogrulugu. Target'in %5.5'i TAM SIFIR oldugu icin varsayilan
-    olarak bu satirlar disarida birakilir (aksi halde metrik yaniltici olur)."""
+    """Sign accuracy. 5.54% of targets are EXACTLY zero (a tick-size artefact), so
+    those rows are excluded by default - including them makes the metric misleading."""
     y, p = _as_1d(y_true), _as_1d(y_pred)
     mask = y != 0 if ignore_zeros else np.ones_like(y, dtype=bool)
     if not mask.any():
@@ -60,7 +61,7 @@ def directional_accuracy(y_true, y_pred, *, ignore_zeros: bool = True) -> float:
 
 
 def evaluate(y_true, y_pred) -> dict[str, float]:
-    """Tum metrikleri tek seferde dondurur."""
+    """All metrics in one pass."""
     return {
         "cosine": cosine_similarity(y_true, y_pred),
         "mae": mae(y_true, y_pred),
@@ -71,11 +72,11 @@ def evaluate(y_true, y_pred) -> dict[str, float]:
 
 
 def lgb_cosine_eval(y_pred, dataset):
-    """LightGBM custom eval: erken durdurma cosine uzerinden yapilir."""
+    """LightGBM custom eval so early stopping tracks cosine, not RMSE."""
     y_true = dataset.get_label()
-    return "cosine", cosine_similarity(y_true, y_pred), True  # True = buyuk daha iyi
+    return "cosine", cosine_similarity(y_true, y_pred), True  # True = higher is better
 
 
 def xgb_cosine_eval(y_pred, dmatrix):
-    """XGBoost custom eval (feval). XGBoost minimize ettigi icin negatifi doner."""
+    """XGBoost custom eval (feval). XGBoost minimises, so the sign is flipped."""
     return "neg_cosine", -cosine_similarity(dmatrix.get_label(), y_pred)

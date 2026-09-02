@@ -1,5 +1,5 @@
-# MSCapital - gelistirme ve deploy komutlari
-# Windows'ta make yoksa README'deki esdeger komutlar kullanilabilir.
+# MSCapital - development and deployment commands.
+# If make is unavailable on Windows, the equivalent commands are in the README.
 
 PY ?= python
 DATA_ROOT ?= C:/mscapital_data
@@ -8,17 +8,17 @@ DATA_ROOT ?= C:/mscapital_data
         docker-build up down logs clean
 
 help:
-	@echo "install       bagimliliklari kur (dev dahil)"
+	@echo "install       install dependencies (including dev)"
 	@echo "test          pytest"
-	@echo "lint          ruff check"
-	@echo "check         lint + test"
+	@echo "lint          run ruff"
+	@echo "check         lint + tests"
 	@echo "ingest        feather -> parquet -> BigQuery (train)"
-	@echo "features      BigQuery feature katmani + lokale indirme"
-	@echo "train         walk-forward egitim (MLflow'a loglar)"
-	@echo "api           FastAPI'yi lokalde calistir (:8000)"
-	@echo "streamlit     Dashboard'u lokalde calistir (:8501)"
+	@echo "features      build the BigQuery feature layer and download it"
+	@echo "train         walk-forward training (logs to MLflow)"
+	@echo "api           run FastAPI locally (:8000)"
+	@echo "streamlit     run the dashboard locally (:8501)"
 	@echo "mlflow        MLflow UI (:5000)"
-	@echo "up / down     docker compose ile tum yigin"
+	@echo "up / down     bring the whole stack up/down with docker compose"
 
 install:
 	$(PY) -m pip install -r requirements-dev.txt

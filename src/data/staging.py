@@ -1,8 +1,8 @@
-"""raw (kolon gruplari) -> staging (kanonik, partition + cluster) katmani.
+"""raw (column groups) -> staging (canonical, partitioned and clustered).
 
-Train tablolari month'a gore partitionlanir (71 partition): walk-forward
-fold'lari yalnizca kendi aylarini tarar, tarama maliyeti ve suresi lineer duser.
-Test'te month verilmedigi icin sample_id bucket'lari kullanilir.
+Train tables are partitioned by month (71 partitions) so a walk-forward fold only
+scans the months it needs, which keeps both scan cost and runtime linear in the
+fold size. Test has no month column, so it is partitioned by sample_id buckets.
 """
 from __future__ import annotations
 
@@ -25,11 +25,12 @@ def _table_exists(bq: bigquery.Client, table_id: str) -> bool:
     except NotFound:
         return False
 
+
 SQL_DIR = REPO_ROOT / "sql"
 
-# Train: month bazli partition (label join'i ile gelir)
+# Train: partition by month, which arrives via the label join.
 _TRAIN_PARTITION = "PARTITION BY RANGE_BUCKET(month, GENERATE_ARRAY(0, 72, 1))"
-# Test: month yok -> sample_id bucket'lari (647,896 sample / 5000 = 130 partition)
+# Test: no month -> sample_id buckets (647,896 samples / 5000 = 130 partitions).
 _TEST_PARTITION = (
     "PARTITION BY RANGE_BUCKET(sample_id, GENERATE_ARRAY(0, 650000, 5000))"
 )
@@ -45,8 +46,8 @@ def _render(template: str, split: str) -> str:
         split=split,
         partition_clause=_TRAIN_PARTITION if is_train else _TEST_PARTITION,
         month_select="lbl.month," if is_train else "",
-        # USING (sample_id) market'te belirsiz: g1/g2/g3'un ucunde de bu kolon var.
-        # Bu yuzden acik ON kosulu, g1 alias'ina baglanarak.
+        # USING (sample_id) is ambiguous for market: g1/g2/g3 all carry that column.
+        # Hence an explicit ON clause bound to the g1 alias.
         month_join=(
             f"JOIN `{cfg.bigquery.project}.{cfg.bigquery.datasets.staging}.label` AS lbl "
             "ON lbl.sample_id = g1.sample_id"
@@ -59,7 +60,7 @@ def _render(template: str, split: str) -> str:
 def run_sql_file(name: str, split: str, *, bq: bigquery.Client | None = None) -> dict:
     bq = bq or client()
     sql = _render((SQL_DIR / name).read_text(encoding="utf-8"), split)
-    log.info("[%s / %s] calistiriliyor", name, split)
+    log.info("[%s / %s] running", name, split)
     job = bq.query(sql)
     job.result()
     return {
@@ -85,12 +86,12 @@ def build_label(bq: bigquery.Client | None = None) -> dict:
 
 
 def assert_group_alignment(split: str, bq: bigquery.Client | None = None) -> dict:
-    """row_id pozisyonel join varsayimini DOGRULAR.
+    """PROVE the positional row_id join assumption.
 
-    Kolon gruplari ayni feather dosyasindan farkli projeksiyonlarla okundu.
-    Her grupta sample_id ve seconds_before_predict de tutuldugu icin,
-    row_id uzerinden hizalandiklarinda bu kolonlar birebir esitlenmeli.
-    Tek bir uyusmazlik bile tum feature katmanini gecersiz kilar.
+    The column groups were read from the same feather file with different
+    projections. Each group also carries sample_id and seconds_before_predict, so
+    once aligned on row_id those columns must match exactly. A single mismatch
+    would invalidate the entire feature layer.
     """
     bq = bq or client()
     cfg = load_config()
@@ -101,9 +102,9 @@ def assert_group_alignment(split: str, bq: bigquery.Client | None = None) -> dic
     ]
     if missing:
         raise RuntimeError(
-            f"raw.{split}_market_{{{','.join(missing)}}} yok. Bu tablolar staging "
-            "kurulduktan sonra maliyet icin dusurulmus olabilir. Yeniden dogrulamak "
-            "icin once bq_loader.load_table('%s', 'market') calistirin." % split
+            f"raw.{split}_market_{{{','.join(missing)}}} not found. These tables may "
+            "have been dropped for cost reasons after staging was built. Re-run "
+            f"bq_loader.load_table('{split}', 'market') first to re-verify."
         )
     sql = f"""
     SELECT
@@ -121,16 +122,16 @@ def assert_group_alignment(split: str, bq: bigquery.Client | None = None) -> dic
     expected = load_config().expected_rows[split]["market"]
     if row["joined_rows"] != expected:
         raise AssertionError(
-            f"{split} market join satiri {row['joined_rows']:,} != {expected:,}"
+            f"{split} market join produced {row['joined_rows']:,} rows != {expected:,}"
         )
     if row["sample_id_mismatch"] or row["seconds_mismatch"]:
-        raise AssertionError(f"row_id hizalamasi BOZUK: {row}")
-    log.info("[%s] row_id hizalamasi dogrulandi: %s satir", split, f"{expected:,}")
+        raise AssertionError(f"row_id alignment is BROKEN: {row}")
+    log.info("[%s] row_id alignment verified across %s rows", split, f"{expected:,}")
     return row
 
 
 def verify_staging(split: str, bq: bigquery.Client | None = None) -> list[dict]:
-    """Staging tablolarinin satir sayisi ve sample kapsamini dogrular."""
+    """Check staging row counts, sample coverage and the no-look-ahead invariant."""
     bq = bq or client()
     cfg = load_config()
     p, st = cfg.bigquery.project, cfg.bigquery.datasets.staging
@@ -153,12 +154,12 @@ def verify_staging(split: str, bq: bigquery.Client | None = None) -> list[dict]:
         row["table"] = f"{table}_{split}"
         row["rows_match"] = row["row_count"] == expected_rows
         row["samples_match"] = row["samples"] == expected_samples
-        # Look-ahead guvenlik kontrolu: hicbir olay tahmin aninin sonrasinda olamaz
+        # No-look-ahead guard: no event may sit after the prediction instant.
         row["no_lookahead"] = row["min_sec"] >= 0
         if not (row["rows_match"] and row["samples_match"] and row["no_lookahead"]):
-            raise AssertionError(f"staging dogrulama BASARISIZ: {row}")
+            raise AssertionError(f"staging verification FAILED: {row}")
         out.append(row)
-        log.info("[%s] OK %s satir / %s sample", row["table"],
+        log.info("[%s] OK %s rows / %s samples", row["table"],
                  f"{row['row_count']:,}", f"{row['samples']:,}")
     return out
 

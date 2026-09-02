@@ -31,9 +31,9 @@ jobs:
       - name: Lint
         run: ruff check src/ api/ streamlit_app/ tests/ --line-length 100
 
-      # Testler CANLI BigQuery veya indirilmis veri GEREKTIRMEZ:
-      # ingest testleri sentetik feather uretir, API testleri sahte model
-      # artefakti kullanir. Bu yuzden CI'da kimlik bilgisi gerekmez.
+      # The tests require NO live BigQuery and NO downloaded data: the ingest tests
+      # generate a synthetic feather file and the API tests use a fake model artefact.
+      # That is why CI needs no credentials.
       - name: Test
         run: pytest tests/ -q --maxfail=1
 
@@ -56,7 +56,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Smoke test - API modelsiz ayaga kalkmali
+      - name: Smoke test - the API must start without a model
         run: |
           docker run -d --name api -p 8000:8000 mscapital:ci
           for i in $(seq 1 30); do
@@ -64,6 +64,6 @@ jobs:
             sleep 2
           done
           cat /tmp/h.json
-          # Model yokken bile servis ayakta ve "degraded" bildirmeli
+          # Even with no model the service must be up and report "degraded"
           grep -q '"model_loaded": *false' /tmp/h.json
           docker rm -f api

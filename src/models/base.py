@@ -1,12 +1,12 @@
-"""Model arayuzu ve ortak yardimcilar.
+"""Model interface and shared helpers.
 
-Tum modeller ayni sozlesmeyi uygular: fit(X, y) / predict(X).
-Boylece walk-forward harness (src/models/train.py) model tipinden bagimsiz kalir.
+Every model implements the same contract: fit(X, y) / predict(X). That keeps the
+walk-forward harness (src/models/train.py) independent of the model type.
 
-NaN POLITIKASI (feature katmanindan gelen gercek durum):
-  LightGBM ve XGBoost NaN'i dogal isler -> dokunulmaz.
-  Ridge isleyemez -> medyan imputation, ama medyan YALNIZ TRAIN FOLD'unda
-  hesaplanir. Validation/test fold'unun istatistigini kullanmak leakage olur.
+NaN POLICY (reflecting what the feature layer actually produces):
+  LightGBM and XGBoost handle NaN natively -> left untouched.
+  Ridge cannot -> median imputation, but the median is computed on the TRAIN FOLD
+  ONLY. Using validation/test statistics would be leakage.
 """
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from typing import Protocol
 import numpy as np
 import pandas as pd
 
-# Feature olmayan kolonlar. month SADECE split anahtaridir - feature degil:
-# test'te 71+ araliginda olacagi icin modele verilirse genellemez.
+# Non-feature columns. month is ONLY a split key, never a feature: at test time it
+# would fall outside the observed range (71+), so a model using it cannot generalise.
 NON_FEATURES = ("sample_id", "month", "target")
 
 
@@ -32,7 +32,7 @@ class Model(Protocol):
 
 
 class MedianImputer:
-    """Train fold'unda fit edilen medyan imputer + sonsuz deger temizligi."""
+    """Median imputation fitted on the training fold, plus infinity cleanup."""
 
     def __init__(self) -> None:
         self.medians_: pd.Series | None = None
@@ -40,13 +40,13 @@ class MedianImputer:
     def fit(self, X: pd.DataFrame) -> "MedianImputer":
         clean = X.replace([np.inf, -np.inf], np.nan)
         self.medians_ = clean.median()
-        # Tamamen bos kolonlar icin 0
+        # Columns that are entirely missing fall back to 0.
         self.medians_ = self.medians_.fillna(0.0)
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         if self.medians_ is None:
-            raise RuntimeError("once fit() cagrilmali")
+            raise RuntimeError("fit() must be called first")
         return X.replace([np.inf, -np.inf], np.nan).fillna(self.medians_)
 
     def fit_transform(self, X: pd.DataFrame) -> pd.DataFrame:

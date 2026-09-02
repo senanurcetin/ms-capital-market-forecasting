@@ -1,11 +1,11 @@
-"""Sonuc katmani: model metrikleri, backtest ve SHAP ciktilarini BigQuery mart'a yazar.
+"""Results layer: publishes model metrics, backtests and SHAP output to BigQuery.
 
-Neden ayri bir katman: egitim lokalde kompakt veriyle kosuyor, ama sonuclarin
-tek bir sorgulanabilir yerde durmasi gerekiyor - Streamlit, dbt ve raporlama
-buradan okur. Tablolar kucuk (yuzlerce satir), maliyeti ihmal edilebilir.
+Why a separate layer: training runs locally on the compact dataset, but the
+results need to live somewhere queryable - Streamlit, dbt and reporting all read
+from here. The tables are tiny (hundreds of rows), so the cost is negligible.
 
-Her calistirmada tablolar WRITE_TRUNCATE ile yenilenir ve run_id ile
-damgalanir; boylece "hangi sonuc hangi kosudan geldi" kaybolmaz.
+Every run rewrites the tables with WRITE_TRUNCATE and stamps them with a run_id,
+so "which result came from which run" is never lost.
 """
 from __future__ import annotations
 
@@ -24,17 +24,17 @@ from src.data.bq_loader import client
 log = logging.getLogger(__name__)
 
 TABLES = {
-    "mart_model_metrics": "Walk-forward: model x fold metrikleri",
-    "mart_holdout_metrics": "Hold-out (ay 65-70) nihai olcum",
-    "mart_backtest": "Backtest: islem maliyeti ve esik duyarliligi",
-    "mart_feature_importance": "SHAP global feature onemi",
-    "mart_run_metadata": "Kosu kunyesi",
+    "mart_model_metrics": "Walk-forward: metrics per model and fold",
+    "mart_holdout_metrics": "Final hold-out measurement (months 65-70)",
+    "mart_backtest": "Backtest: transaction-cost and threshold sensitivity",
+    "mart_feature_importance": "SHAP global feature importance",
+    "mart_run_metadata": "Run metadata",
 }
 
 
 def _write(bq: bigquery.Client, name: str, df: pd.DataFrame, run_id: str) -> int:
     if df.empty:
-        log.warning("[%s] bos, atlandi", name)
+        log.warning("[%s] empty, skipped", name)
         return 0
     cfg = load_config()
     table_id = f"{cfg.bigquery.project}.{cfg.bigquery.datasets.mart}.{name}"
@@ -46,7 +46,7 @@ def _write(bq: bigquery.Client, name: str, df: pd.DataFrame, run_id: str) -> int
     )
     job.result()
     n = bq.get_table(table_id).num_rows
-    log.info("[%s] %s satir yazildi", name, f"{n:,}")
+    log.info("[%s] %s rows written", name, f"{n:,}")
     return n
 
 
@@ -145,12 +145,12 @@ def publish(run_id: str | None = None) -> dict[str, int]:
         "market_window_seconds": cfg.window.seconds["market"],
         "order_window_seconds": cfg.window.seconds["order"],
     }]), run_id)
-    log.info("run_id=%s | yazilan: %s", run_id, written)
+    log.info("run_id=%s | written: %s", run_id, written)
     return written
 
 
 def main(argv: list[str] | None = None) -> None:
-    ap = argparse.ArgumentParser(description="Sonuclari BigQuery mart'a yayinla")
+    ap = argparse.ArgumentParser(description="Publish results to the BigQuery mart")
     ap.add_argument("--run-id", default=None)
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")

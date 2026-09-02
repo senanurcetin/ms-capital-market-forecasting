@@ -1,11 +1,11 @@
-"""Ingest katmani testleri.
+"""Ingest layer tests.
 
-EN KRITIK TEST: kolon-grubu donusumunun POZISYONEL row_id varsayimi.
-Gercek dosyalar tek bir Arrow record batch tutuyor ve 16 GB RAM'e sigmiyor;
-bu yuzden kolon gruplari ayri ayri okunup BigQuery'de row_id uzerinden
-birlestiriliyor. Bu varsayim yanlissa TUM feature katmani gecersiz olur.
-Burada sentetik ama ayni yapida (tek batch, sikistirilmis) bir dosyayla
-donusum yapilip orijinal tablo birebir geri kurulabiliyor mu test edilir.
+THE CRITICAL TEST: the POSITIONAL row_id assumption behind the column-group
+conversion. The real files hold a single Arrow record batch and do not fit in
+16 GB of RAM, so the column groups are read separately and rejoined on row_id in
+BigQuery. If that assumption were wrong, the ENTIRE feature layer would be invalid.
+Here a synthetic file with the same shape (single batch, compressed) is converted
+and the original table is reconstructed exactly.
 """
 import numpy as np
 import pyarrow as pa
@@ -18,7 +18,7 @@ from src.data import ingestion
 
 @pytest.fixture
 def synthetic_market(tmp_path, monkeypatch):
-    """Gercek market semasiyla ayni tipte, TEK record batch'li feather."""
+    """A single-record-batch feather with the same schema and dtypes as market."""
     n = 5000
     rng = np.random.default_rng(3)
     cols = {
@@ -40,7 +40,7 @@ def synthetic_market(tmp_path, monkeypatch):
     raw_dir = tmp_path / "raw" / "train"
     raw_dir.mkdir(parents=True)
     path = raw_dir / "market.feather"
-    # compression="lz4" -> gercek dosyalardaki gibi sikistirilmis TEK batch
+    # compression="lz4" -> a compressed SINGLE batch, exactly like the real files
     feather.write_feather(table, path, compression="lz4", chunksize=n)
 
     monkeypatch.setattr(ingestion, "raw_path", lambda split, tbl: path)
@@ -52,7 +52,7 @@ def synthetic_market(tmp_path, monkeypatch):
 
 
 def test_source_is_single_record_batch(synthetic_market):
-    """Fikstur gercek veriyle ayni patolojiyi tasimali: tek batch."""
+    """The fixture must reproduce the real pathology: one single batch."""
     table, tmp = synthetic_market
     with pa.ipc.open_file(tmp / "raw" / "train" / "market.feather") as f:
         assert f.num_record_batches == 1
@@ -72,7 +72,7 @@ def test_row_count_without_full_read(synthetic_market):
 
 
 def test_column_groups_roundtrip_exactly(synthetic_market):
-    """ANA TEST: gruplari row_id ile birlestirince orijinal tablo geri gelmeli."""
+    """MAIN TEST: rejoining the groups on row_id must reproduce the original table."""
     table, tmp = synthetic_market
     manifests = ingestion.convert_table("train", "market")
     assert len(manifests) == 3
@@ -84,24 +84,24 @@ def test_column_groups_roundtrip_exactly(synthetic_market):
         assert len(df) == table.num_rows
         frames.append(df)
 
-    # row_id uzerinden birlestir
+    # rejoin on row_id
     merged = frames[0].join(frames[1], rsuffix="_g2").join(frames[2], rsuffix="_g3")
     original = table.to_pandas()
 
-    # Her grupta tekrarlanan anahtarlar BIREBIR ayni olmali (hizalama kaniti)
+    # The keys repeated in every group must match EXACTLY (the alignment proof)
     for suffix in ("_g2", "_g3"):
         assert (merged["sample_id"].values == merged[f"sample_id{suffix}"].values).all()
         np.testing.assert_array_equal(
             merged["seconds_before_predict"].values,
             merged[f"seconds_before_predict{suffix}"].values,
         )
-    # Ve tum orijinal kolonlar degeri degismeden geri gelmeli
+    # And every original column must come back unchanged
     for col in original.columns:
         np.testing.assert_array_equal(merged[col].values, original[col].values)
 
 
 def test_conversion_is_idempotent(synthetic_market):
-    """Ikinci cagri manifest sayesinde islemi atlamali."""
+    """A second call must skip the work thanks to the manifest."""
     ingestion.convert_table("train", "market")
     second = ingestion.convert_table("train", "market")
     assert all(m["complete"] for m in second)
