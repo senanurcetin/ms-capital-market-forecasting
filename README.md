@@ -116,6 +116,10 @@ What it does *not* cover is the BigQuery feature SQL, which needs GCP. That laye
 tested structurally instead (`tests/test_feature_sql.py`), and the demo's feature table
 takes its column names from the same SQL generators, so the two schemas cannot drift apart.
 
+It writes to `<repo>/.demo` (override with `MSCAPITAL_DEMO_ROOT`), deliberately **not** to
+the configured `data_root` — that points at a large local disk with a platform-specific
+absolute path, and using it made the demo Windows-only until CI caught it on Linux.
+
 > The demo's data is synthetic and its signal is planted, so its scores are meaningless
 > as results. **No number reported anywhere in this repository comes from it.**
 

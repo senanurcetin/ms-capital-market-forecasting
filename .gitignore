@@ -22,3 +22,4 @@ secrets/
 kaggle.json
 gcp-key.json
 .env*
+.demo/

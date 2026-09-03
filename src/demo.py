@@ -22,11 +22,12 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import shutil
 import time
 from pathlib import Path
 
-from src.config import load_config
+from src.config import REPO_ROOT, load_config
 
 log = logging.getLogger(__name__)
 
@@ -38,10 +39,22 @@ def _banner(step: str, text: str) -> None:
     log.info("=" * 68)
 
 
+def default_root() -> Path:
+    """Where the demo writes.
+
+    NOT cfg.paths.data_root: that points at a large local disk and is configured with an
+    absolute, platform-specific path (C:/mscapital_data on the machine this was built on).
+    Using it made `make demo` Windows-only - CI caught it when pyarrow read "C:/..." on
+    Linux as a URI with an unknown filesystem scheme. The demo has to run anywhere, so it
+    defaults to a directory inside the repo and is overridable by env var.
+    """
+    return Path(os.environ.get("MSCAPITAL_DEMO_ROOT") or (REPO_ROOT / ".demo"))
+
+
 def run(samples: int = 4000, keep: bool = False,
-        models: list[str] | None = None) -> dict:
+        models: list[str] | None = None, root: Path | None = None) -> dict:
     cfg = load_config()
-    root = Path(cfg.paths.data_root) / "demo"
+    root = Path(root) if root is not None else default_root()
     if root.exists() and not keep:
         shutil.rmtree(root)
     raw, features, models_dir = root / "raw", root / "features", root / "models"
@@ -139,9 +152,10 @@ def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="End-to-end demo on synthetic data")
     ap.add_argument("--samples", type=int, default=4000)
     ap.add_argument("--keep", action="store_true", help="do not wipe the demo directory")
+    ap.add_argument("--root", default=None, help="where to write (default: <repo>/.demo)")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    run(samples=args.samples, keep=args.keep)
+    run(samples=args.samples, keep=args.keep, root=args.root)
 
 
 if __name__ == "__main__":

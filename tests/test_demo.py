@@ -14,8 +14,11 @@ from src.demo import run
 
 
 @pytest.fixture(scope="module")
-def demo_result():
-    return run(samples=2000, models=["zero", "ridge"])
+def demo_result(tmp_path_factory):
+    # An isolated root, which also pins the portability fix: the demo must not write to
+    # the configured data_root, whose absolute Windows path broke this test on Linux CI.
+    root = tmp_path_factory.mktemp("demo_root")
+    return run(samples=2000, models=["zero", "ridge"], root=root)
 
 
 def test_demo_completes_and_reports_scores(demo_result):
