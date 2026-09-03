@@ -36,29 +36,44 @@ different explanation.
 
 **Leaderboard: 0.128.** The prediction was wrong.
 
-| | cosine | share of the gap |
-|---|---:|---:|
-| Hold-out (bucket-weighted) | +0.14891 | |
-| Predicted | +0.14345 | 26% — spread mix |
-| **Actual (leaderboard)** | **+0.12800** | **74% — unexplained** |
+| | cosine |
+|---|---:|
+| Hold-out, as measured | +0.15171 |
+| Forecast | +0.14345 |
+| **Actual (leaderboard)** | **+0.12800** |
 
 The direction was right and the magnitude wrong by roughly a factor of three. The failed
 prediction is left in place with the correction beneath it, because a forecast is only
 evidence of understanding if it is recorded before the answer and reported honestly after.
 
-Two follow-up hypotheses were then stated and tested — and **both rejected**, neither
-costing a submission:
+Three follow-ups were then stated and tested. **None of them rescued the story, and no
+further submission was spent on any of them:**
 
 | Hypothesis | Method | Verdict |
 |---|---|---|
-| Spread-regime mix shift | reweight hold-out by test spread mix | real, explains **26%** |
-| High-drift rate features hurt under shift | prune them; vary train→eval gap over 32 months | **falsified** at two thresholds — pruning is mildly *harmful* |
-| Skill decays with elapsed time | same experiment, `full` arm | **falsified** — slope is *positive*; the most distant block scores best |
+| Spread-regime mix shift | reweight hold-out by the test spread mix | real, but **corrected downward** to ~14% (see below) |
+| High-drift rate features hurt under shift | prune them; vary the train→eval gap over 32 months | **falsified** at two thresholds — pruning is mildly *harmful* |
+| Skill decays with elapsed time | same experiment, control arm | **falsified** — slope is *positive*; the most distant block scores best |
 
-That last row is the one that reframes the problem. Within the 71-month training span,
-skill does not decay with time at all, so "the test set is later, therefore worse" cannot
-be the explanation. **74% of the gap remains unaccounted for**, and saying so is more
-useful than a tidy story. See [notebook 04](notebooks/04_models_and_errors.ipynb).
+The last row reframes the problem: within the 71-month training span skill does not decay
+with time at all, so "the test set is later, therefore worse" cannot be the explanation.
+
+**And the forecast was built wrong.** Cosine is computed over the pooled vector, so it
+factors exactly as `cos(y,p) = Σ cos_g · w_g` with `w_g = ‖y_g‖‖p_g‖ / (‖y‖‖p‖)` —
+subgroups are weighted by **magnitude, not row count**. The forecast used sample shares.
+On the hold-out the true weights run 0.209–0.312 across equal-sized quartiles, and the
+heaviest lands on the bucket where the model is *strongest*. Redone properly the forecast
+moves to +0.14844 — **further from the outcome**, dropping the spread mechanism's share
+from 26% to ~14%.
+
+That leaves **~86% of the gap unaccounted for**, which is more useful to report than a tidy
+story. See [notebook 04](notebooks/04_models_and_errors.ipynb).
+
+> The general lesson outlives this dataset: any subgroup breakdown of a cosine score must
+> weight by magnitude or it describes a metric nobody is scored on. A test in
+> `tests/test_cosine_decomposition.py` builds a model that is near-perfect on the
+> small-magnitude half of the data and useless on the large half — counting rows calls it
+> skilful at **+0.48**, while the metric scores it **−0.04**.
 
 The transferable finding is about the *estimator*, not this model: a hold-out carved from
 the end of the training period measures generalisation **within one regime**. It reads
@@ -95,15 +110,16 @@ this repository.
 | 3 | `side` and `order_action` encodings are **recoverable by measurement** | order-flow features get built backwards | [01](notebooks/01_data_discovery.ipynb) |
 | 4 | The `*_last` features were reading from **different snapshots** | `mkt_depth_imb1_last` deviated by 1.994 — the full width of its range | [01](notebooks/01_data_discovery.ipynb) |
 | 5 | Predictive features and **transferable** features are the same features | — (this one is the payoff, not a trap) | [03](notebooks/03_features_and_drift.ipynb) |
-| 6 | The model is **weakest exactly where the test set lives** | the hold-out overstates the leaderboard — measured at 14%, of which this explains a quarter | [04](notebooks/04_models_and_errors.ipynb) |
+| 6 | The model is **weakest exactly where the test set lives** | the hold-out overstates the leaderboard — measured at 14%, of which this explains ~1/7 | [04](notebooks/04_models_and_errors.ipynb) |
 
 Finding 6 is the one I would lead with in a review, because neither measurement produces it
 alone. The drift report says *where the test set sits*: 35.7% of its samples fall in the
 tightest-spread quartile, against 25% in training. The error analysis says *where the model
 is weak*: 0.1315 cosine in that quartile versus 0.1941 in the widest. Only together do they
 say the two overlap — and that turns a vague "performance may vary" into a number that a
-leaderboard can falsify. It did: the effect was real but explained only a quarter of the
-actual 14% gap. Being specific enough to be wrong is what made the remaining 74% visible.
+leaderboard can falsify. It did: the effect is real but, once the metric's own weighting is
+applied, explains only about a seventh of the actual 14% gap. Being specific enough to be
+wrong is what made the rest visible.
 
 Two of these were found by checking my own work rather than the data: #4 came from
 recomputing features independently instead of re-reading the code that produced them, and

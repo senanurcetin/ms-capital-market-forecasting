@@ -619,6 +619,105 @@ not honour.
 Two hypotheses stated in advance, two tested, two rejected. The gap is still mostly
 unexplained — and that is the accurate thing to report.
 """),
+    md("""
+---
+
+## The forecast was also built wrong
+
+Re-reading the prediction after it failed turned up a flaw in the *method*, independent of
+the result. Cosine is computed over the pooled vector, without centring, so splitting the
+samples into disjoint groups factors it exactly:
+
+$$\cos(y, p) \;=\; \sum_g \cos_g \cdot w_g,
+\qquad w_g = \frac{\lVert y_g\rVert \, \lVert p_g\rVert}{\lVert y\rVert \, \lVert p\rVert}$$
+
+A pooled cosine is a weighted average of subgroup cosines — but the weights are products
+of **magnitudes**, not sample counts. (They sum to at most 1 by Cauchy-Schwarz, with
+equality only when every group scores alike.)
+
+The forecast reweighted the per-quartile scores by the test set's *sample shares*. That
+assumes the magnitude weights track the counts. They do not.
+"""),
+    code("""
+from src.evaluation.cosine_decomposition import decompose, verify_identity
+
+dec = pd.read_csv(feat / "cosine_decomposition.csv")
+print(dec[["group", "n", "cosine", "y_rms", "count_weight", "weight"]]
+      .to_string(index=False, float_format=lambda v: f"{v:,.5f}"))
+
+meta = json.loads((feat / "cosine_decomposition_meta.json").read_text())
+print()
+print(f"identity check: pooled {meta['pooled']:.10f} = rebuilt {meta['rebuilt']:.10f}"
+      f"  (error {meta['abs_error']:.1e})")
+"""),
+    md("""
+The quartiles are equal-sized by construction, so every count weight is 0.247 — but the
+weights the metric applies run from **0.209 to 0.312**, a 50% spread. And `y_rms` barely
+moves across buckets (0.0033-0.0035), so almost none of that comes from the targets: it is
+the *predictions* that are larger in wide-spread samples, which is what a volatility-aware
+model should do.
+
+Crucially, the heaviest weight lands on **Q4 — the bucket where the model is strongest**.
+
+So what does the forecast look like when redone with the right weights? On the test set
+$\lVert p_g\rVert$ is directly observable (the submitted predictions are in hand); only
+$\lVert y_g\rVert$ is not, and it is carried over from the hold-out as a per-bucket target
+RMS — a far weaker assumption than count-weighting, given that RMS varies by 7% while the
+weights vary by 50%.
+"""),
+    code("""
+fc = pd.read_csv(feat / "cosine_forecast_corrected.csv")
+print(fc[["group", "n", "holdout_cosine", "count_weight", "weight"]]
+      .to_string(index=False, float_format=lambda v: f"{v:,.5f}"))
+
+m = json.loads((feat / "cosine_decomposition_meta.json").read_text())
+pooled, actual = m["pooled"], m["actual_leaderboard"]
+corrected = m["forecast_magnitude_weighted"]
+
+print()
+print(f"hold-out, as measured        {pooled:+.5f}")
+print(f"forecast, count-weighted     {m['forecast_count_weighted']:+.5f}   <- the method used")
+print(f"forecast, magnitude-weighted {corrected:+.5f}   <- corrected")
+print(f"actual                       {actual:+.5f}")
+print()
+print(f"spread mix now explains {(pooled-corrected)/(pooled-actual)*100:.0f}% of the gap"
+      f"  (was claimed: 26%)")
+"""),
+    md("""
+### The correction makes the story worse, which is why it is worth making
+
+Fixing the weighting moves the forecast **away** from the outcome, not towards it. Because
+cosine over-weights Q4, where the model is strongest, it partly cancels the penalty from
+Q1's larger share — so the spread mechanism was weaker than the original analysis claimed,
+not stronger. Its share of the gap drops from 26% to about **14%**.
+
+| Hypothesis | Status | Explains |
+|---|---|---|
+| Spread-regime mix shift | measured, then **corrected downward** | ~14% |
+| High-drift rate features | falsified at two thresholds | not detectable |
+| Elapsed time / regime drift | falsified | no decay over 71 months |
+| — | remaining | **~86%, unaccounted for** |
+
+There is a temptation, on finding an error in your own analysis, to look for the version of
+the fix that rescues the conclusion. The fix here does the opposite, and reporting it that
+way is the whole point: the error was in the method, so it had to be corrected regardless
+of which direction the answer moved.
+
+### The general lesson
+
+Any subgroup analysis of a cosine score — error slices, fairness-style breakdowns,
+"where is my model weak" tables — must weight groups by magnitude, not by row count, or it
+describes a metric nobody is being scored on. The failure mode is not subtle:
+`tests/test_cosine_decomposition.py` builds a model that is near-perfect on the
+small-magnitude half of the data and useless on the large-magnitude half. Counting rows
+calls it skilful at +0.48. The metric scores it **−0.04** — no skill at all.
+
+And there is a second, harder consequence. The corrected weights need
+$\lVert y_g\rVert$ on the test set, which is unobservable. So a subgroup-reweighting
+forecast of a cosine score is **not fully computable in advance** — it always rests on an
+assumption about unobserved target magnitudes. Count-weighting is one such assumption, and
+a poor one. That, rather than any particular number, is the durable finding here.
+"""),
 ]
 
 
