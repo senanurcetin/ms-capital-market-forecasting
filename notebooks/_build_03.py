@@ -333,6 +333,12 @@ moderate-shift features are all rates or spreads. They were kept because they ca
 information about activity, but they are the most likely source of degradation on unseen
 data, and they are where investigation should start if the leaderboard score comes in below
 the hold-out estimate.
+
+**Follow-up (2026-09-03).** It did: the leaderboard came in at 0.128 against a hold-out of
+0.152, and the spread-regime effect quantified in notebook 04 explains only a quarter of
+that gap. These features are the leading suspect for the rest. Confirming it means
+retraining without them and spending another submission, so it is recorded here as the
+next experiment rather than as a finding.
 """),
     md("""
 ---

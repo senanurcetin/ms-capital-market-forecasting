@@ -426,11 +426,69 @@ skill.
 | Is skill uniform? | No — it varies with liquidity conditions, quantified above |
 | Does it survive costs? | See the cost-sensitivity panel |
 
-**What this does not tell us.** There is no leaderboard score yet, so every number here is
-self-graded on data the model has not seen but that came from the same source as its
-training data. The test period is measurably more liquid than the training period
-(notebook 03), and the features that shift most are exactly the rate features — so the
-first place to look, if a leaderboard score lands below this estimate, is there.
+**What this does not tell us.** Every number above is self-graded on data the model has
+not seen but that came from the same source as its training data. The test period is
+measurably more liquid than the training period (notebook 03), and the features that
+shift most are exactly the rate features — so the first place to look, if a leaderboard
+score lands below this estimate, is there.
+"""),
+    md("""
+---
+
+## The prediction was wrong
+
+The submission was made on 2026-09-03. **Leaderboard: 0.128.**
+
+The prediction above was `0.143`, with the explicit caveat that "a score materially BELOW
+~0.143 would need an explanation beyond the spread regime". 0.128 is materially below it.
+So the caveat is now due.
+"""),
+    code("""
+holdout_bucketed = 0.14891      # printed above
+predicted        = 0.14345      # same model, re-weighted to the test spread mix
+actual           = 0.128        # Kaggle leaderboard, 2026-09-03
+
+total   = actual - holdout_bucketed
+spread  = predicted - holdout_bucketed
+residual = actual - predicted
+
+print(f"hold-out (bucket-weighted)   {holdout_bucketed:+.5f}")
+print(f"predicted                    {predicted:+.5f}   ({spread:+.5f} from spread mix)")
+print(f"actual                       {actual:+.5f}   ({residual:+.5f} unexplained)")
+print()
+print(f"total degradation            {total:+.5f}  ({total/holdout_bucketed*100:+.1f}%)")
+print(f"  explained by spread mix    {spread/total*100:5.1f}%")
+print(f"  NOT explained              {residual/total*100:5.1f}%")
+"""),
+    md("""
+### What that means
+
+The mechanism was real but small. Spread-regime mix accounts for roughly a **quarter** of
+the degradation; three quarters came from something the analysis did not model. The
+direction was right and the magnitude was wrong by about a factor of three.
+
+That is a more useful result than a correct prediction would have been, because it says
+something specific: **the hold-out is not a good proxy for the leaderboard here, and the
+reason is not the one variable I could measure.** Months 65-70 are the tail of the same
+training distribution; the test set is a different period entirely, and notebook 03 already
+showed the rate features shifting hardest. The natural next experiment is to retrain
+without the highest-drift features and see whether a small hold-out cost buys a larger
+leaderboard gain — but that costs another submission to verify, so it is stated as a
+hypothesis rather than claimed as a result.
+
+### Why this is left in
+
+The tempting edit is to delete the failed prediction, or to soften it into something that
+survives contact with the number. Both would destroy the only thing that makes it worth
+anything. A prediction is only evidence of understanding if it was recorded **before** the
+answer arrived and is reported honestly **after**. The wrong number stays where it was
+written, with the correction underneath it.
+
+The transferable lesson is about the estimator, not this model: a hold-out carved from the
+end of the training period measures generalisation across *time within one regime*, not
+across regimes. It will read optimistically whenever the deployment distribution differs
+from the training distribution in ways the hold-out cannot see — which, in production
+finance, is most of the time.
 """),
 ]
 

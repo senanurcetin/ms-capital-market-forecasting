@@ -26,12 +26,30 @@ Trained on all 1,257,637 samples and 292 features. Pearson being almost identica
 cosine confirms the predictions are centred on zero — exactly what a shift-sensitive
 metric rewards.
 
-**And a prediction that can be checked.** The test period's spread distribution differs
-from the training period's, and the model is measurably weakest in tight spreads.
-Reweighting the hold-out score by the test set's spread mix gives **≈ 0.143**, a
-degradation of **−3.7%** from that cause alone. A leaderboard score near that is what this
-analysis expects; one materially below it would need a different explanation.
-See [notebook 04](notebooks/04_models_and_errors.ipynb).
+### A prediction, and its falsification
+
+Before submitting, [notebook 04](notebooks/04_models_and_errors.ipynb) recorded a
+falsifiable forecast: the model is measurably weakest in tight spreads, the test period
+holds more of them, and reweighting the hold-out score by the test spread mix gives
+**≈ 0.143** — with the explicit caveat that a score materially below that would need a
+different explanation.
+
+**Leaderboard: 0.128.** The prediction was wrong.
+
+| | cosine | share of the gap |
+|---|---:|---:|
+| Hold-out (bucket-weighted) | +0.14891 | |
+| Predicted | +0.14345 | 26% — spread mix |
+| **Actual (leaderboard)** | **+0.12800** | **74% — unexplained** |
+
+The direction was right and the magnitude wrong by roughly a factor of three. The failed
+prediction is left in place with the correction beneath it, because a forecast is only
+evidence of understanding if it is recorded before the answer and reported honestly after.
+
+The transferable finding is about the *estimator*, not this model: a hold-out carved from
+the end of the training period measures generalisation across time **within one regime**.
+It reads optimistically whenever the deployment distribution differs in ways the hold-out
+cannot see — here, by 14%.
 
 Walk-forward CV, full data, 5 folds:
 
@@ -63,14 +81,15 @@ this repository.
 | 3 | `side` and `order_action` encodings are **recoverable by measurement** | order-flow features get built backwards | [01](notebooks/01_data_discovery.ipynb) |
 | 4 | The `*_last` features were reading from **different snapshots** | `mkt_depth_imb1_last` deviated by 1.994 — the full width of its range | [01](notebooks/01_data_discovery.ipynb) |
 | 5 | Predictive features and **transferable** features are the same features | — (this one is the payoff, not a trap) | [03](notebooks/03_features_and_drift.ipynb) |
-| 6 | The model is **weakest exactly where the test set lives** | the hold-out score overstates what the leaderboard will show, by ~3.7% | [04](notebooks/04_models_and_errors.ipynb) |
+| 6 | The model is **weakest exactly where the test set lives** | the hold-out overstates the leaderboard — measured at 14%, of which this explains a quarter | [04](notebooks/04_models_and_errors.ipynb) |
 
 Finding 6 is the one I would lead with in a review, because neither measurement produces it
 alone. The drift report says *where the test set sits*: 35.7% of its samples fall in the
 tightest-spread quartile, against 25% in training. The error analysis says *where the model
 is weak*: 0.1315 cosine in that quartile versus 0.1941 in the widest. Only together do they
 say the two overlap — and that turns a vague "performance may vary" into a number that a
-leaderboard can falsify.
+leaderboard can falsify. It did: the effect was real but explained only a quarter of the
+actual 14% gap. Being specific enough to be wrong is what made the remaining 74% visible.
 
 Two of these were found by checking my own work rather than the data: #4 came from
 recomputing features independently instead of re-reading the code that produced them, and
@@ -333,8 +352,10 @@ shift of **0.0065** versus **0.0275** across all features, and importance correl
 
 **The honest caveat:** rate features are still in the set and they *do* shift. They carry
 real information about activity, but they are the most likely source of degradation on
-unseen data, and the first place to look if a leaderboard score comes in under the hold-out
-estimate.
+unseen data — and with the leaderboard now 14% under the hold-out, mostly for reasons the
+spread analysis does not cover, they are the leading suspect. Testing that means retraining
+without the highest-drift features and spending another submission, so it stays a
+hypothesis here rather than a result.
 
 ---
 
