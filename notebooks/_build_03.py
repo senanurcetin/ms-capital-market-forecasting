@@ -32,6 +32,7 @@ transferable ones. That is not a coincidence, and the reason is design, not luck
 import warnings
 warnings.filterwarnings("ignore")
 
+import json
 import sys
 sys.path.insert(0, "..")
 from pathlib import Path as _P
@@ -136,6 +137,65 @@ kinds = {
 rows = [{"kind": k, "n": int(m.sum()), "shap_share_pct": round(shap.loc[m, "share"].sum()*100, 1)}
         for k, m in kinds.items()]
 pd.DataFrame(rows).sort_values("shap_share_pct", ascending=False).reset_index(drop=True)
+"""),
+    md("""
+### SHAP answers the wrong question, on its own
+
+SHAP is computed on a model that already has every feature. A family can rank high there
+simply by being a convenient encoding of information also available elsewhere — so "the
+model leans on it" is not the same claim as "I would lose it if the family were gone".
+
+Ablation asks the second question directly: retrain on subsets and compare. Two numbers,
+and the gap between them is the interesting part.
+
+* **standalone** — what a family achieves on its own
+* **marginal** — what it adds on top of everything else (`all` − `all without it`)
+"""),
+    code("""
+abl = pd.read_csv(FEATURES / "ablation_subsets.csv")
+marg = pd.read_csv(FEATURES / "ablation_marginal.csv")
+meta = json.loads((FEATURES / "ablation_meta.json").read_text())
+
+print(f"(ablation runs on a {meta['sample_frac']:.0%} sample - {meta['n_rows']:,} rows - so the")
+print(" absolute level sits below the full-data score. The comparison is relative and")
+print(" every subset gets identical treatment.)\\n")
+abl[["families", "n_features", "cosine_mean", "cosine_std"]]
+"""),
+    code("""
+fam_shap = shap.groupby("family")["share"].sum()
+cmp = marg.set_index("family").copy()
+cmp["shap_share"] = fam_shap
+cmp = cmp[["n_features", "shap_share", "standalone", "marginal_gain"]]
+print(cmp.to_string(float_format=lambda v: f"{v:,.5f}"))
+
+fig, ax = plt.subplots(1, 3, figsize=(13, 3.2))
+order = ["mkt", "ord", "txn"]
+for a, (col, title) in zip(ax, [("shap_share", "SHAP share of |importance|"),
+                                ("standalone", "cosine, family alone"),
+                                ("marginal_gain", "cosine added at the margin")]):
+    vals = cmp.loc[order, col]
+    a.bar(order, vals, color=["#3b6ea5", "#c0762a", "#4a8a58"])
+    a.set_title(title, fontsize=10)
+    for i, v in enumerate(vals):
+        a.text(i, v, f"{v:.3f}", ha="center", va="bottom", fontsize=9)
+plt.tight_layout(); plt.show()
+"""),
+    md("""
+The three panels do **not** agree, and that is the finding.
+
+`ord` is the **weakest family on its own** yet the **second most valuable at the margin**.
+Order flow needs the book to be interpretable — a burst of new bids means one thing when
+the spread is wide and another when it is tight — so in isolation it underperforms, while
+on top of the book it contributes heavily.
+
+`txn` runs the other way: respectable alone, but the smallest marginal contribution.
+Executed trades are downstream of order flow, and the market table already carries
+per-snapshot trade aggregates (`transaction_avgprice`, `transaction_volume`,
+`transaction_count`), so much of what it knows is already in the set.
+
+Every family still has a **positive** marginal gain, so none can be dropped — but that
+conclusion now rests on an experiment rather than on a feature-importance ranking that
+was never designed to answer it.
 """),
     md("""
 ---
@@ -283,6 +343,8 @@ the hold-out estimate.
 | Why no cross-sample features? | No symbol column exists — each sample is anonymous and self-contained |
 | What does "rolling" mean here? | Nested windows inside a sample; 600 s for market, 60 s for order/transaction |
 | What does the model use? | Imbalance features, then microprice edge and short-horizon returns |
+| Can any source table be dropped? | No — all three have positive marginal value, measured by ablation |
+| Do SHAP and ablation agree? | **No** — `ord` is weakest alone but second at the margin |
 | Do the features transfer? | 201 of 294 shift negligibly; none shifts "large" |
 | What shifts most? | Rates and counts (median 0.176) — the test period is more liquid |
 | What shifts least? | Scale-free imbalances (median 0.002–0.007) |

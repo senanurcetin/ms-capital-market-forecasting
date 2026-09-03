@@ -50,13 +50,14 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          target: api
           push: false
           load: true
           tags: mscapital:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Smoke test - the API must start without a model
+      - name: Smoke test - the slim API image must start without a model
         run: |
           docker run -d --name api -p 8000:8000 mscapital:ci
           for i in $(seq 1 30); do

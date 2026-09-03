@@ -4,8 +4,10 @@
 # repository, so ~20 GB of data never lives in git (see configs/config.yaml -> paths.data_root).
 services:
   api:
-    build: .
-    image: mscapital:latest
+    build:
+      context: .
+      target: api          # slim: serving deps only
+    image: mscapital:api
     container_name: mscapital-api
     command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
@@ -24,8 +26,10 @@ services:
     restart: unless-stopped
 
   streamlit:
-    build: .
-    image: mscapital:latest
+    build:
+      context: .
+      target: app          # dashboard: serving deps + Streamlit + BigQuery reads
+    image: mscapital:app
     container_name: mscapital-streamlit
     command:
       - streamlit
@@ -46,8 +50,10 @@ services:
     restart: unless-stopped
 
   mlflow:
-    build: .
-    image: mscapital:latest
+    build:
+      context: .
+      target: full         # everything, including MLflow and the training stack
+    image: mscapital:full
     container_name: mscapital-mlflow
     command:
       - mlflow

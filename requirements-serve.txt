@@ -1,0 +1,19 @@
+# API only - no MLflow, Streamlit, SHAP, DuckDB, Polars, Kaggle or GCP clients.
+#
+# xgboost-cpu, NOT xgboost: the default wheel pulls the NVIDIA CUDA runtime, which
+# measured 454 MB inside the image and is dead weight for CPU-only serving.
+#
+# No pyarrow: the predictor never reads Parquet - it takes JSON rows and builds a
+# DataFrame. pandas treats pyarrow as optional, and dropping it saves 153 MB.
+#
+# scikit-learn stays because Predictor can load a joblib-pickled sklearn model.
+fastapi==0.136.1
+uvicorn==0.30.6
+pydantic==2.13.4
+lightgbm==4.6.0
+xgboost-cpu==3.2.0
+scikit-learn==1.8.0
+pandas==2.2.3
+numpy==2.4.6
+joblib==1.5.3
+pyyaml==6.0.3

@@ -260,8 +260,30 @@ microstructure theory predicts:
 | `mkt_micro_minus_mid_last` | 2.83% |
 | `mkt_mid_return_60s` | 2.14% |
 
-Contribution by family: market 41.6% · order 32.7% · transaction 25.7% — all three
-source tables earn their place.
+Contribution by family: market 47.5% · order 32.4% · transaction 20.1%.
+
+### Ablation: SHAP alone answers the wrong question
+
+SHAP is computed on a model that already has every feature, so a family can rank high
+simply by encoding information available elsewhere. Retraining on subsets asks the question
+that actually matters — what would I lose without it:
+
+| Family | features | SHAP share | alone | **marginal** |
+|---|---:|---:|---:|---:|
+| `mkt` | 159 | 47.5% | +0.108 | **+0.021** |
+| `ord` | 81 | 32.4% | **+0.074** | **+0.017** |
+| `txn` | 52 | 20.1% | +0.086 | +0.008 |
+
+The three rankings disagree, and that is the finding. `ord` is the **weakest family on its
+own** yet the **second most valuable at the margin**: order flow needs the book to be
+interpretable — a burst of new bids means one thing when the spread is wide and another
+when it is tight. `txn` runs the other way, respectable alone but largely redundant once
+the book and order flow are present, since executed trades are downstream of order flow and
+the market table already carries per-snapshot trade aggregates.
+
+All three have positive marginal value, so none is dropped — but that now rests on an
+experiment rather than on an importance ranking never designed to answer it.
+See [notebook 03](notebooks/03_features_and_drift.ipynb).
 
 ### Drift: do the features survive the test set?
 
@@ -317,6 +339,26 @@ With Docker:
 ```bash
 docker compose up -d      # api :8000, streamlit :8501, mlflow :5000
 ```
+
+The build is multi-stage, one target per service, because the single-image version was
+**3.48 GB**: the API was inheriting MLflow, Streamlit, SHAP and its numba/llvmlite stack,
+DuckDB, Polars, the Kaggle client and the GCP clients — none of which are needed to load
+an artefact and score a row.
+
+| Image | Size | Contents |
+|---|---:|---|
+| `mscapital:api` | **777 MB** | serving deps + `src/inference` only |
+| `mscapital:app` | 2.49 GB | + Streamlit and read-only BigQuery |
+| `mscapital:full` | 3.48 GB | everything, for training and MLflow |
+
+Two measurements drove most of the 78% reduction on the API image. The default `xgboost`
+wheel pulls the **NVIDIA CUDA runtime — 454 MB inside the image** — which is dead weight
+for CPU-only serving, so it uses `xgboost-cpu`. And `pyarrow` (153 MB) went too: the
+predictor never reads Parquet, it takes JSON rows.
+
+That the API target can be built from `src/config.py` and `src/inference/` alone is also
+the cleanest proof that it does not depend on the training code — a static import check
+confirms `predictor` never reaches into `src.models` or `src.evaluation`.
 
 ### Credentials
 
