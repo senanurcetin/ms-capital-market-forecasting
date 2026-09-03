@@ -4,7 +4,7 @@
 PY ?= python
 DATA_ROOT ?= C:/mscapital_data
 
-.PHONY: help install test lint fmt check ingest features train api streamlit mlflow \
+.PHONY: help install test lint fmt check validate ingest features train api streamlit mlflow \
         docker-build up down logs clean
 
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "test          pytest"
 	@echo "lint          run ruff"
 	@echo "check         lint + tests"
+	@echo "validate      check the raw and feature data against their contracts"
 	@echo "ingest        feather -> parquet -> BigQuery (train)"
 	@echo "features      build the BigQuery feature layer and download it"
 	@echo "train         walk-forward training (logs to MLflow)"
@@ -37,6 +38,9 @@ fmt:
 	$(PY) -m ruff check src/ api/ streamlit_app/ tests/ --line-length 100 --fix
 
 check: lint test
+
+validate:
+	$(PY) -m src.data.validation --split train
 
 ingest:
 	$(PY) -c "from src.data.ingestion import convert_table; \

@@ -249,6 +249,25 @@ nothing and the downside of being wrong is a model that looks good and is not.
 `tests/test_train_integrity.py` injects broken setups — a random split, an embargo
 violation, a hold-out leak — and proves the guard **catches** them.
 
+### Data contracts
+
+Every fact in "measured facts" above is also a Pandera schema in
+[`src/data/validation.py`](src/data/validation.py), so a discovery becomes something the
+pipeline enforces rather than something a future reader has to rediscover:
+
+| Contract | What it protects |
+|---|---|
+| `seconds_before_predict >= 0` | look-ahead stays structurally impossible |
+| `<= window` (600 s / 60 s / 60 s) | the per-table window semantics |
+| `price >= 0`, with 0 allowed | the empty-level sentinel convention |
+| `side in {0,1}`, `order_action in {0,1}` | the encodings recovered by measurement |
+| `<= 999 rows` per sample | the truncation ceiling |
+| descending seconds within a sample | the chronological order `ARRAY_AGG` relies on |
+
+`make validate` runs them against the real data. As with the fold guard,
+`tests/test_validation.py` **injects each violation** and asserts it is caught — a schema
+nobody has seen fail is a schema nobody knows works.
+
 ---
 
 ## Explainability
@@ -332,6 +351,7 @@ intermediate data is ~20 GB.
 
 ```bash
 make ingest      # feather → parquet → BigQuery → staging
+make validate    # data contracts (Pandera) on raw + features
 make features    # BigQuery feature layer + local download
 make train       # walk-forward + MLflow
 make api         # FastAPI   :8000
