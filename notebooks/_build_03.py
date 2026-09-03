@@ -334,11 +334,16 @@ information about activity, but they are the most likely source of degradation o
 data, and they are where investigation should start if the leaderboard score comes in below
 the hold-out estimate.
 
-**Follow-up (2026-09-03).** It did: the leaderboard came in at 0.128 against a hold-out of
-0.152, and the spread-regime effect quantified in notebook 04 explains only a quarter of
-that gap. These features are the leading suspect for the rest. Confirming it means
-retraining without them and spending another submission, so it is recorded here as the
-next experiment rather than as a finding.
+**Follow-up (2026-09-03) — tested, and wrong.** The leaderboard came in at 0.128 against a
+hold-out of 0.152, and the spread-regime effect in notebook 04 explains only a quarter of
+that gap. These features were the obvious suspect for the rest, so notebook 04 tested them
+— not by spending a submission, but by varying the train→evaluation gap across the 71-month
+training span and asking whether pruning them helps *more* when the gap is *larger*.
+
+It does not, at either of two thresholds; at the aggressive one, pruning them makes the
+model slightly worse. Drift magnitude, as measured here, does **not** identify the features
+that hurt. The ranking on this page is still an honest description of what moves between
+train and test — it is just not a prediction of what will cost you.
 """),
     md("""
 ---

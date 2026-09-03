@@ -490,6 +490,135 @@ across regimes. It will read optimistically whenever the deployment distribution
 from the training distribution in ways the hold-out cannot see — which, in production
 finance, is most of the time.
 """),
+    md("""
+---
+
+## Testing the suspect: does drift actually predict degradation?
+
+Notebook 03 nominated the high-drift rate features as the likely source of the
+unexplained 74%. Nominating a suspect is not evidence.
+
+The obvious test — retrain without them and submit — costs a submission and returns one
+bit. The mechanism can be tested on the training data alone instead. If high-drift
+features are a liability **under distribution shift**, then dropping them should help
+*more* when the gap between training and evaluation is *larger*. The training set spans
+71 months, so that gap can be dialled directly:
+
+```
+train on months 0-34, FIXED          <- never changes, so only the gap varies
+evaluate on 36-40, 42-46, ... 66-70  <- increasing distance into the future
+```
+
+The quantity of interest is neither score but their difference,
+`lift(gap) = cosine(pruned) - cosine(full)`. Both feature sets see identical rows, folds
+and seeds, so run-to-run noise is shared and cancels in the difference — which matters,
+because the effect being looked for is about the size of the fold-to-fold noise. No early
+stopping: stopping on the evaluation block would tune to the thing being measured.
+
+A drift mechanism predicts lift rises with gap. A flat line falsifies it.
+"""),
+    code("""
+import pandas as pd, numpy as np
+from pathlib import Path
+from src.config import load_config
+
+feat = Path(load_config().paths.features)
+rob = pd.read_csv(feat / "drift_robustness_t020.csv")
+
+print(rob[["block", "gap_months", "n", "full", "pruned", "lift"]]
+      .to_string(index=False, float_format=lambda v: f"{v:,.5f}"))
+
+g = rob.gap_months.to_numpy(float)
+slope, r = np.polyfit(g, rob.lift, 1)[0], np.corrcoef(g, rob.lift)[0, 1]
+resid = rob.lift - np.polyval(np.polyfit(g, rob.lift, 1), g)
+se = np.sqrt((resid**2).sum() / (len(g) - 2) / ((g - g.mean())**2).sum())
+
+print()
+print(f"lift vs gap : slope {slope:+.6f}/month, Pearson r {r:+.3f}")
+print(f"95% CI over the full 32-month span: "
+      f"[{(slope-1.96*se)*32:+.5f}, {(slope+1.96*se)*32:+.5f}] cosine")
+print(f"unexplained leaderboard gap       :  {0.01545:+.5f} cosine")
+"""),
+    md("""
+**Falsified.** The lift does not rise with the gap — it is positive in the middle and
+negative at both ends, with a correlation indistinguishable from zero. Even the optimistic
+edge of the confidence interval is several times too small to account for the gap the
+experiment was built to explain.
+
+A null result invites the objection that the knob was set wrong, so the same experiment was
+re-run pruning far more aggressively.
+"""),
+    code("""
+rob10 = pd.read_csv(feat / "drift_robustness_t010.csv")
+
+for name, r_ in (("|shift| >= 0.20  (57 dropped)", rob), ("|shift| >= 0.10  (93 dropped)", rob10)):
+    sl = np.polyfit(g, r_.lift, 1)[0]
+    print(f"{name}: slope {sl:+.6f}/month  r {np.corrcoef(g, r_.lift)[0,1]:+.3f}  "
+          f"mean lift {r_.lift.mean():+.5f}")
+
+# The full arm is identical in both runs - same seeds, same columns. An unplanned
+# control: it confirms only the pruned arm changed.
+print()
+print("full arm reproduced exactly across the two runs:",
+      bool((rob.full.round(10) == rob10.full.round(10)).all()))
+"""),
+    md("""
+Pruning harder does not rescue the hypothesis — it buries it. At the aggressive threshold
+the trend is *negative* (pruning helps **less** at longer gaps, the opposite of the
+prediction) and the mean lift is negative too: dropping the high-drift features costs
+skill on average rather than buying robustness.
+
+The `full` arm reproducing to ten decimal places across the two runs is an unplanned
+control worth keeping: it confirms the two arms differed only in their column list, so the
+lift really does isolate the pruning.
+
+But the more interesting number was in the `full` column all along, and it was not what
+the experiment was looking for.
+"""),
+    code("""
+for col in ("full", "pruned"):
+    s = np.polyfit(g, rob[col], 1)[0]
+    print(f"{col:7s} vs gap: slope {s:+.6f}/month  "
+          f"r {np.corrcoef(g, rob[col])[0,1]:+.3f}   "
+          f"range {rob[col].min():.5f} - {rob[col].max():.5f}")
+
+best = rob.loc[rob.full.idxmax()]
+print()
+print(f"best block is {best.block} - the FURTHEST one, {best.gap_months:.0f} months out")
+"""),
+    md("""
+### The framing was wrong, not just the suspect
+
+Within the training period, model skill **does not decay with elapsed time at all**. The
+slope is slightly *positive*, and the most distant block scores highest. Train on months
+0-34 and evaluate 32 months later, and the model does no worse than it does two months
+later.
+
+That undercuts the whole explanation, not just the rate-feature version of it. "The market
+regime drifts over time, so a later test set scores worse" makes a prediction about the
+training period too — and the training period says no. Whatever separates the test set
+from the hold-out, it is not that the test set is *later*.
+
+So the honest state of the question:
+
+| Hypothesis | Status | Explains |
+|---|---|---|
+| Spread-regime mix shift | measured | 26% |
+| High-drift rate features | **falsified** at two thresholds | not detectable; pruning is mildly harmful |
+| Elapsed time / regime drift | **falsified** | no decay within 71 months |
+| — | remaining | **74%, unaccounted for** |
+
+Candidates that remain untested, in the order I would try them: the test set differs
+categorically rather than temporally (its order rate is 36% higher than training — a large
+difference that does not appear anywhere inside the training span); cosine is a *pooled*
+magnitude-weighted metric, so a different volatility mix changes the score even at
+identical per-sample skill; and design choices were made against CV folds neighbouring the
+hold-out, which buys some selection optimism that a genuinely independent test set would
+not honour.
+
+Two hypotheses stated in advance, two tested, two rejected. The gap is still mostly
+unexplained — and that is the accurate thing to report.
+"""),
 ]
 
 

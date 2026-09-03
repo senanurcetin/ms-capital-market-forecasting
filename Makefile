@@ -4,7 +4,7 @@
 PY ?= python
 DATA_ROOT ?= C:/mscapital_data
 
-.PHONY: help install test lint fmt check validate ingest features train api streamlit mlflow \
+.PHONY: help install test lint fmt check validate ingest features train drift-test api streamlit mlflow \
         docker-build up down logs clean
 
 help:
@@ -17,6 +17,7 @@ help:
 	@echo "ingest        feather -> parquet -> BigQuery (train)"
 	@echo "features      build the BigQuery feature layer and download it"
 	@echo "train         walk-forward training (logs to MLflow)"
+	@echo "drift-test    does feature drift predict degradation? (no submission needed)"
 	@echo "api           run FastAPI locally (:8000)"
 	@echo "streamlit     run the dashboard locally (:8501)"
 	@echo "mlflow        MLflow UI (:5000)"
@@ -56,6 +57,9 @@ features:
 
 train:
 	$(PY) -m src.models.train
+
+drift-test:
+	$(PY) -m src.evaluation.drift_robustness --threshold 0.2
 
 train-quick:
 	$(PY) -m src.models.train --quick --folds 2 --sample-frac 0.25 --no-mlflow

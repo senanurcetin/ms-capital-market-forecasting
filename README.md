@@ -46,10 +46,24 @@ The direction was right and the magnitude wrong by roughly a factor of three. Th
 prediction is left in place with the correction beneath it, because a forecast is only
 evidence of understanding if it is recorded before the answer and reported honestly after.
 
+Two follow-up hypotheses were then stated and tested — and **both rejected**, neither
+costing a submission:
+
+| Hypothesis | Method | Verdict |
+|---|---|---|
+| Spread-regime mix shift | reweight hold-out by test spread mix | real, explains **26%** |
+| High-drift rate features hurt under shift | prune them; vary train→eval gap over 32 months | **falsified** at two thresholds — pruning is mildly *harmful* |
+| Skill decays with elapsed time | same experiment, `full` arm | **falsified** — slope is *positive*; the most distant block scores best |
+
+That last row is the one that reframes the problem. Within the 71-month training span,
+skill does not decay with time at all, so "the test set is later, therefore worse" cannot
+be the explanation. **74% of the gap remains unaccounted for**, and saying so is more
+useful than a tidy story. See [notebook 04](notebooks/04_models_and_errors.ipynb).
+
 The transferable finding is about the *estimator*, not this model: a hold-out carved from
-the end of the training period measures generalisation across time **within one regime**.
-It reads optimistically whenever the deployment distribution differs in ways the hold-out
-cannot see — here, by 14%.
+the end of the training period measures generalisation **within one regime**. It reads
+optimistically whenever the deployment distribution differs in ways the hold-out cannot
+see — here, by 14%.
 
 Walk-forward CV, full data, 5 folds:
 
@@ -350,12 +364,17 @@ shift of **0.0065** versus **0.0275** across all features, and importance correl
 **−0.21** with drift. The features the model leans on are the ones that move least. See
 [notebook 03](notebooks/03_features_and_drift.ipynb).
 
-**The honest caveat:** rate features are still in the set and they *do* shift. They carry
-real information about activity, but they are the most likely source of degradation on
-unseen data — and with the leaderboard now 14% under the hold-out, mostly for reasons the
-spread analysis does not cover, they are the leading suspect. Testing that means retraining
-without the highest-drift features and spending another submission, so it stays a
-hypothesis here rather than a result.
+**The honest caveat, and its resolution:** rate features are still in the set and they *do*
+shift, so they were the natural suspect for the leaderboard shortfall — and that suspicion
+turned out to be wrong. Rather than spend a submission to find out,
+[notebook 04](notebooks/04_models_and_errors.ipynb) tests the *mechanism* on training data
+alone: train on a fixed window (months 0–34) and evaluate at increasing distance into the
+future. If high-drift features were a liability under shift, pruning them would help more
+as the gap grows.
+
+It does not. At `|shift| >= 0.2` the trend is flat (r = −0.11); at `|shift| >= 0.1` it is
+negative and pruning **costs** skill on average. The hypothesis is falsified at both
+thresholds, without a submission.
 
 ---
 
