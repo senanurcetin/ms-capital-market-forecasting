@@ -72,6 +72,11 @@ def load_dataset(
     table = table.cast(pa.schema(cast))
     df = table.to_pandas(split_blocks=True, self_destruct=True)
     del table
+    # Defensive: artefacts written before download() started ordering may be shuffled,
+    # and any sequential read of a shuffled table is quietly wrong.
+    if "sample_id" in df.columns and not df["sample_id"].is_monotonic_increasing:
+        log.warning("%s is not ordered by sample_id - sorting in place", path.name)
+        df = df.sort_values("sample_id", ignore_index=True)
     return df
 
 
@@ -163,6 +168,12 @@ def run_walk_forward(
                         "val_months": f"{fold.val_months[0]}-{fold.val_months[1]}",
                         "embargo_months": f"{fold.embargo_months[0]}-{fold.embargo_months[1]}",
                         "n_features": len(feats),
+                        # Self-describing runs: without these a 5% smoke run and a
+                        # full-data run look identical in the MLflow UI, which is
+                        # exactly the confusion this project should not ship.
+                        "n_rows_total": len(df),
+                        "n_rows_train": len(tr),
+                        "sample_frac": round(len(df) / cfg.samples["train"], 4),
                         **{f"hp_{k}": v for k, v in getattr(model, "params", {}).items()},
                     })
                     mlflow.log_metrics({**scores, "train_seconds": elapsed})

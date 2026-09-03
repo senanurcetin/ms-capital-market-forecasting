@@ -108,7 +108,19 @@ def download(split: str = "train", *, bq: bigquery.Client | None = None) -> Path
 
     import pyarrow.parquet as pq
 
-    arrow = bq.list_rows(bq.get_table(tid)).to_arrow(create_bqstorage_client=True)
+    # ORDER BY sample_id matters. bq.list_rows() returns rows in arbitrary order, and a
+    # shuffled artefact silently breaks anything that reads it as a sequence - the target
+    # autocorrelation, for instance, reads +0.005 shuffled versus its true +0.001.
+    # Nothing in the pipeline depends on row order (folds are derived from the month
+    # column), but an artefact whose order is meaningless is a trap for the next reader.
+    # The table is clustered by sample_id, so this ordering is cheap.
+    arrow = bq.query(f"SELECT * FROM `{tid}` ORDER BY sample_id").result().to_arrow(
+        create_bqstorage_client=True
+    )
+    sid = arrow.column("sample_id").to_numpy()
+    if not (sid[1:] > sid[:-1]).all():
+        raise AssertionError(f"{tid}: rows are not strictly ordered by sample_id")
     pq.write_table(arrow, dst, compression="zstd")
-    log.info("[%s] downloaded: %.2f GB", dst.name, dst.stat().st_size / 1e9)
+    log.info("[%s] downloaded: %.2f GB, ordered by sample_id", dst.name,
+             dst.stat().st_size / 1e9)
     return dst

@@ -123,3 +123,40 @@ def test_load_dataset_float32_halves_memory(tmp_path, monkeypatch):
     pd.testing.assert_series_equal(
         wide["mkt_f0"].astype(np.float32), slim["mkt_f0"], check_names=False
     )
+
+
+def test_load_dataset_sorts_a_shuffled_artefact(tmp_path, monkeypatch):
+    """A shuffled artefact must be repaired on load, not silently accepted.
+
+    BigQuery's list_rows() returns rows in arbitrary order. Nothing in the pipeline
+    depends on row order - folds come from the month column - but a sequential read of
+    a shuffled table is quietly wrong: the target autocorrelation reads +0.005 shuffled
+    versus its true +0.001. This guard makes the artefact's order meaningful.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from src.config import load_config
+    from src.models import train as train_mod
+
+    n = 2000
+    rng = np.random.default_rng(11)
+    order = rng.permutation(n)
+    tbl = pa.table({
+        "sample_id": order.astype(np.int32),
+        "month": (order // 200).astype(np.int16),
+        "target": rng.normal(0, 0.0026, n),
+        "mkt_f0": rng.normal(0, 1, n),
+    })
+
+    features_dir = tmp_path / "features"
+    features_dir.mkdir()
+    pq.write_table(tbl, features_dir / "dataset_train.parquet")
+
+    cfg = load_config()
+    monkeypatch.setitem(cfg["paths"], "features", str(features_dir))
+    monkeypatch.setattr(train_mod, "load_config", lambda: cfg)
+
+    df = train_mod.load_dataset("train")
+    assert df["sample_id"].is_monotonic_increasing
+    assert len(df) == n
