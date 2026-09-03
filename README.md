@@ -37,6 +37,41 @@ predictions are centred on zero — exactly what a shift-sensitive metric reward
 
 ---
 
+## What I found
+
+Five things in this dataset are undocumented, would be got wrong by assumption, and would
+each degrade a model *without raising a single error*. Finding them is most of the work in
+this repository.
+
+| # | Finding | If missed | Where |
+|---|---|---|---|
+| 1 | The market table's window is **600 s**, not the 60 s of the other two | 90% of the order-book history is silently discarded | [01](notebooks/01_data_discovery.ipynb) |
+| 2 | `price = 0` is an **empty-level sentinel**, not a price | mean relative spread reads **−0.0064** instead of **+0.0013** — the sign flips | [01](notebooks/01_data_discovery.ipynb) |
+| 3 | `side` and `order_action` encodings are **recoverable by measurement** | order-flow features get built backwards | [01](notebooks/01_data_discovery.ipynb) |
+| 4 | The `*_last` features were reading from **different snapshots** | `mkt_depth_imb1_last` deviated by 1.994 — the full width of its range | [01](notebooks/01_data_discovery.ipynb) |
+| 5 | Predictive features and **transferable** features are the same features | — (this one is the payoff, not a trap) | [03](notebooks/03_features_and_drift.ipynb) |
+
+Two of these were found by checking my own work rather than the data: #4 came from
+recomputing features independently instead of re-reading the code that produced them, and
+a sixth item — a claim that the 999-row ceiling meant truncation — turned out to be
+**over-stated** and is documented as a mistake and its repair, because the lesson
+generalises: *an exact round number is evidence of a mechanism, not evidence that the
+mechanism matters.*
+
+### Notebooks
+
+Each is executed, with outputs, and generated from a script so the narrative stays
+reviewable in version control. All follow the same shape: **what I expected → what I
+measured → what I changed.**
+
+| | |
+|---|---|
+| [01 — Data Discovery](notebooks/01_data_discovery.ipynb) | the four data findings, plus one corrected mistake |
+| [02 — The Target, and Why Random Splits Are Banned](notebooks/02_target_and_leakage.ipynb) | the validation rule settled by experiment: a random split inflates the score by +0.0047 (1.04×) |
+| [03 — Features, and Whether They Survive the Test Set](notebooks/03_features_and_drift.ipynb) | SHAP × drift: the top-20 features shift 4.2× less than average |
+
+---
+
 ## The data: measured facts, not assumptions
 
 Row counts come from the Arrow footers; distributions come from the data itself.
@@ -142,7 +177,7 @@ synthetic single-batch round-trip, and in BigQuery the alignment check found **z
 
 ## Validation: walk-forward with an embargo
 
-Random splits are **forbidden** — consecutive samples can have overlapping windows.
+Random splits are **forbidden** — consecutive samples can have overlapping lookback windows.
 
 ```
 Fold 1: train months 0–34 │ embargo │ val 36–40
@@ -150,6 +185,12 @@ Fold 1: train months 0–34 │ embargo │ val 36–40
 Fold 5: train months 0–58 │ embargo │ val 60–64
 HOLD-OUT (untouchable): months 65–70
 ```
+
+That ban is measured, not inherited. [Notebook 02](notebooks/02_target_and_leakage.ipynb)
+trains the same model on the same data under both splits: the random arrangement scores
+**+0.0047 higher (1.04×)**. Real inflation, but far smaller than the rule implies — which
+is consistent with the near-zero target autocorrelation. The rule stays, because it costs
+nothing and the downside of being wrong is a model that looks good and is not.
 
 `assert_fold_integrity()` re-verifies each fold against the data at runtime.
 `tests/test_train_integrity.py` injects broken setups — a random split, an embargo
@@ -172,6 +213,34 @@ microstructure theory predicts:
 
 Contribution by family: market 41.6% · order 32.7% · transaction 25.7% — all three
 source tables earn their place.
+
+### Drift: do the features survive the test set?
+
+Of 294 features, 201 shift negligibly between train and test, 85 slightly, 8 moderately,
+and **none** shifts "large" (standardised mean difference ≥ 0.5). But the average hides the
+structure:
+
+| Feature kind | median shift |
+|---|---:|
+| imbalance / OFI / return (scale-free) | **0.002 – 0.007** |
+| depth, last-snapshot | 0.021 – 0.028 |
+| rate / intensity / count | **0.176** |
+| spread | 0.260 |
+
+The test period is a measurably more liquid market — 1.36× order events, 1.35× trade count,
+1.24× depth, but **0.80× spread** and 0.91× mid volatility. Everything that *counts* events
+moves; everything that measures the *balance* between two counts does not, because a ratio
+divides the density out.
+
+That matters because the two rankings converge: the top-20 features by SHAP have a median
+shift of **0.0065** versus **0.0275** across all features, and importance correlates
+**−0.21** with drift. The features the model leans on are the ones that move least. See
+[notebook 03](notebooks/03_features_and_drift.ipynb).
+
+**The honest caveat:** rate features are still in the set and they *do* shift. They carry
+real information about activity, but they are the most likely source of degradation on
+unseen data, and the first place to look if a leaderboard score comes in under the hold-out
+estimate.
 
 ---
 
