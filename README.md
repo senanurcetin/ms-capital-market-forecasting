@@ -12,34 +12,47 @@ competition dataset.
 
 ## Headline result
 
-Measured **once** on the hold-out months (65–70, 36,669 samples), which were never
-touched during feature design, model selection or tuning:
+Measured **once** on the hold-out months (65–70, 104,770 samples), which were never
+touched during feature design, model selection, tuning or early stopping:
 
 | Metric | Value |
 |---|---:|
-| **Cosine similarity** | **0.14853** |
-| Pearson correlation | 0.14946 |
-| Directional accuracy | 0.5484 |
-| RMSE | 0.003354 |
+| **Cosine similarity** | **0.15171** |
+| Pearson correlation | 0.15236 |
+| Directional accuracy | 0.5516 |
+| RMSE | 0.003364 |
 
-The hold-out score matches the walk-forward CV estimate (0.144), so the model is not
-overfitted to the validation folds. Pearson being almost identical to cosine confirms
-predictions are centred on zero — exactly what a shift-sensitive metric rewards.
+Trained on all 1,257,637 samples and 292 features. Pearson being almost identical to
+cosine confirms the predictions are centred on zero — exactly what a shift-sensitive
+metric rewards.
 
-| Model (walk-forward CV) | cosine mean | std | dir. acc |
-|---|---:|---:|---:|
-| **ensemble** | **+0.1455** | 0.0084 | — |
-| lightgbm | +0.1440 | 0.0088 | 0.550 |
-| xgboost | +0.1398 | 0.0053 | 0.549 |
-| ridge | +0.1241 | 0.0100 | 0.543 |
-| zero | 0.0000 | — | — |
-| mean | −0.0036 | 0.0010 | 0.522 |
+**And a prediction that can be checked.** The test period's spread distribution differs
+from the training period's, and the model is measurably weakest in tight spreads.
+Reweighting the hold-out score by the test set's spread mix gives **≈ 0.143**, a
+degradation of **−3.7%** from that cause alone. A leaderboard score near that is what this
+analysis expects; one materially below it would need a different explanation.
+See [notebook 04](notebooks/04_models_and_errors.ipynb).
+
+Walk-forward CV, full data, 5 folds:
+
+| Model | cosine mean | across-fold std |
+|---|---:|---:|
+| **ensemble** | **+0.14088** | 0.00413 |
+| lightgbm | +0.13869 | 0.00332 |
+| xgboost | +0.13815 | 0.00471 |
+| ridge | +0.11813 | 0.00501 |
+| mean | +0.00588 | 0.01374 |
+| zero | 0.00000 | — |
+
+The two tree models differ by less than a fifth of the fold-to-fold noise — they are
+statistically indistinguishable, so stability decides. The ensemble beats the best single
+model in **5 of 5 folds** (median gain +0.0017) using closed-form OLS weights, no tuning.
 
 ---
 
 ## What I found
 
-Five things in this dataset are undocumented, would be got wrong by assumption, and would
+Six things here are undocumented, would be got wrong by assumption, and would
 each degrade a model *without raising a single error*. Finding them is most of the work in
 this repository.
 
@@ -50,6 +63,14 @@ this repository.
 | 3 | `side` and `order_action` encodings are **recoverable by measurement** | order-flow features get built backwards | [01](notebooks/01_data_discovery.ipynb) |
 | 4 | The `*_last` features were reading from **different snapshots** | `mkt_depth_imb1_last` deviated by 1.994 — the full width of its range | [01](notebooks/01_data_discovery.ipynb) |
 | 5 | Predictive features and **transferable** features are the same features | — (this one is the payoff, not a trap) | [03](notebooks/03_features_and_drift.ipynb) |
+| 6 | The model is **weakest exactly where the test set lives** | the hold-out score overstates what the leaderboard will show, by ~3.7% | [04](notebooks/04_models_and_errors.ipynb) |
+
+Finding 6 is the one I would lead with in a review, because neither measurement produces it
+alone. The drift report says *where the test set sits*: 35.7% of its samples fall in the
+tightest-spread quartile, against 25% in training. The error analysis says *where the model
+is weak*: 0.1315 cosine in that quartile versus 0.1941 in the widest. Only together do they
+say the two overlap — and that turns a vague "performance may vary" into a number that a
+leaderboard can falsify.
 
 Two of these were found by checking my own work rather than the data: #4 came from
 recomputing features independently instead of re-reading the code that produced them, and
@@ -69,6 +90,7 @@ measured → what I changed.**
 | [01 — Data Discovery](notebooks/01_data_discovery.ipynb) | the four data findings, plus one corrected mistake |
 | [02 — The Target, and Why Random Splits Are Banned](notebooks/02_target_and_leakage.ipynb) | the validation rule settled by experiment: a random split inflates the score by +0.0047 (1.04×) |
 | [03 — Features, and Whether They Survive the Test Set](notebooks/03_features_and_drift.ipynb) | SHAP × drift: the top-20 features shift 4.2× less than average |
+| [04 — Models, and Where They Fail](notebooks/04_models_and_errors.ipynb) | error analysis by liquidity regime — and the risk it exposes |
 
 ---
 
@@ -165,7 +187,7 @@ Kaggle feather (single record batch, 11.5 GB uncompressed)
         │             mscapital_raw → staging → features → mart
         │             GROUP BY sample_id: 804M rows → 1.26M rows
         ▼
- dataset_train.parquet (1.39 GB, 294 features)
+ dataset_train.parquet (1.40 GB, 292 features)
         │
         ▼
  Walk-forward CV ──► MLflow ──► model artefact ──► FastAPI ──► Streamlit
@@ -243,7 +265,7 @@ source tables earn their place.
 
 ### Drift: do the features survive the test set?
 
-Of 294 features, 201 shift negligibly between train and test, 85 slightly, 8 moderately,
+Of 292 features, 199 shift negligibly between train and test, 85 slightly, 8 moderately,
 and **none** shifts "large" (standardised mean difference ≥ 0.5). But the average hides the
 structure:
 
@@ -319,7 +341,7 @@ usage sits at roughly 13% of the 1 TiB monthly free allowance. Batch load jobs a
 src/
   config.py              single source of paths and constants
   data/                  ingestion (column groups) · bq_loader · staging · mart · test_pipeline
-  features/              market (159) · order (82) · transaction (53) · assemble
+  features/              market (159) · order (81) · transaction (52) · assemble
   evaluation/            metrics (cosine) · temporal_validation · backtesting · explain
   models/                baseline · lightgbm · xgboost · ensemble · train (CLI) · finalize
   inference/             predictor — used by the API, which never imports training code
