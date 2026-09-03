@@ -72,6 +72,33 @@ measured → what I changed.**
 
 ---
 
+## Run it in 30 seconds
+
+The real pipeline needs Kaggle credentials, a GCP project, ~20 GB of disk and hours of
+upload. So there is a second path that needs none of it:
+
+```bash
+pip install -r requirements-dev.txt
+make demo
+```
+
+That generates synthetic data **with the real schema and the real quirks** — one Arrow
+record batch per file, a 600 s market window against 60 s elsewhere, `price = 0`
+sentinels paired with zero volume, mid-normalised prices — and then drives the genuine
+code: the column-group converter, the walk-forward harness with its embargo and runtime
+leakage guard, every model, the closed-form ensemble, the hold-out measurement, and
+artefact save/reload in the format the API serves. It finishes in about half a minute and
+prints the commands to start the API and dashboard on the result.
+
+What it does *not* cover is the BigQuery feature SQL, which needs GCP. That layer is
+tested structurally instead (`tests/test_feature_sql.py`), and the demo's feature table
+takes its column names from the same SQL generators, so the two schemas cannot drift apart.
+
+> The demo's data is synthetic and its signal is planted, so its scores are meaningless
+> as results. **No number reported anywhere in this repository comes from it.**
+
+---
+
 ## The data: measured facts, not assumptions
 
 Row counts come from the Arrow footers; distributions come from the data itself.

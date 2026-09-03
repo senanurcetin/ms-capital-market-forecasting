@@ -8,6 +8,7 @@ DATA_ROOT ?= C:/mscapital_data
         docker-build up down logs clean
 
 help:
+	@echo "demo          run the whole project end to end on synthetic data (~30 s)"
 	@echo "install       install dependencies (including dev)"
 	@echo "test          pytest"
 	@echo "lint          run ruff"
@@ -19,6 +20,9 @@ help:
 	@echo "streamlit     run the dashboard locally (:8501)"
 	@echo "mlflow        MLflow UI (:5000)"
 	@echo "up / down     bring the whole stack up/down with docker compose"
+
+demo:
+	$(PY) -m src.demo
 
 install:
 	$(PY) -m pip install -r requirements-dev.txt

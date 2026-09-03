@@ -48,11 +48,22 @@ class XGBoostModel:
     def fit(self, X: pd.DataFrame, y: np.ndarray,
             eval_set: tuple[pd.DataFrame, np.ndarray] | None = None, **_) -> "XGBoostModel":
         self.features_ = feature_columns(X)
-        dtrain = xgb.DMatrix(X[self.features_], label=y, nthread=-1)
+        # QuantileDMatrix, not DMatrix. A plain DMatrix keeps the full float32 matrix
+        # AND its own copy; on the largest fold (1.05M rows x 294 features) that asked
+        # for a 2.45 GB allocation and died. QuantileDMatrix bins to max_bin upfront -
+        # the same trick LightGBM uses - so memory drops roughly to the bin count and
+        # the model is unchanged, because 'hist' would have binned anyway.
+        # max_bin must be IDENTICAL across every QuantileDMatrix and the booster, or
+        # XGBoost refuses the eval set outright.
+        max_bin = int(self.params.get("max_bin", 256))
+        dtrain = xgb.QuantileDMatrix(X[self.features_], label=y, max_bin=max_bin, nthread=-1)
         evals, es = [], None
         if eval_set is not None:
             Xv, yv = eval_set
-            evals = [(xgb.DMatrix(Xv[self.features_], label=yv, nthread=-1), "valid")]
+            # ref=dtrain reuses the training bin edges - required for a valid eval set.
+            dvalid = xgb.QuantileDMatrix(Xv[self.features_], label=yv, ref=dtrain,
+                                         max_bin=max_bin, nthread=-1)
+            evals = [(dvalid, "valid")]
             es = self.early_stopping_rounds
         self.booster_ = xgb.train(
             self.params, dtrain,
@@ -66,6 +77,8 @@ class XGBoostModel:
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         if self.booster_ is None:
             raise RuntimeError("fit() must be called first")
+        # Prediction uses a plain DMatrix: no binning is needed to score an already
+        # trained booster, and it avoids the max_bin/ref coupling entirely.
         dm = xgb.DMatrix(X[self.features_], nthread=-1)
         rng = (0, self.best_iteration_ + 1) if self.best_iteration_ is not None else None
         return self.booster_.predict(dm, iteration_range=rng)
