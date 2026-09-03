@@ -127,15 +127,25 @@ def test_depth_imbalance_guarded_on_two_sided_book():
     assert "IF(ap1 IS NULL OR bp1 IS NULL, NULL," in sql
 
 
-def test_truncation_features_present_for_capped_tables():
-    """order/transaction cap at 999 rows per sample -> truncation signal."""
+def test_window_covered_emitted_but_not_a_dead_truncation_flag():
+    """The 999 ceiling is real but almost never binds, so no is_truncated flag.
+
+    Measured over the full sets: only 31 of 1,257,637 train samples reach the cap for
+    order and 6 for transaction (test: 40 and 2). A flag would be constant-zero for
+    99.997% of rows - a feature that cannot inform any split. What IS emitted is
+    *_window_covered, the span the events actually reach, which varies continuously.
+
+    This test pins the decision so the dead flag cannot quietly come back.
+    """
     cfg = load_config()
     for table in cfg.truncation["tables"]:
         sql = MODULES[table][0].build_sql("train")
         prefix = MODULES[table][1]
-        assert f"{prefix}is_truncated" in sql
         assert f"{prefix}window_covered" in sql
-        assert str(cfg.truncation["row_cap"]) in sql
+        assert f"{prefix}is_truncated" not in sql, (
+            f"{table}: is_truncated is constant-zero for 99.997% of rows - "
+            "it was removed after measuring the cap's real prevalence"
+        )
 
 
 def test_assemble_includes_label_for_train_only():

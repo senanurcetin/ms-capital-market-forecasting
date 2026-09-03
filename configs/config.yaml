@@ -78,9 +78,22 @@ window:
     order: [1.0, 5.0, 10.0, 30.0, 60.0]
     transaction: [1.0, 5.0, 10.0, 30.0, 60.0]
 
-# order and transaction cap at EXACTLY 999 rows per sample (market peaks at 212, no cap).
-# Capped samples therefore cover less than the full 60 s window. That is a data-quality
-# signal, so it is encoded as a feature (ord_is_truncated / txn_is_truncated).
+# order and transaction never exceed EXACTLY 999 rows per sample, in either split.
+# That is a real hard ceiling in the source data - too exact, and shared by two
+# independent tables, to be coincidence. (market has no such ceiling: max 212 train /
+# 200 test.)
+#
+# BUT IT ALMOST NEVER BINDS. Measured over the full sets:
+#   order       train 31 / 1,257,637 samples at the cap (0.0025%) | test 40 (0.0062%)
+#   transaction train  6 / 1,257,637 (0.0005%)                    | test  2 (0.0003%)
+# The row-count distribution decays smoothly - the 900-949 band holds 1,641 order
+# samples versus 135 at >=995 - so there is no pile-up and therefore no truncation
+# EFFECT to model. An is_truncated flag would be constant-zero for 99.997% of rows,
+# so it is deliberately NOT emitted as a feature.
+#
+# What is emitted instead is *_window_covered: how far back a sample's events actually
+# reach. That varies continuously (order mean 58.3 s, std 3.1 s, min 0.1 s) and carries
+# real information about activity.
 truncation:
   row_cap: 999
   tables: [order, transaction]

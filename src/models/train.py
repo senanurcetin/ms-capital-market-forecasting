@@ -111,9 +111,17 @@ def run_walk_forward(
         import mlflow as _mlflow
 
         mlflow = _mlflow
-        Path(cfg.paths.mlruns).mkdir(parents=True, exist_ok=True)
-        mlflow.set_tracking_uri(Path(cfg.paths.mlruns).as_uri())
-        mlflow.set_experiment(experiment or cfg.mlflow.experiment)
+        # SQLite backend, not the bare filesystem store: MLflow 3.x puts './mlruns'
+        # file stores in maintenance mode and refuses to open them. SQLite is also
+        # what docker-compose serves, so local and containerised tracking agree.
+        root = Path(cfg.paths.mlruns)
+        root.mkdir(parents=True, exist_ok=True)
+        (root / "artifacts").mkdir(exist_ok=True)
+        mlflow.set_tracking_uri(f"sqlite:///{(root / 'mlflow.db').as_posix()}")
+        name = experiment or cfg.mlflow.experiment
+        if mlflow.get_experiment_by_name(name) is None:
+            mlflow.create_experiment(name, artifact_location=(root / "artifacts").as_uri())
+        mlflow.set_experiment(name)
 
     results: dict[str, list[dict]] = {name: [] for name in model_factories}
     fold_preds: list[dict[str, np.ndarray]] = []

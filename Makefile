@@ -60,8 +60,8 @@ streamlit:
 
 mlflow:
 	$(PY) -m mlflow server --host 0.0.0.0 --port 5000 \
-	  --backend-store-uri sqlite:///$(DATA_ROOT)/mlflow/mlflow.db \
-	  --default-artifact-root $(DATA_ROOT)/mlflow/artifacts
+	  --backend-store-uri sqlite:///$(DATA_ROOT)/mlruns/mlflow.db \
+	  --default-artifact-root $(DATA_ROOT)/mlruns/artifacts
 
 docker-build:
 	docker compose build

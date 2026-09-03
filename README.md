@@ -58,9 +58,15 @@ the problem reduces to tabular regression over 1,257,637 rows.
 
 | Table | Window | Rows per sample | Note |
 |---|---:|---:|---|
-| market | **600 s** | 176.3 | one snapshot every ~3.4 s; no row cap (max 212) |
-| order | 60 s | 135.2 | **caps at 999 rows** → truncation feature |
-| transaction | 60 s | 82.7 | **caps at 999 rows** → truncation feature |
+| market | **600 s** | 176.3 | one snapshot every ~3.4 s; no ceiling (max 212) |
+| order | 60 s | 135.2 | hard ceiling at 999 rows, but it binds for 0.0025% of samples |
+| transaction | 60 s | 82.7 | same ceiling, binds for 0.0005% |
+
+The 999 ceiling is real — never exceeded, in either split, for two independent tables —
+but measuring *how often it binds* showed it almost never does (31 and 6 samples out of
+1,257,637). The `is_truncated` features it originally justified were constant-zero for
+99.997% of rows and were removed; `*_window_covered`, which varies continuously, was kept.
+See `notebooks/01_data_discovery.ipynb`.
 
 `seconds_before_predict` is the distance back from the prediction instant, sorted
 descending within a sample; `0` is the tick closest to prediction time. Because the

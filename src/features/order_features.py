@@ -12,7 +12,7 @@ this module emits RATIOS and RATES rather than raw counts.
 from __future__ import annotations
 
 from src.features.common import (
-    cond, feature_table, imbalance, row_cap, safe_div, staged, wlabel, windows,
+    cond, feature_table, imbalance, safe_div, staged, wlabel, windows,
 )
 
 NEWLINE_SEP = ",\n"
@@ -80,8 +80,13 @@ def build_sql(split: str = "train") -> str:
     base += [
         "    COUNT(*) AS ord_n_total",
         "    MIN(seconds_before_predict) AS ord_last_seconds_gap",
-        # Truncation signal - see transaction_features for the rationale.
-        f"    IF(COUNT(*) >= {row_cap()}, 1, 0) AS ord_is_truncated",
+        # 999 is a hard ceiling in the source data (never exceeded, in either split,
+        # for both order and transaction - too exact to be coincidence). But it almost
+        # never BINDS: only 31 of 1,257,637 train samples reach it for order and 6 for
+        # transaction. An is_truncated flag would therefore be constant-zero for
+        # 99.997% of rows, so it is not emitted. What IS informative is how far back
+        # the events actually reach, which varies continuously (order: mean 58.3 s,
+        # std 3.1 s, min 0.1 s).
         "    MAX(seconds_before_predict) AS ord_window_covered",
         f"    {safe_div(f'COUNTIF(order_action = {CANCEL})', 'COUNT(*)')} AS ord_cancel_share_total",
         "    STDDEV(volume) AS ord_volume_std",
