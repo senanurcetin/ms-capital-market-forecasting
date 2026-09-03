@@ -81,9 +81,12 @@ def step_submission(model_version: str = "v1") -> Path:
 
     from src.inference.predictor import load_bundle
 
+    from src.models.train import load_dataset
+
     cfg = load_config()
     bundle = load_bundle(Path(cfg.paths.data_root) / "models" / "current")
-    df = pd.read_parquet(Path(cfg.paths.features) / "dataset_test.parquet")
+    # float32 keeps peak memory at ~0.7 GB instead of ~1.4 GB (see load_dataset).
+    df = load_dataset("test")
     if len(df) != cfg.samples["test"]:
         raise SystemExit(f"test rows {len(df):,} != {cfg.samples['test']:,}")
 
@@ -91,7 +94,7 @@ def step_submission(model_version: str = "v1") -> Path:
     if missing:
         raise SystemExit(f"{len(missing)} feature(s) missing in test: {missing[:5]}")
 
-    X = df[bundle.features].astype("float64")
+    X = df[bundle.features].astype("float32")
     model = bundle.model
     if model.__class__.__module__.startswith("xgboost"):
         import xgboost as xgb

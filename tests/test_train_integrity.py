@@ -81,3 +81,45 @@ def test_random_split_would_be_caught(months):
     tr, va = perm[: int(0.8 * len(perm))], perm[int(0.8 * len(perm)) :]
     with pytest.raises(AssertionError):
         assert_fold_integrity(months, build_folds()[0], tr, va)
+
+
+def test_load_dataset_float32_halves_memory(tmp_path, monkeypatch):
+    """float32 loading must halve memory without changing the values.
+
+    This is not cosmetic: the float64 path exhausted RAM on a 16 GB machine while
+    another job held ~2 GB, which is exactly how it failed during development.
+    """
+    import pandas as pd
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from src.config import load_config
+    from src.models import train as train_mod
+
+    n, k = 5000, 40
+    rng = np.random.default_rng(3)
+    data = {"sample_id": np.arange(n, dtype=np.int32),
+            "month": np.repeat(np.arange(10), n // 10).astype(np.int16),
+            "target": rng.normal(0, 0.0026, n)}
+    for i in range(k):
+        data[f"mkt_f{i}"] = rng.normal(0, 1, n)
+    tbl = pa.table(data)
+
+    features_dir = tmp_path / "features"
+    features_dir.mkdir()
+    pq.write_table(tbl, features_dir / "dataset_train.parquet")
+
+    cfg = load_config()
+    monkeypatch.setitem(cfg["paths"], "features", str(features_dir))
+    train_mod.load_config.cache_clear()
+    monkeypatch.setattr(train_mod, "load_config", lambda: cfg)
+
+    wide = train_mod.load_dataset("train", float32=False)
+    slim = train_mod.load_dataset("train", float32=True)
+
+    assert slim["mkt_f0"].dtype == np.float32
+    assert slim["sample_id"].dtype == np.int32          # ids stay integral
+    assert slim.memory_usage(deep=True).sum() < 0.6 * wide.memory_usage(deep=True).sum()
+    pd.testing.assert_series_equal(
+        wide["mkt_f0"].astype(np.float32), slim["mkt_f0"], check_names=False
+    )

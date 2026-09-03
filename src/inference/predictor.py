@@ -118,7 +118,11 @@ class Predictor:
         extra = [c for c in df.columns if c not in expected]
         if extra:
             log.warning("ignored %d unexpected field(s) in request: %s", len(extra), extra[:5])
-        return df[expected].astype("float64")
+        # float32, not float64: LightGBM and XGBoost accept it natively and bin to
+        # uint8 internally, so nothing is lost - but a 648k x 289 batch needs 1.4 GB
+        # as float64 versus 0.7 GB as float32. The float64 version ran out of memory
+        # while generating the test submission on a 16 GB machine.
+        return df[expected].astype("float32")
 
     def predict(self, rows: list[dict]) -> np.ndarray:
         if not rows:

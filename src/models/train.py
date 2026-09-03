@@ -30,14 +30,49 @@ from src.models.ensemble import evaluate_ensemble_gain
 log = logging.getLogger(__name__)
 
 
-def load_dataset(split: str = "train", columns: list[str] | None = None) -> pd.DataFrame:
+def load_dataset(
+    split: str = "train",
+    columns: list[str] | None = None,
+    *,
+    float32: bool = True,
+) -> pd.DataFrame:
+    """Load the compact feature table.
+
+    float32 by default, which HALVES peak memory: 1.26M rows x 294 features is
+    2.96 GB as float64 but 1.48 GB as float32, and pandas needs roughly twice that
+    transiently while reading. On a 16 GB machine the float64 path can fail outright
+    if anything else is running - it did during development.
+
+    No precision is lost that matters: the source columns are float32 in the original
+    feather files, and LightGBM bins features into uint8 internally anyway. Metrics
+    still promote to float64 (see evaluation/metrics.py), so scoring is unaffected.
+    """
     cfg = load_config()
     path = Path(cfg.paths.features) / f"dataset_{split}.parquet"
     if not path.exists():
         raise FileNotFoundError(
             f"{path} not found - run src/features/assemble.py:download('{split}') first"
         )
-    return pd.read_parquet(path, columns=columns)
+    if not float32:
+        return pd.read_parquet(path, columns=columns)
+
+    import pyarrow.parquet as pq
+
+    table = pq.read_table(path, columns=columns)
+    import pyarrow as pa
+
+    cast = []
+    for field in table.schema:
+        if field.name in ("sample_id", "month"):
+            cast.append(field)
+        elif pa.types.is_floating(field.type):
+            cast.append(pa.field(field.name, pa.float32()))
+        else:
+            cast.append(field)
+    table = table.cast(pa.schema(cast))
+    df = table.to_pandas(split_blocks=True, self_destruct=True)
+    del table
+    return df
 
 
 def assert_fold_integrity(months: np.ndarray, fold: Fold,
