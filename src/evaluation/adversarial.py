@@ -1,6 +1,6 @@
 """Is the test set LATER than training, or DIFFERENT from it?
 
-The leaderboard came in 14% under the hold-out, and notebook 04 rejected the two obvious
+The leaderboard came in 14% under the hold-out, and notebook 05 rejected the two obvious
 explanations: pruning high-drift features does not help, and skill does not decay with
 elapsed time anywhere in the 71-month training span. That leaves the possibility that the
 test set is not a continuation of the training period at all, but something categorically

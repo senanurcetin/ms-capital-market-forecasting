@@ -17,7 +17,7 @@ equality only when every group has the same cosine.
 
 WHY THIS MATTERS HERE
 
-Notebook 04 predicted a leaderboard score by reweighting per-quartile hold-out cosines by
+Notebook 04 forecast a leaderboard score by reweighting per-quartile hold-out cosines by
 the test set's *sample shares*. That is the wrong weighting for this metric: it silently
 assumes ||y_g|| * ||p_g|| is proportional to n_g, i.e. that target and prediction
 magnitudes are constant across groups. In a financial target they are not - the spread

@@ -335,8 +335,8 @@ data, and they are where investigation should start if the leaderboard score com
 the hold-out estimate.
 
 **Follow-up (2026-09-03) — tested, and wrong.** The leaderboard came in at 0.128 against a
-hold-out of 0.152, and the spread-regime effect in notebook 04 explains only about a
-seventh of that gap. These features were the obvious suspect for the rest, so notebook 04 tested them
+hold-out of 0.152, and the spread-regime effect, once notebook 05 corrects its weighting,
+explains only about a seventh of that gap. These features were the obvious suspect for the rest, so notebook 05 tested them
 — not by spending a submission, but by varying the train→evaluation gap across the 71-month
 training span and asking whether pruning them helps *more* when the gap is *larger*.
 

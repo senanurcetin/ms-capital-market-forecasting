@@ -4,7 +4,7 @@ The search itself is routine. The part worth building carefully is the accountin
 in this project the noise floor is unusually well characterised and it is HIGH:
 
     fold-to-fold cosine std       0.0041      (walk-forward, ensemble)
-    block-to-block period std     0.0091      (notebook 04)
+    block-to-block period std     0.0091      (notebook 05)
 
 Against that, a tuning gain of 0.002 means nothing on its own. Two things follow.
 
@@ -22,7 +22,7 @@ numbers are reported.
 
 THE HOLD-OUT IS NOT THE JUDGE
 
-Notebook 04 established that months 65-70 are an unusually favourable period, so an
+Notebook 05 established that months 65-70 are an unusually favourable period, so an
 absolute hold-out score cannot arbitrate anything. It is used only as a PAIRED comparison
 - tuned against default, same rows, same protocol - where the period effect is common to
 both arms and cancels.

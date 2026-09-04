@@ -1,8 +1,8 @@
 """Does drift actually predict degradation?
 
-The leaderboard came in at 0.128 against a hold-out of 0.152. Notebook 04's spread-regime
-model explained only a quarter of that gap, and notebook 03 nominated the high-drift rate
-features as the leading suspect for the rest.
+The leaderboard came in at 0.128 against a hold-out of 0.152. The spread-regime model in
+notebook 05 explains only about a seventh of that gap, and notebook 03 nominated the
+high-drift rate features as the leading suspect for the rest.
 
 Nominating a suspect is not evidence. The obvious test - retrain without them and submit -
 costs a submission and returns exactly one bit. This module tests the MECHANISM instead,

@@ -31,76 +31,36 @@ period in turn shows difficulty swinging from 0.117 to 0.148 — and months 65�
 completely different way, gives +0.14088. Purity was never the binding constraint: a single
 contiguous stretch is a sample of size one in the dimension that actually varies.
 
-### A prediction, and its falsification
+### A prediction, its falsification, and what followed
 
-Before submitting, [notebook 04](notebooks/04_models_and_errors.ipynb) recorded a
-falsifiable forecast: the model is measurably weakest in tight spreads, the test period
-holds more of them, and reweighting the hold-out score by the test spread mix gives
-**≈ 0.143** — with the explicit caveat that a score materially below that would need a
-different explanation.
+Before submitting, notebook 04 recorded a falsifiable forecast — reweighting the hold-out
+by the test set's spread mix gave **≈ 0.143**, with the caveat that anything materially
+below would need a different explanation.
 
-**Leaderboard: 0.128.** The prediction was wrong.
+**Leaderboard: 0.128.** The prediction was wrong: right direction, magnitude off by three.
 
-| | cosine |
-|---|---:|
-| Hold-out, as measured | +0.15171 |
-| Forecast | +0.14345 |
-| **Actual (leaderboard)** | **+0.12800** |
-
-The direction was right and the magnitude wrong by roughly a factor of three. The failed
-prediction is left in place with the correction beneath it, because a forecast is only
+It stays where it was written, with the correction beneath it, because a forecast is only
 evidence of understanding if it is recorded before the answer and reported honestly after.
+Five hypotheses were then stated and tested, **none of them costing a further submission**:
 
-Three follow-ups were then stated and tested. **None of them rescued the story, and no
-further submission was spent on any of them:**
+| Hypothesis | Verdict |
+|---|---|
+| **The hold-out was a lucky period** | **confirmed — explains 46%** |
+| Spread-regime mix shift | real, but corrected *downward* to ~14% |
+| High-drift rate features hurt under shift | falsified at two thresholds |
+| Skill decays with elapsed time | falsified — the slope is *positive* |
+| Test set is categorically different | falsified — it is a *continuation* of training |
 
-| Hypothesis | Method | Verdict |
-|---|---|---|
-| **The hold-out was a lucky period** | fix the model, score every period in turn | **confirmed — explains 46%** |
-| Spread-regime mix shift | reweight hold-out by the test spread mix | real, but **corrected downward** to ~14% |
-| High-drift rate features hurt under shift | prune them; vary the train→eval gap over 32 months | **falsified** at two thresholds — pruning is mildly *harmful* |
-| Skill decays with elapsed time | same experiment, control arm | **falsified** — slope is *positive* |
-| Test set is categorically different | adversarial validation, calibrated against within-train distance | **falsified** — it is a *continuation* |
+Two results are worth pulling out. The hold-out sits at the **83rd percentile** of period
+difficulty (which swings 0.117–0.148 under a fixed model), and de-biasing for that gives
++0.14084 — within 0.00004 of the walk-forward mean, computed a completely different way.
+And the forecast itself was **built wrong**: cosine factors exactly as
+`Σ cos_g · w_g` with `w_g = ‖y_g‖‖p_g‖ / (‖y‖‖p‖)`, so subgroups are weighted by
+*magnitude*, not row count. Correcting it moved the forecast **further** from the outcome.
 
-Two of those need spelling out.
+**→ The full investigation is [notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb).**
 
-**The test set is not somewhere else.** A classifier separates it from the last training
-months at AUC **0.749** — *lower* than months 10–19 against months 0–9 (0.754). Two adjacent
-blocks inside the training data are more distinguishable from each other than the test set
-is from the end of training. (The first version of this measurement pooled all 71 training
-months on one side and got a tidy, wrong answer; the confound is documented, and a test
-pins it down.)
-
-**The hold-out was.** With the model held fixed, period difficulty swings from 0.117 to
-0.148 and months 65–70 land at the 83rd percentile.
-
-**And the forecast was built wrong.** Cosine is computed over the pooled vector, so it
-factors exactly as `cos(y,p) = Σ cos_g · w_g` with `w_g = ‖y_g‖‖p_g‖ / (‖y‖‖p‖)` —
-subgroups are weighted by **magnitude, not row count**. The forecast used sample shares.
-On the hold-out the true weights run 0.209–0.312 across equal-sized quartiles, and the
-heaviest lands on the bucket where the model is *strongest*. Redone properly the forecast
-moves to +0.14844 — **further from the outcome**, dropping the spread mechanism's share
-from 26% to ~14%.
-
-The two surviving effects should not be added — both say the hold-out period was atypical
-and may overlap — so together they account for between **46% and 60%** of a gap that began
-fully unexplained. Nor is the remainder noise: the test set averages over ~13 of these
-periods, so its own draw is worth ±0.0026 against a residual of 0.0128 — about **5σ**. The
-rest is a real effect and still unidentified, which is more useful to report than a tidy
-story.
-See [notebook 04](notebooks/04_models_and_errors.ipynb).
-
-**What I would do differently:** report the walk-forward mean as the headline and the
-hold-out as a *check* on it. A held-out period answers "did I leak?" — not "what will this
-score next period". Those were quietly treated as the same question.
-
-> The general lesson outlives this dataset: any subgroup breakdown of a cosine score must
-> weight by magnitude or it describes a metric nobody is scored on. A test in
-> `tests/test_cosine_decomposition.py` builds a model that is near-perfect on the
-> small-magnitude half of the data and useless on the large half — counting rows calls it
-> skilful at **+0.48**, while the metric scores it **−0.04**.
-
-### Three forecasts, three overshoots — and what they have in common
+### Three forecasts, three overshoots
 
 | Prediction | Predicted | Actual |
 |---|---:|---:|
@@ -108,21 +68,16 @@ score next period". Those were quietly treated as the same question.
 | Spread-mix share of the gap | 26% | ~14% |
 | Gain from ensemble + more training data | +0.0047 | +0.0010 |
 
-Different reasoning each time, the same direction of error every time — which points at a
-common cause rather than three separate mistakes. **Effects of order 0.002–0.005, measured
-on internal splits, sit at the resolution limit of this problem.** Fold-to-fold std is
-0.0041; period-to-period std is 0.0091. A CV gap of +0.0022 that shows up in 5 folds of 5
-is a real *ordering* of two models and still buys almost nothing externally, because what
-separates them is small next to what separates one period from another.
+Different reasoning each time, the same direction of error every time — which points at one
+cause rather than three mistakes. **Effects of order 0.002–0.005, measured on internal
+splits, sit at this problem's resolution limit.** Fold-to-fold std is 0.0041;
+period-to-period std is 0.0091. A CV gap of +0.0022 appearing in 5 folds of 5 is a real
+*ordering* of two models and still buys almost nothing externally, because what separates
+them is small beside what separates one period from another.
 
 The rule that survives: below roughly the fold-to-fold std, treat an internal gain as
-evidence about **which** model to prefer, never as a quantity that will appear on a
-leaderboard. Both submissions are consistent with that; none of the three forecasts were.
-
-The transferable finding is about the *estimator*, not this model: a hold-out carved from
-the end of the training period measures generalisation **within one regime**. It reads
-optimistically whenever the deployment distribution differs in ways the hold-out cannot
-see — here, by 14%.
+evidence about **which** model to prefer, never as a quantity that will reach a leaderboard.
+Both submissions are consistent with that; none of the three forecasts were.
 
 Walk-forward CV, full data, 5 folds:
 
@@ -154,7 +109,7 @@ this repository.
 | 3 | `side` and `order_action` encodings are **recoverable by measurement** | order-flow features get built backwards | [01](notebooks/01_data_discovery.ipynb) |
 | 4 | The `*_last` features were reading from **different snapshots** | `mkt_depth_imb1_last` deviated by 1.994 — the full width of its range | [01](notebooks/01_data_discovery.ipynb) |
 | 5 | Predictive features and **transferable** features are the same features | — (this one is the payoff, not a trap) | [03](notebooks/03_features_and_drift.ipynb) |
-| 6 | The model is **weakest exactly where the test set lives** | the hold-out overstates the leaderboard — measured at 14%, of which this explains ~1/7 | [04](notebooks/04_models_and_errors.ipynb) |
+| 6 | The model is **weakest exactly where the test set lives** | the hold-out overstates the leaderboard — measured at 14%, of which this explains ~1/7 | [04](notebooks/04_models_and_errors.ipynb), [05](notebooks/05_why_the_leaderboard_disagreed.ipynb) |
 
 Finding 6 is the one I would lead with in a review, because neither measurement produces it
 alone. The drift report says *where the test set sits*: 35.7% of its samples fall in the
@@ -184,6 +139,7 @@ measured → what I changed.**
 | [02 — The Target, and Why Random Splits Are Banned](notebooks/02_target_and_leakage.ipynb) | the validation rule settled by experiment: a random split inflates the score by +0.0047 (1.04×) |
 | [03 — Features, and Whether They Survive the Test Set](notebooks/03_features_and_drift.ipynb) | SHAP × drift: the top-20 features shift 4.2× less than average |
 | [04 — Models, and Where They Fail](notebooks/04_models_and_errors.ipynb) | error analysis by liquidity regime — and the risk it exposes |
+| [05 — Why the Leaderboard Disagreed](notebooks/05_why_the_leaderboard_disagreed.ipynb) | **the longest one, and the one to read**: five hypotheses, three falsified, two analysis errors found and corrected |
 
 ---
 
@@ -427,7 +383,7 @@ shift of **0.0065** versus **0.0275** across all features, and importance correl
 **The honest caveat, and its resolution:** rate features are still in the set and they *do*
 shift, so they were the natural suspect for the leaderboard shortfall — and that suspicion
 turned out to be wrong. Rather than spend a submission to find out,
-[notebook 04](notebooks/04_models_and_errors.ipynb) tests the *mechanism* on training data
+[notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb) tests the *mechanism* on training data
 alone: train on a fixed window (months 0–34) and evaluate at increasing distance into the
 future. If high-drift features were a liability under shift, pruning them would help more
 as the gap grows.
@@ -440,13 +396,8 @@ thresholds, without a submission.
 
 ## Hyperparameter search: how much of a gain is real?
 
-Tuning was originally deprioritised on the grounds that it buys little per hour. That was
-a judgement; this is the measurement.
-
-By this point the noise floor is known and **high** — fold-to-fold std 0.0041,
-block-to-block period std 0.0091. Keeping the best of N trials therefore finds favourable
-noise as well as good parameters, so the winner is re-scored under a fresh resampling of
-the identical protocol, and then both arms are re-run on full data, paired.
+Tuning was originally deprioritised on the judgement that it buys little per hour. This
+replaces the judgement with a number.
 
 | | gain |
 |---|---:|
@@ -454,23 +405,21 @@ the identical protocol, and then both arms are re-run on full data, paired.
 | Surviving fresh seeds | +0.00062 |
 | **Full data, paired, 3 folds** | **−0.00038** |
 
-**Tuning bought nothing.** Three quarters of the apparent gain was selection noise; what
-survived was a seventh of the fold-to-fold std; and on full data the tuned configuration
-is *worse* than the hand-chosen defaults, improving 1 fold of 3 with per-fold differences
-that alternate sign. `min_data_in_leaf` came back at 1018 — tuned against 377k rows, not
-1.26M — which is exactly the transfer failure the confirmation step exists to catch.
+**Tuning bought nothing.** Three quarters of the apparent gain was selection noise — keeping
+the best of N trials on an objective with fold-to-fold std 0.0041 finds favourable noise as
+well as good parameters — and what survived failed to transfer, coming back *negative* on
+full data with 1 fold of 3 improving. The hand-chosen defaults stand, now on evidence.
 
-The reusable part is the apparatus, not the parameters: any best-of-N result on a noisy
-objective is inflated by the maximum of N noise draws, and the correction costs one extra
-evaluation. Reporting only the first number would have claimed a +0.0026 improvement that
-reverses sign on full data.
+The reusable part is the apparatus: any best-of-N result on a noisy objective is inflated
+by the maximum of N noise draws, and the correction costs one extra evaluation — re-score
+the winner under a fresh resampling and report both numbers. Reporting only the first would
+have claimed a +0.0026 improvement that reverses sign.
 
 > **A search space is a compute budget in another notation.** The first attempt allowed
 > `num_leaves` 511, `max_bin` 255 and `learning_rate` 0.01 — that last one is the trap,
-> since early stopping never fires and every round runs. Trials in that corner cost ~10x
-> the baseline, and a search budgeted at an hour was killed after three with nothing to
-> show. The version here bounds the worst trial to ~2x, caps wall-clock (it stopped at 23
-> of 40 trials and said so), and logs every trial as it lands.
+> since early stopping never fires and every round runs. Trials there cost ~10x the
+> baseline and a one-hour search was killed after three with nothing to show. The version
+> here bounds the worst trial to ~2x, caps wall-clock, and logs every trial as it lands.
 
 ---
 
