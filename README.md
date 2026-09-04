@@ -14,9 +14,10 @@ competition dataset.
 
 | | cosine | what it is |
 |---|---:|---|
-| Walk-forward CV mean | **+0.14088** | **the honest estimate** — averaged over 5 periods |
+| Walk-forward CV mean | **+0.14088** | **the honest internal estimate** — averaged over 5 periods |
 | Hold-out, months 65–70 | +0.15171 | measured once, untouched — but a *lucky* period |
-| **Leaderboard** | **+0.12800** | the only externally graded number |
+| Leaderboard, first submission | +0.12800 | single LightGBM, months 0–63 |
+| **Leaderboard, shipped model** | **+0.12900** | ensemble, months 0–67 |
 
 Trained on all 1,257,637 samples and 292 features. On the hold-out, Pearson (0.15236) is
 almost identical to cosine, confirming predictions are centred on zero — what a
@@ -98,6 +99,25 @@ score next period". Those were quietly treated as the same question.
 > `tests/test_cosine_decomposition.py` builds a model that is near-perfect on the
 > small-magnitude half of the data and useless on the large half — counting rows calls it
 > skilful at **+0.48**, while the metric scores it **−0.04**.
+
+### Three forecasts, three overshoots — and what they have in common
+
+| Prediction | Predicted | Actual |
+|---|---:|---:|
+| Leaderboard, from the hold-out | 0.143 | 0.128 |
+| Spread-mix share of the gap | 26% | ~14% |
+| Gain from ensemble + more training data | +0.0047 | +0.0010 |
+
+Different reasoning each time, the same direction of error every time — which points at a
+common cause rather than three separate mistakes. **Effects of order 0.002–0.005, measured
+on internal splits, sit at the resolution limit of this problem.** Fold-to-fold std is
+0.0041; period-to-period std is 0.0091. A CV gap of +0.0022 that shows up in 5 folds of 5
+is a real *ordering* of two models and still buys almost nothing externally, because what
+separates them is small next to what separates one period from another.
+
+The rule that survives: below roughly the fold-to-fold std, treat an internal gain as
+evidence about **which** model to prefer, never as a quantity that will appear on a
+leaderboard. Both submissions are consistent with that; none of the three forecasts were.
 
 The transferable finding is about the *estimator*, not this model: a hold-out carved from
 the end of the training period measures generalisation **within one regime**. It reads

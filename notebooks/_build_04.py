@@ -961,6 +961,110 @@ so the worst trial costs about twice the baseline, carries a wall-clock cap that
 run regardless — it stopped at 23 of 40 trials and said so — and logs every trial as it
 lands, because a long job you cannot observe is indistinguishable from a hung one.
 """),
+    md("""
+---
+
+## The submitted model was handicapped
+
+Everything so far hunted for something wrong with the data, the metric or the estimator.
+The last place to look was the artefact itself — and its own metadata gives it away.
+
+| | submitted | what the project's own CV recommends |
+|---|---|---|
+| model | single LightGBM | ensemble, ahead in **5 folds of 5** by +0.0022 |
+| training months | 0-63 (**64** of 71) | as many as possible |
+
+The second is the more interesting mistake. `finalize.py` keeps months 65-70 out so the
+hold-out can be read once — correct for *measuring*. But a hold-out has done its job the
+moment it is read, and carrying it through to the shipped artefact throws away 7 months.
+The protocol for measuring was silently reused as the protocol for shipping.
+
+### First, what is the discarded data actually worth?
+
+Measurable without a submission: fix the evaluation block at months 65-70 and vary where
+training stops. The confound is that extending the window adds **volume** and **recency**
+at once, so a second arm holds the training span constant at 52 months and moves only the
+endpoint.
+"""),
+    code("""
+rec = pd.read_csv(feat / "recency.csv")
+print(rec[["arm", "window", "months", "gap_to_eval", "cosine", "seed_std"]]
+      .to_string(index=False, float_format=lambda v: f"{v:,.5f}"))
+
+rm = json.loads((feat / "recency_meta.json").read_text())
+print()
+print(f"cumulative   slope {rm['cumulative_slope_per_month']:+.6f} cosine per month of staleness")
+print(f"fixed window slope {rm['fixed_window_slope_per_month']:+.6f}")
+"""),
+    md("""
+**It is volume, not recency.** Hold the training span at 52 months and move it 12 months
+closer to the evaluation block: nothing happens (0.14517 -> 0.14307, the wrong way, inside
+seed noise). Let the window *grow* instead and the score rises by +0.0076. The extra months
+help because they are extra data, not because they are recent.
+
+That agrees with the earlier finding that skill does not decay with elapsed time. Two
+independent experiments now say the same thing: in this market the feature-target
+relationship does not go stale.
+
+### The prediction
+
+Ensemble +0.0022 from CV, plus roughly +0.0025 for four more months of data at the
+measured rate of +0.00063/month. Call it **+0.0047**, so a leaderboard around
+**0.132-0.133**.
+"""),
+    code("""
+print(f"{'previous submission':32s} 0.128   single LightGBM, months 0-63")
+print(f"{'predicted':32s} 0.132-0.133")
+print(f"{'actual':32s} 0.129   ensemble, months 0-67")
+print()
+print(f"{'predicted gain':32s} +0.0047")
+print(f"{'realised gain':32s} +0.0010   ({0.0010/0.0047:.0%} of it)")
+"""),
+    md("""
+### Right direction, wrong size — for the third time
+
+The model did improve, and it improved in the predicted direction. It improved by about a
+fifth of the predicted amount.
+
+That is now a **pattern**, and it is the most useful thing in this notebook:
+
+| Prediction | Predicted | Actual |
+|---|---:|---:|
+| Leaderboard from the hold-out | 0.143 | 0.128 |
+| Spread-mix share of the gap | 26% | ~14% |
+| Gain from ensemble + more data | +0.0047 | +0.0010 |
+
+Three forecasts, all built from carefully measured internal quantities, all overshooting
+in the same direction. The individual explanations differ, but the common cause does not:
+**effects of order 0.002-0.005, measured on internal splits, are near the resolution limit
+of this problem.** Fold-to-fold std is 0.0041 and period-to-period std is 0.0091. A CV
+difference of +0.0022 that appears in 5 folds of 5 is a real ordering of the models — and
+still buys almost nothing externally, because what separates them is small next to what
+separates one period from another.
+
+The practical rule this leaves: on a problem with this noise structure, treat any internal
+gain below roughly the fold-to-fold std as directional evidence about *which* model to
+prefer, never as a quantity that will show up on a leaderboard. Both submissions here are
+consistent with that rule; the forecasts were not.
+
+### What was fixed, and what it cost
+
+The shipped artefact now trains on 68 of 71 months instead of 64, blends three models
+instead of one, and — having no untouched period left — deliberately reports **no** hold-out
+score. Quoting finalize.py's 0.15171 beside a differently-trained model would be a category
+error. Its honest internal estimate is the walk-forward mean; its test was the leaderboard.
+
+One bug is worth recording. The first build pulled the inner estimators out of their
+wrappers to store them, which silently discarded `RidgeModel`'s median imputation — and the
+feature layer emits NaN by design, so prediction died on the first short-window row. The
+wrappers already share one `predict` contract; unwrapping them threw away the abstraction
+that existed precisely to prevent this. `tests/test_ship.py` reproduces both halves.
+
+And the blend window is two months, not one. Fitted on month 70 alone, NNLS handed xgboost
+a weight of **0.71** — against a CV that finds it and LightGBM indistinguishable. The base
+models are highly correlated, so their differences are mostly noise and the split swings on
+very little. Two months gives 0.63 / 0.32 / 0.05, which matches the CV ordering.
+"""),
 ]
 
 
