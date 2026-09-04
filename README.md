@@ -83,7 +83,10 @@ from 26% to ~14%.
 
 The two surviving effects should not be added — both say the hold-out period was atypical
 and may overlap — so together they account for between **46% and 60%** of a gap that began
-fully unexplained. The rest is still open, and saying so is more useful than a tidy story.
+fully unexplained. Nor is the remainder noise: the test set averages over ~13 of these
+periods, so its own draw is worth ±0.0026 against a residual of 0.0128 — about **5σ**. The
+rest is a real effect and still unidentified, which is more useful to report than a tidy
+story.
 See [notebook 04](notebooks/04_models_and_errors.ipynb).
 
 **What I would do differently:** report the walk-forward mean as the headline and the

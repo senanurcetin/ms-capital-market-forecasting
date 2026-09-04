@@ -840,6 +840,26 @@ period was atypical, and they may be measuring overlapping parts of the same thi
 together they account for somewhere between **46% and 60%** of a gap that began as fully
 unexplained.
 
+### Is the rest just noise?
+
+Period difficulty varies a lot, so the obvious next question is whether the leftover gap
+is simply the test set's own unlucky draw. It is not, and the same table answers it.
+"""),
+    code("""
+sd = per.cosine.std(ddof=1)
+n_blocks = 647_896 / per.n.mean()          # test set, in units of these blocks
+noise = sd / np.sqrt(n_blocks)
+residual = pm["debiased"] - pm["actual"]
+
+print(f"block-to-block difficulty     std {sd:.5f}")
+print(f"test spans ~{n_blocks:.0f} such blocks -> its own period noise ~{noise:.5f}")
+print(f"residual gap after de-biasing     {residual:+.5f}  ({residual/noise:.1f} sigma)")
+"""),
+    md("""
+The test set averages over roughly thirteen blocks, so its own period draw is worth about
+**±0.0026** — while the residual is **0.0128**, some five standard deviations out. The
+remainder is a real effect, not sampling noise, and it is still unidentified.
+
 ### What I would do differently
 
 Report the walk-forward mean as the headline and the hold-out as a *check* on it, rather
