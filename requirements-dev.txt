@@ -2,3 +2,6 @@
 pytest==8.4.2
 ruff==0.14.4
 httpx
+# Hyperparameter search only - deliberately NOT in requirements.txt,
+# so neither the serving image nor the training image carries it.
+optuna==4.9.0

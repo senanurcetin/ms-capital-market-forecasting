@@ -4,7 +4,7 @@
 PY ?= python
 DATA_ROOT ?= C:/mscapital_data
 
-.PHONY: help install test lint fmt check validate ingest features train drift-test cosine-decomp adversarial period-diff api streamlit mlflow \
+.PHONY: help install test lint fmt check validate ingest features train drift-test cosine-decomp adversarial period-diff tune api streamlit mlflow \
         docker-build up down logs clean
 
 help:
@@ -21,6 +21,8 @@ help:
 	@echo "cosine-decomp subgroup decomposition of the pooled cosine metric"
 	@echo "adversarial   is the test set later, or different? (calibrated AUC)"
 	@echo "period-diff   was the hold-out an unusually easy period?"
+	@echo "tune          hyperparameter search + selection-optimism accounting"
+	@echo "tune-confirm  re-check the tuned winner on full data, paired"
 	@echo "api           run FastAPI locally (:8000)"
 	@echo "streamlit     run the dashboard locally (:8501)"
 	@echo "mlflow        MLflow UI (:5000)"
@@ -72,6 +74,12 @@ adversarial:
 
 period-diff:
 	$(PY) -m src.evaluation.period_difficulty
+
+tune:
+	$(PY) -m src.models.tuning --trials 40
+
+tune-confirm:
+	$(PY) -m src.models.tuning --confirm
 
 train-quick:
 	$(PY) -m src.models.train --quick --folds 2 --sample-frac 0.25 --no-mlflow
