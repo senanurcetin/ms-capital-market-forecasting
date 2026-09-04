@@ -718,6 +718,134 @@ forecast of a cosine score is **not fully computable in advance** — it always 
 assumption about unobserved target magnitudes. Count-weighting is one such assumption, and
 a poor one. That, rather than any particular number, is the durable finding here.
 """),
+    md("""
+---
+
+## Is the test set *later*, or *different*?
+
+Three explanations are now gone: the spread mix is small, drift-pruning does nothing, and
+skill does not decay with elapsed time. That leaves the possibility that the test set is
+not a continuation of the training period at all.
+
+That is measurable. Train a classifier to tell train rows from test rows; the AUC says how
+distinguishable they are. On its own the number means nothing — any two separated periods
+are somewhat distinguishable — so it needs a scale. The same measurement is repeated
+*inside* the training data at growing temporal distance, tracing how distinguishability
+grows with elapsed time in this market, for these features.
+"""),
+    code("""
+adv = pd.read_csv(feat / "adversarial_auc.csv")
+print(adv[["comparison", "kind", "distance_months", "auc"]]
+      .to_string(index=False, float_format=lambda v: f"{v:,.4f}"))
+"""),
+    md("""
+**The test set is a continuation, not a departure.** Against the most recent training
+months it scores **0.749** — *lower* than months 10-19 against months 0-9 (0.754). Two
+adjacent blocks inside the training data are more distinguishable from each other than the
+test set is from the end of training. Whatever is costing 0.024, it is not that the test
+set comes from somewhere else.
+
+### A bug worth showing
+
+The first version of this compared *pooled* training data against the test set and got
+0.791, which read as "less shifted than most training blocks" — a tidy answer, and wrong.
+Pooling all 71 months makes that side far more heterogeneous, and a narrow block is
+naturally hard to separate from a broad mixture that contains something like it. The AUC
+was depressed for a reason with nothing to do with the test set.
+
+The row is kept in the table as a diagnostic. Comparisons are only comparable when both
+sides are built the same way, and `tests/test_adversarial.py` pins that down with a case
+where pooling one side provably lowers the AUC.
+"""),
+    md("""
+---
+
+## The estimator, not the model
+
+Everything above looked for something wrong with the *test set*. Nothing was. So the
+remaining suspect is the thing that produced the number in the first place.
+
+The hold-out is a single contiguous stretch — months 65-70 — chosen for being **last**,
+not for being **typical**. If those months happen to be favourable, the hold-out overstates
+what a fresh period yields, and no amount of care elsewhere would reveal it: the score is
+measured perfectly, on a sample of one period.
+
+So: hold the model fixed (trained once on months 0-34) and score it on every later period
+in turn. Training set, features, seeds and rounds are identical, so the only thing varying
+is which months are being predicted. Any spread is period difficulty.
+"""),
+    code("""
+per = pd.read_csv(feat / "period_difficulty.csv")
+pm = json.loads((feat / "period_difficulty_meta.json").read_text())
+
+print(per[["block", "n", "cosine"]].to_string(index=False,
+                                              float_format=lambda v: f"{v:,.5f}"))
+print()
+print(f"hold-out months 65-70   {pm['holdout_cosine']:+.5f}")
+print(f"median of other blocks  {pm['typical_cosine']:+.5f}")
+print(f"the hold-out is {(pm['ratio']-1)*100:.1f}% above a typical period, "
+      f"above {pm['holdout_percentile']*100:.0f}% of all blocks")
+"""),
+    md("""
+Period difficulty swings from **0.117 to 0.148** — a range of 26% — with a fixed model on
+fixed features. The hold-out sits at the **83rd percentile**. It was a good draw.
+"""),
+    code("""
+wf = pd.read_csv(feat / "walkforward_summary.csv")
+cv_mean = float(wf.loc[wf.model == "ensemble", "cosine_mean"].iloc[0])
+
+print(f"reported hold-out score        {pm['reported']:+.5f}")
+print(f"de-biased to a typical period  {pm['debiased']:+.5f}")
+print(f"walk-forward CV mean           {cv_mean:+.5f}   <- independent route")
+print(f"actual leaderboard             {pm['actual']:+.5f}")
+print()
+print(f"agreement between the two routes: {abs(pm['debiased']-cv_mean):.5f}")
+print(f"period luck explains {pm['share_of_gap']*100:.0f}% of the gap")
+"""),
+    md("""
+### The two routes agree to four decimal places
+
+De-biasing the hold-out by its measured period difficulty gives **0.14084**. Averaging the
+walk-forward folds across five *different* periods gives **0.14088**. Nothing was tuned to
+make those meet.
+
+That is the finding, and it is uncomfortable: **the CV mean was the better estimate all
+along, and I led with the hold-out instead.** The hold-out was chosen on the strongest
+methodological grounds available — untouched by feature design, model selection, tuning or
+early stopping, measured exactly once. All of that is true and none of it helps, because
+purity was never the binding constraint. Period difficulty was, and against that a single
+contiguous stretch is a sample of size one, however cleanly it is handled.
+
+The walk-forward mean is *less* pure — its folds informed decisions — yet it averages over
+five periods and lands within 0.00004 of the de-biased answer.
+
+| | estimate | error vs leaderboard |
+|---|---:|---:|
+| Hold-out, months 65-70 | +0.15171 | +0.02371 |
+| Walk-forward CV mean | +0.14088 | +0.01288 |
+| Leaderboard | +0.12800 | — |
+
+**Where the gap stands**
+
+| Hypothesis | Verdict | Share |
+|---|---|---:|
+| The hold-out was a lucky period | **confirmed**, two independent routes | **46%** |
+| Spread-regime mix shift | real, after correcting the weighting | ~14% |
+| High-drift rate features | falsified at two thresholds | — |
+| Skill decays with elapsed time | falsified | — |
+| Test set is categorically different | falsified — it is a continuation | — |
+
+The two surviving effects should not simply be added: both are ways of saying the hold-out
+period was atypical, and they may be measuring overlapping parts of the same thing. Taken
+together they account for somewhere between **46% and 60%** of a gap that began as fully
+unexplained.
+
+### What I would do differently
+
+Report the walk-forward mean as the headline and the hold-out as a *check* on it, rather
+than the reverse. A held-out period answers "did I leak?" It does not answer "what will
+this score next period", and those were quietly treated as the same question.
+"""),
 ]
 
 

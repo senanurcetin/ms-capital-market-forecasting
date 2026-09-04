@@ -12,19 +12,23 @@ competition dataset.
 
 ## Headline result
 
-Measured **once** on the hold-out months (65–70, 104,770 samples), which were never
-touched during feature design, model selection, tuning or early stopping:
+| | cosine | what it is |
+|---|---:|---|
+| Walk-forward CV mean | **+0.14088** | **the honest estimate** — averaged over 5 periods |
+| Hold-out, months 65–70 | +0.15171 | measured once, untouched — but a *lucky* period |
+| **Leaderboard** | **+0.12800** | the only externally graded number |
 
-| Metric | Value |
-|---|---:|
-| **Cosine similarity** | **0.15171** |
-| Pearson correlation | 0.15236 |
-| Directional accuracy | 0.5516 |
-| RMSE | 0.003364 |
+Trained on all 1,257,637 samples and 292 features. On the hold-out, Pearson (0.15236) is
+almost identical to cosine, confirming predictions are centred on zero — what a
+shift-sensitive metric rewards. Directional accuracy 0.5516, RMSE 0.003364.
 
-Trained on all 1,257,637 samples and 292 features. Pearson being almost identical to
-cosine confirms the predictions are centred on zero — exactly what a shift-sensitive
-metric rewards.
+**The hold-out is listed second on purpose.** It was the original headline: measured once,
+on months never touched by feature design, model selection, tuning or early stopping. That
+is all true, and it is not the right number. Holding a model fixed and scoring it on every
+period in turn shows difficulty swinging from 0.117 to 0.148 — and months 65–70 sit at the
+**83rd percentile**. De-biasing for that gives +0.14084; the walk-forward mean, computed a
+completely different way, gives +0.14088. Purity was never the binding constraint: a single
+contiguous stretch is a sample of size one in the dimension that actually varies.
 
 ### A prediction, and its falsification
 
@@ -51,12 +55,23 @@ further submission was spent on any of them:**
 
 | Hypothesis | Method | Verdict |
 |---|---|---|
-| Spread-regime mix shift | reweight hold-out by the test spread mix | real, but **corrected downward** to ~14% (see below) |
+| **The hold-out was a lucky period** | fix the model, score every period in turn | **confirmed — explains 46%** |
+| Spread-regime mix shift | reweight hold-out by the test spread mix | real, but **corrected downward** to ~14% |
 | High-drift rate features hurt under shift | prune them; vary the train→eval gap over 32 months | **falsified** at two thresholds — pruning is mildly *harmful* |
-| Skill decays with elapsed time | same experiment, control arm | **falsified** — slope is *positive*; the most distant block scores best |
+| Skill decays with elapsed time | same experiment, control arm | **falsified** — slope is *positive* |
+| Test set is categorically different | adversarial validation, calibrated against within-train distance | **falsified** — it is a *continuation* |
 
-The last row reframes the problem: within the 71-month training span skill does not decay
-with time at all, so "the test set is later, therefore worse" cannot be the explanation.
+Two of those need spelling out.
+
+**The test set is not somewhere else.** A classifier separates it from the last training
+months at AUC **0.749** — *lower* than months 10–19 against months 0–9 (0.754). Two adjacent
+blocks inside the training data are more distinguishable from each other than the test set
+is from the end of training. (The first version of this measurement pooled all 71 training
+months on one side and got a tidy, wrong answer; the confound is documented, and a test
+pins it down.)
+
+**The hold-out was.** With the model held fixed, period difficulty swings from 0.117 to
+0.148 and months 65–70 land at the 83rd percentile.
 
 **And the forecast was built wrong.** Cosine is computed over the pooled vector, so it
 factors exactly as `cos(y,p) = Σ cos_g · w_g` with `w_g = ‖y_g‖‖p_g‖ / (‖y‖‖p‖)` —
@@ -66,8 +81,14 @@ heaviest lands on the bucket where the model is *strongest*. Redone properly the
 moves to +0.14844 — **further from the outcome**, dropping the spread mechanism's share
 from 26% to ~14%.
 
-That leaves **~86% of the gap unaccounted for**, which is more useful to report than a tidy
-story. See [notebook 04](notebooks/04_models_and_errors.ipynb).
+The two surviving effects should not be added — both say the hold-out period was atypical
+and may overlap — so together they account for between **46% and 60%** of a gap that began
+fully unexplained. The rest is still open, and saying so is more useful than a tidy story.
+See [notebook 04](notebooks/04_models_and_errors.ipynb).
+
+**What I would do differently:** report the walk-forward mean as the headline and the
+hold-out as a *check* on it. A held-out period answers "did I leak?" — not "what will this
+score next period". Those were quietly treated as the same question.
 
 > The general lesson outlives this dataset: any subgroup breakdown of a cosine score must
 > weight by magnitude or it describes a metric nobody is scored on. A test in

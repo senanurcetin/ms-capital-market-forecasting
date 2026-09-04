@@ -4,7 +4,7 @@
 PY ?= python
 DATA_ROOT ?= C:/mscapital_data
 
-.PHONY: help install test lint fmt check validate ingest features train drift-test cosine-decomp api streamlit mlflow \
+.PHONY: help install test lint fmt check validate ingest features train drift-test cosine-decomp adversarial period-diff api streamlit mlflow \
         docker-build up down logs clean
 
 help:
@@ -19,6 +19,8 @@ help:
 	@echo "train         walk-forward training (logs to MLflow)"
 	@echo "drift-test    does feature drift predict degradation? (no submission needed)"
 	@echo "cosine-decomp subgroup decomposition of the pooled cosine metric"
+	@echo "adversarial   is the test set later, or different? (calibrated AUC)"
+	@echo "period-diff   was the hold-out an unusually easy period?"
 	@echo "api           run FastAPI locally (:8000)"
 	@echo "streamlit     run the dashboard locally (:8501)"
 	@echo "mlflow        MLflow UI (:5000)"
@@ -64,6 +66,12 @@ drift-test:
 
 cosine-decomp:
 	$(PY) -m src.evaluation.cosine_decomposition
+
+adversarial:
+	$(PY) -m src.evaluation.adversarial
+
+period-diff:
+	$(PY) -m src.evaluation.period_difficulty
 
 train-quick:
 	$(PY) -m src.models.train --quick --folds 2 --sample-frac 0.25 --no-mlflow
