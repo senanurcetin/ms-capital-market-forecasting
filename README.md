@@ -418,6 +418,42 @@ thresholds, without a submission.
 
 ---
 
+## Hyperparameter search: how much of a gain is real?
+
+Tuning was originally deprioritised on the grounds that it buys little per hour. That was
+a judgement; this is the measurement.
+
+By this point the noise floor is known and **high** — fold-to-fold std 0.0041,
+block-to-block period std 0.0091. Keeping the best of N trials therefore finds favourable
+noise as well as good parameters, so the winner is re-scored under a fresh resampling of
+the identical protocol, and then both arms are re-run on full data, paired.
+
+| | gain |
+|---|---:|
+| Claimed by the search (23 trials, 30% of rows) | +0.00260 |
+| Surviving fresh seeds | +0.00062 |
+| **Full data, paired, 3 folds** | **−0.00038** |
+
+**Tuning bought nothing.** Three quarters of the apparent gain was selection noise; what
+survived was a seventh of the fold-to-fold std; and on full data the tuned configuration
+is *worse* than the hand-chosen defaults, improving 1 fold of 3 with per-fold differences
+that alternate sign. `min_data_in_leaf` came back at 1018 — tuned against 377k rows, not
+1.26M — which is exactly the transfer failure the confirmation step exists to catch.
+
+The reusable part is the apparatus, not the parameters: any best-of-N result on a noisy
+objective is inflated by the maximum of N noise draws, and the correction costs one extra
+evaluation. Reporting only the first number would have claimed a +0.0026 improvement that
+reverses sign on full data.
+
+> **A search space is a compute budget in another notation.** The first attempt allowed
+> `num_leaves` 511, `max_bin` 255 and `learning_rate` 0.01 — that last one is the trap,
+> since early stopping never fires and every round runs. Trials in that corner cost ~10x
+> the baseline, and a search budgeted at an hour was killed after three with nothing to
+> show. The version here bounds the worst trial to ~2x, caps wall-clock (it stopped at 23
+> of 40 trials and said so), and logs every trial as it lands.
+
+---
+
 ## Setup and usage
 
 ```bash

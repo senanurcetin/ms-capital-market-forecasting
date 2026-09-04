@@ -227,7 +227,8 @@ def run(*, n_trials: int = 40, sample_frac: float = SEARCH_FRAC, seed: int = 42,
     return out
 
 
-def confirm(best: dict | None = None, *, seed: int = 42) -> dict:
+def confirm(best: dict | None = None, *, seed: int = 42,
+            folds: int | None = None, rounds: int = 1500) -> dict:
     """Does the gain transfer to full data and the real 5-fold protocol?
 
     Searching on 35% of the rows and three folds is a cost decision, and it is not free:
@@ -247,9 +248,10 @@ def confirm(best: dict | None = None, *, seed: int = 42) -> dict:
     df = load_dataset("train")
     log.info("confirming on full data: %s rows, all folds", f"{len(df):,}")
 
-    n_folds = len(list(iter_folds(df["month"].to_numpy())))
-    tuned_mean, tuned = cv_score(df, best, folds=n_folds, rounds=3000, seed=seed)
-    base_mean, base = cv_score(df, {}, folds=n_folds, rounds=3000, seed=seed)
+    n_folds = folds or len(list(iter_folds(df["month"].to_numpy())))
+    log.info("protocol: last %d folds, up to %d rounds, paired", n_folds, rounds)
+    tuned_mean, tuned = cv_score(df, best, folds=n_folds, rounds=rounds, seed=seed)
+    base_mean, base = cv_score(df, {}, folds=n_folds, rounds=rounds, seed=seed)
     diffs = [t - b for t, b in zip(tuned, base)]
 
     log.info("  tuned    %+.5f  folds %s", tuned_mean, [f"{s:+.5f}" for s in tuned])
@@ -259,7 +261,8 @@ def confirm(best: dict | None = None, *, seed: int = 42) -> dict:
     log.info("  folds improved: %d of %d", sum(d > 0 for d in diffs), len(diffs))
 
     out = {
-        "full_data_rows": len(df), "n_folds": n_folds, "seed": seed,
+        "full_data_rows": len(df), "n_folds": n_folds, "rounds": rounds,
+        "seed": seed,
         "tuned_mean": tuned_mean, "baseline_mean": base_mean,
         "paired_gain": tuned_mean - base_mean, "per_fold_diff": diffs,
         "folds_improved": int(sum(d > 0 for d in diffs)),
@@ -276,12 +279,15 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--sample-frac", type=float, default=SEARCH_FRAC)
     ap.add_argument("--budget-min", type=float, default=TIME_BUDGET_MIN,
                     help="wall-clock cap on the search, in minutes")
+    ap.add_argument("--confirm-folds", type=int, default=None,
+                    help="folds for --confirm (default: all)")
+    ap.add_argument("--confirm-rounds", type=int, default=1500)
     ap.add_argument("--confirm", action="store_true",
                     help="skip the search; re-check the saved winner on full data")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     if args.confirm:
-        confirm()
+        confirm(folds=args.confirm_folds, rounds=args.confirm_rounds)
     else:
         run(n_trials=args.trials, sample_frac=args.sample_frac,
             time_budget_min=args.budget_min)

@@ -866,6 +866,101 @@ Report the walk-forward mean as the headline and the hold-out as a *check* on it
 than the reverse. A held-out period answers "did I leak?" It does not answer "what will
 this score next period", and those were quietly treated as the same question.
 """),
+    md("""
+---
+
+## Hyperparameter search: how much of a gain is real?
+
+The plan deprioritised tuning on the grounds that it buys little per hour of work. That
+was a judgement, not a measurement, so here is the measurement.
+
+The search is routine — TPE over eight LightGBM parameters, walk-forward cosine as the
+objective. What matters is the accounting around it, because by now the noise floor is
+known and it is **high**: fold-to-fold std 0.0041, block-to-block period std 0.0091.
+Running N trials and keeping the best does not only find good parameters, it also finds
+favourable noise, and at N in the dozens that term is the same size as the effect being
+chased.
+
+So the winner is re-scored under a fresh resampling of the identical protocol — new
+bagging and feature-sampling seeds, nothing else changed. What survives belongs to the
+parameters; what evaporates was the search fitting noise.
+"""),
+    code("""
+tun = json.loads((feat / "tuning_result.json").read_text())
+
+print(f"trials completed          {tun['trials_completed']} of {tun['n_trials']}"
+      f"  (stopped by the {tun['time_budget_min']:.0f}-min budget)")
+print(f"search set                {tun['sample_frac']:.0%} of train, "
+      f"{tun['search_folds']} folds")
+print()
+print(f"baseline CV               {tun['baseline_cv']:+.5f}")
+print(f"best trial CV             {tun['best_cv']:+.5f}")
+print(f"gain the search claims    {tun['claimed_gain']:+.5f}")
+print(f"gain surviving new seeds  {tun['honest_gain']:+.5f}")
+print(f"SELECTION OPTIMISM        {tun['selection_optimism']:+.5f}"
+      f"   ({tun['selection_optimism']/tun['claimed_gain']:.0%} of the claim)")
+"""),
+    md("""
+**Three quarters of the gain was noise.** What is left, +0.0006, is a seventh of the
+fold-to-fold std and a fifteenth of the period std.
+
+One objection remains: the search ran on 30% of the rows, and several of these knobs scale
+with sample size — `min_data_in_leaf` came back at 1018, tuned against 377k rows rather
+than 1.26M. So both arms were re-run on the full dataset, paired: identical folds,
+identical rows, identical seeds, only the parameters differing.
+"""),
+    code("""
+con = json.loads((feat / "tuning_confirm.json").read_text())
+
+print(f"full data, {con['full_data_rows']:,} rows, last {con['n_folds']} folds, paired")
+print(f"  tuned     {con['tuned_mean']:+.5f}   {[f'{x:+.5f}' for x in con['tuned_folds']]}")
+print(f"  baseline  {con['baseline_mean']:+.5f}   {[f'{x:+.5f}' for x in con['baseline_folds']]}")
+print(f"  paired difference {con['paired_gain']:+.5f}")
+print(f"  per fold          {[f'{d:+.5f}' for d in con['per_fold_diff']]}")
+print(f"  folds improved    {con['folds_improved']} of {con['n_folds']}")
+"""),
+    md("""
+### It does not transfer. It reverses.
+
+On full data the tuned configuration is **worse** than the hand-chosen defaults, by
+−0.00038, and only one fold of three improves. The per-fold differences alternate sign
+(−0.00135, +0.00152, −0.00131) — the signature of noise, not of a parameter effect.
+
+| | gain |
+|---|---:|
+| Claimed by the search | +0.00260 |
+| Surviving fresh seeds, 30% data | +0.00062 |
+| **Full data, paired** | **−0.00038** |
+
+So the honest answer is that **tuning bought nothing**. The defaults — chosen by hand, for
+stated reasons about 1.26M rows and memory — are as good as a 23-trial TPE search, and the
+apparent improvement was selection noise that did not survive either check.
+
+That is a useful result rather than a wasted hour. "I skipped tuning" is a gap in a
+portfolio; "I ran the search, and here is the measurement showing it buys 0.0006 before
+transfer and nothing after" is a finding. The original decision to deprioritise it now
+rests on evidence instead of judgement.
+
+### The reusable part
+
+The apparatus generalises past this dataset. Any best-of-N result on a noisy objective is
+inflated by the maximum of N noise draws, and the fix costs one extra evaluation: re-score
+the winner under a fresh resampling of the same protocol and report both numbers. Had only
+the first number been reported here, this notebook would be claiming a +0.0026 improvement
+that reverses sign on the full data.
+
+### A cost note
+
+The first attempt at this search was allowed to reach `num_leaves` 511, `max_bin` 255 and
+`learning_rate` 0.01. The last of those is the trap: at a low enough rate early stopping
+never fires, so every trial runs all of its rounds. Trials in that corner cost roughly ten
+times the baseline, and a search budgeted at an hour was killed after three with no result.
+
+A search space is a compute budget written in another notation. The version here is bounded
+so the worst trial costs about twice the baseline, carries a wall-clock cap that ends the
+run regardless — it stopped at 23 of 40 trials and said so — and logs every trial as it
+lands, because a long job you cannot observe is indistinguishable from a hung one.
+"""),
 ]
 
 
