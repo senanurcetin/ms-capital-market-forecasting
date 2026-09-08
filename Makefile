@@ -4,7 +4,7 @@
 PY ?= python
 DATA_ROOT ?= C:/mscapital_data
 
-.PHONY: help install test lint fmt check validate ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape api streamlit mlflow \
+.PHONY: help install test lint fmt check validate ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit api streamlit mlflow \
         docker-build up down logs clean
 
 help:
@@ -26,6 +26,7 @@ help:
 	@echo "recency       what do the months held back for the hold-out cost?"
 	@echo "ship          build the shippable ensemble + write a submission"
 	@echo "shape         build sequence-shape features, then test whether they pay"
+	@echo "feature-audit how many of the 292 features are actually distinct?"
 	@echo "api           run FastAPI locally (:8000)"
 	@echo "streamlit     run the dashboard locally (:8501)"
 	@echo "mlflow        MLflow UI (:5000)"
@@ -89,6 +90,9 @@ recency:
 
 ship:
 	$(PY) -m src.models.ship
+
+feature-audit:
+	$(PY) -m src.evaluation.feature_audit
 
 shape:
 	$(PY) -m src.features.shape_features --split train

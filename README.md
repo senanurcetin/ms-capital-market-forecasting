@@ -19,7 +19,7 @@ competition dataset.
 | Leaderboard, first submission | +0.12800 | single LightGBM, months 0–63 |
 | **Leaderboard, shipped model** | **+0.12900** | ensemble, months 0–67 |
 
-Trained on all 1,257,637 samples and 292 features. On the hold-out, Pearson (0.15236) is
+Trained on all 1,257,637 samples and 292 features — though only **264 are actually distinct**; see [Feature redundancy](#feature-redundancy). On the hold-out, Pearson (0.15236) is
 almost identical to cosine, confirming predictions are centred on zero — what a
 shift-sensitive metric rewards. Directional accuracy 0.5516, RMSE 0.003364.
 
@@ -451,6 +451,29 @@ have claimed a +0.0026 improvement that reverses sign.
 > since early stopping never fires and every round runs. Trials there cost ~10x the
 > baseline and a one-hour search was killed after three with nothing to show. The version
 > here bounds the worst trial to ~2x, caps wall-clock, and logs every trial as it lands.
+
+---
+
+## Feature redundancy
+
+Auditing a *new* feature set found five of eighteen columns duplicating something that
+already existed, one at correlation 1.000. The obvious next question was whether the
+original 292 had the same problem. They do: **31 pairs correlate above 0.999**, and
+collapsing them transitively leaves **264 distinct features, not 292**.
+
+| r | pair | why |
+|---:|---|---|
+| 1.0000 | `txn_intensity_60s` / `txn_n_total` | a rate over a *fixed* window is the count over a constant |
+| 1.0000 | `txn_vwap_60s` / `txn_vwap_total` | the widest nested window *is* the whole sample |
+| 1.0000 | `mkt_spread_mean_5s` / `mkt_rel_spread_mean_5s` | prices are normalised so mid ≈ 1.0 — dividing by it changes nothing |
+
+The last one is the instructive failure. That prices sit near 1.0 is a fact this project
+measured and documented in notebook 01; its consequence for the feature set was simply
+never followed up, so the relative-spread family was built anyway.
+
+Nothing here invalidates a result — gradient boosting is untroubled by correlated inputs,
+and the ablation, SHAP and drift analyses are unaffected. What it corrects is a headline:
+"292 features" counts columns, not information. `make feature-audit` reproduces it.
 
 ---
 
