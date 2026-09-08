@@ -734,7 +734,60 @@ print(f"the bar       {sm['fold_noise']:+.5f}   (fold-to-fold noise, set in adva
 print(f"improved      {sm['improved']} of {sm['n_comparisons']}")
 """),
     md("""
-### Nothing. The gate stays shut.
+### Nothing. But a null is not self-interpreting.
+
+A gain of zero has two explanations that look identical from outside:
+
+  **(a)** the shape features carry information the 292 already have — the hypothesis is
+  answered; **(b)** they carry no information at all — the *features* are the problem, not
+  the hypothesis.
+
+Claiming (a) without ruling out (b) would be exactly the kind of unsupported step this
+notebook keeps catching elsewhere. So: how far does each shape feature duplicate an
+existing one, and what do they predict on their own?
+"""),
+    code("""
+red = pd.read_csv(feat / "shape_redundancy.csv")
+au = json.loads((feat / "shape_audit.json").read_text())
+
+print(red.head(8).to_string(index=False, float_format=lambda v: f"{v:,.3f}"))
+print()
+print(f"near-duplicates (corr > 0.9)      {au['n_duplicates']} of {au['n_shape']}")
+print(f"standalone, all {au['n_shape']} shape features  {au['standalone_all']:+.5f}")
+print(f"standalone, {au['n_novel']} genuinely novel     {au['standalone_novel']:+.5f}")
+print(f"the trivial 'mean' baseline        +0.00588")
+"""),
+    md("""
+### The premise was partly wrong, and the conclusion is stronger for it
+
+I wrote that "all 292 features are aggregates, hence permutation-invariant, hence blind to
+order". That was asserted, not checked, and it is **false**: the `*_delta_300s_vs_600s`
+family compares nested windows, which is precisely a statement about direction of travel.
+
+The audit shows how much of the new set was therefore not new. `shp_imb_drift` correlates
+**0.990** with `mkt_depth_imb1_delta_300s_vs_600s`. `shp_n_snaps` correlates **1.000**
+with `mkt_snapshot_rate_600s` — a duplicate that should never have been written. Five of
+eighteen exceed 0.9.
+
+And the split of predictive power is the decisive part:
+
+| | standalone cosine |
+|---|---:|
+| All 18 shape features | **+0.048** |
+| The 9 genuinely novel ones | **+0.006** |
+| Trivial `mean` baseline | +0.006 |
+
+**The shape features that predict are the ones that duplicate existing features.** The
+genuinely new ones — path efficiency, return autocorrelation, RV signature ratio, spread
+and depth drift — score at the trivial baseline. They carry nothing.
+
+So it is (a), with a precision the paired test alone could not have given: the
+order-sensitive information that matters was already captured by the nested-window deltas,
+and the additional path statistics are individually uninformative. Had this been (b), the
+right conclusion would have been "my features are bad", not "sequence order does not pay",
+and I would have reported the wrong thing.
+
+### The gate stays shut.
 
 The gain is **+0.0006** with a confidence interval that spans zero, and even its optimistic
 edge is less than half the bar. Four of six comparisons improved — about what a coin

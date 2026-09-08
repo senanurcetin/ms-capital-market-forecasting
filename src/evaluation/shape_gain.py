@@ -1,13 +1,21 @@
 """Does sequence order carry signal the aggregates do not already have?
 
-The 292 existing features are all aggregates, and aggregates are permutation-invariant:
-shuffle the ~176 snapshots inside a sample and not one of them changes. Whatever lives in
-the ORDER of the book's evolution is therefore absent from the model by construction.
+The leaderboard is the reason to ask. 187 teams, median 0.138, this model 0.129 - below
+typical, so the problem is not at its noise ceiling. Tuning bought nothing measurable, the
+ensemble bought +0.001, more training data bought +0.001. Those levers are spent, so what
+is missing is information, and sequence order was the largest identifiable candidate.
 
-The leaderboard says something is absent. 187 teams, median 0.138, this model 0.129.
-Tuning bought nothing measurable, the ensemble bought +0.001, and more training data
-bought +0.001 - so the missing quantity is information, not method. Sequence order is the
-largest identifiable candidate, and this measures whether it pays.
+A CORRECTION TO THE ORIGINAL PREMISE
+
+This module was first written around the claim that the 292 existing features are all
+aggregates, hence permutation-invariant, hence blind to order. That claim was asserted
+without checking, and it is wrong: the `*_delta_300s_vs_600s` family compares nested
+windows, which is exactly a statement about where a quantity was GOING rather than where
+it sat. Order information was already partly present.
+
+The audit below found it. `shp_imb_drift` correlates 0.990 with
+`mkt_depth_imb1_delta_300s_vs_600s`, and `shp_n_snaps` correlates 1.000 with
+`mkt_snapshot_rate_600s` - a straight duplicate. Five of eighteen exceed 0.9.
 
 THE TEST
 
@@ -21,12 +29,11 @@ The decision rule is fixed in advance, so it cannot be bent afterwards:
   gain clears the fold noise        -> sequence structure is real; the sequence-model gate
                                        in the plan opens, and a 1D-CNN/GRU is justified by
                                        measurement rather than by fashion
-  gain does not clear it            -> the aggregates already capture what order provides;
-                                       the gate stays shut ON EVIDENCE, which is a result
+  gain does not clear it            -> the gate stays shut ON EVIDENCE, which is a result
                                        rather than an omission
 
-Both outcomes are worth having. The second is the one that would otherwise be an
-unexamined hole in the project.
+A null on its own would not have settled it, though - see audit(), which separates "the
+aggregates already have this" from "these features are simply uninformative".
 """
 from __future__ import annotations
 
@@ -151,13 +158,88 @@ def run(*, seeds: tuple[int, ...] = (0, 1), folds: int = FOLDS) -> dict:
     return res
 
 
+def audit(*, n_sample: int = 200_000, seed: int = 0) -> dict:
+    """Is a null result evidence about the hypothesis, or about the features?
+
+    A gain of zero has two explanations that look identical from the outside:
+
+      (a) the features carry information the 292 already have  - the hypothesis is answered
+      (b) the features carry no information at all             - the features are the problem
+
+    Reporting (a) without ruling out (b) would be an unsupported claim, so this measures
+    both halves: how far each shape feature duplicates an existing one, and what the shape
+    features predict on their own.
+
+    Loading only the columns needed - the full 292-column merge costs 1.4 GB and dies on a
+    16 GB machine.
+    """
+    from pathlib import Path
+
+    cfg = load_config()
+    lbl = load_dataset("train", columns=["sample_id", "month", "target"])
+    shape = pd.read_parquet(Path(cfg.paths.features) / "shape_train.parquet")
+    for c in shape.columns:
+        if c != "sample_id":
+            shape[c] = shape[c].astype("float32")
+    shape_cols = [c for c in shape.columns if c != "sample_id"]
+
+    # --- redundancy: nearest existing feature, by absolute correlation ----------------
+    base_df = load_dataset("train")
+    base_cols = [c for c in feature_columns(base_df) if c not in shape_cols]
+    sub = base_df.sample(n=min(n_sample, len(base_df)), random_state=seed)
+    sid = sub["sample_id"].to_numpy()
+    del base_df
+
+    B = np.nan_to_num(sub[base_cols].to_numpy(dtype=np.float32), nan=0.0,
+                      posinf=0.0, neginf=0.0)
+    Bz = (B - B.mean(0)) / (B.std(0) + 1e-12)
+    sh = shape.set_index("sample_id").loc[sid]
+    rows = []
+    for c in shape_cols:
+        v = np.nan_to_num(sh[c].to_numpy(dtype=np.float32), nan=0.0,
+                          posinf=0.0, neginf=0.0)
+        vz = (v - v.mean()) / (v.std() + 1e-12)
+        r = np.abs(Bz.T @ vz) / len(vz)
+        j = int(np.argmax(r))
+        rows.append({"shape_feature": c, "max_abs_corr": float(r[j]),
+                     "closest_existing": base_cols[j]})
+    red = pd.DataFrame(rows).sort_values("max_abs_corr", ascending=False)
+    del B, Bz, sub
+
+    # --- standalone power: all of them, and only the genuinely novel ones -------------
+    df = lbl.merge(shape, on="sample_id", how="left", validate="one_to_one")
+    novel = red.loc[red.max_abs_corr < 0.55, "shape_feature"].tolist()
+    all_score = float(np.mean(cv(df, shape_cols, seed=seed, folds=2)))
+    novel_score = float(np.mean(cv(df, novel, seed=seed, folds=2)))
+
+    log.info("\n%s", red.to_string(index=False, float_format=lambda v: f"{v:,.3f}"))
+    log.info("duplicates (corr > 0.9): %d of %d",
+             int((red.max_abs_corr > 0.9).sum()), len(red))
+    log.info("standalone, all %d shape features : %+.5f", len(shape_cols), all_score)
+    log.info("standalone, %d genuinely novel    : %+.5f", len(novel), novel_score)
+
+    res = {"n_shape": len(shape_cols), "n_duplicates": int((red.max_abs_corr > 0.9).sum()),
+           "n_novel": len(novel), "novel": novel,
+           "standalone_all": all_score, "standalone_novel": novel_score,
+           "median_max_corr": float(red.max_abs_corr.median())}
+    dst = Path(cfg.paths.features)
+    red.to_csv(dst / "shape_redundancy.csv", index=False)
+    (dst / "shape_audit.json").write_text(json.dumps(res, indent=2), encoding="utf-8")
+    return res
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="Does sequence shape add signal?")
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1])
     ap.add_argument("--folds", type=int, default=FOLDS)
+    ap.add_argument("--audit", action="store_true",
+                    help="skip the gain test; check redundancy and standalone power")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
-    run(seeds=tuple(args.seeds), folds=args.folds)
+    if args.audit:
+        audit()
+    else:
+        run(seeds=tuple(args.seeds), folds=args.folds)
 
 
 if __name__ == "__main__":

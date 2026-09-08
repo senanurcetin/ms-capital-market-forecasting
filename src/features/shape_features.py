@@ -1,13 +1,21 @@
 """Sequence-shape features: what the aggregation throws away.
 
-Every one of the 292 existing features is an AGGREGATE over a window - a mean, a rate, a
-last value, a standard deviation. Aggregates are permutation-invariant: shuffle the ~176
-snapshots inside a sample and every one of them is unchanged. So whatever information
-lives in the ORDER of the book's evolution is, by construction, absent from the model.
+Most of the 292 existing features are AGGREGATES over a window - a mean, a rate, a last
+value, a standard deviation - and an aggregate is permutation-invariant: shuffle the ~176
+snapshots inside a sample and it does not move. Information living in the ORDER of the
+book's evolution is largely absent from such a set.
 
-That is a large thing to discard. Microstructure theory is mostly about dynamics - how
+MOSTLY, not entirely - a correction. The first version of this docstring said "every one
+of the 292", which was asserted rather than checked and is false. The
+`*_delta_300s_vs_600s` family compares nested windows, and that IS a statement about
+direction of travel. The audit in src/evaluation/shape_gain.py measured how much overlap
+that leaves: `shp_imb_drift` correlates 0.990 with `mkt_depth_imb1_delta_300s_vs_600s`,
+and `shp_n_snaps` correlates 1.000 with `mkt_snapshot_rate_600s`, which is a duplicate
+that should not have been written. Five of the eighteen exceed 0.9.
+
+The premise still holds for the rest: microstructure theory is mostly about dynamics - how
 imbalance builds, whether price moves trend or revert, how quoting bursts cluster - and
-none of it survives a GROUP BY.
+little of that survives a GROUP BY.
 
 The leaderboard says the gap is real: 187 teams, median 0.138, this model 0.129. Tuning
 bought nothing measurable and the ensemble bought +0.001, so the missing quantity is

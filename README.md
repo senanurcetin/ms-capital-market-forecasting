@@ -89,12 +89,23 @@ matters because it refutes the comfortable reading of everything above: the prob
 does not exist.
 
 Five hypotheses have been tested against that gap and four falsified, including the most
-promising one. All 292 features are aggregates, hence permutation-invariant — shuffle the
-~176 snapshots inside a sample and none of them changes — so the order of the book's
-evolution is absent by construction. Adding 18 path statistics that no aggregate can
-reproduce (path efficiency, return autocorrelation, RV signature ratio, imbalance slope,
-arrival burstiness) buys **+0.0006, CI spanning zero**. The pre-registered bar was 0.0041,
-so the sequence-model gate stays shut — on evidence rather than on preference.
+promising one. Most of the 292 features are aggregates, so they are permutation-invariant
+— shuffle the ~176 snapshots inside a sample and they do not move — which leaves the order
+of the book's evolution largely absent. Adding 18 path statistics (path efficiency, return
+autocorrelation, RV signature ratio, imbalance slope, arrival burstiness) buys
+**+0.0006, CI spanning zero**, against a pre-registered bar of 0.0041. The sequence-model
+gate stays shut, on evidence rather than preference.
+
+A null like that is not self-interpreting, though, and auditing it caught an error in my
+own premise. I had written that *all* 292 are permutation-invariant; the
+`*_delta_300s_vs_600s` family compares nested windows, which is exactly a statement about
+direction of travel, so order information was already partly there. Measuring it: five of
+the eighteen new features correlate above 0.9 with an existing one, `shp_n_snaps` at
+**1.000**. And the split of standalone power is decisive — all 18 predict at **+0.048**,
+but the 9 genuinely novel ones predict at **+0.006**, which is the trivial `mean`
+baseline. **The shape features that predict are the ones that duplicate existing
+features.** That turns a bare null into a specific finding, and had it come out the other
+way the honest conclusion would have been "my features are bad", not "order does not pay".
 
 The honest summary is not "the ceiling is here". It is: **the gap is real, five specific
 explanations are eliminated, and the sixth has not been found.**
