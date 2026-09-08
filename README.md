@@ -67,6 +67,7 @@ And the forecast itself was **built wrong**: cosine factors exactly as
 | Leaderboard, from the hold-out | 0.143 | 0.128 |
 | Spread-mix share of the gap | 26% | ~14% |
 | Gain from ensemble + more training data | +0.0047 | +0.0010 |
+| Gain from sequence-shape features | clears 0.0041 | +0.0006 |
 
 Different reasoning each time, the same direction of error every time — which points at one
 cause rather than three mistakes. **Effects of order 0.002–0.005, measured on internal
@@ -77,7 +78,26 @@ them is small beside what separates one period from another.
 
 The rule that survives: below roughly the fold-to-fold std, treat an internal gain as
 evidence about **which** model to prefer, never as a quantity that will reach a leaderboard.
-Both submissions are consistent with that; none of the three forecasts were.
+Both submissions are consistent with that; none of the four forecasts were.
+
+### Where it actually stands, against other people
+
+187 teams. Median **0.138**. This model **0.129** — rank ~125, below typical. That number
+matters because it refutes the comfortable reading of everything above: the problem is
+**not** at its noise ceiling. Others reach 0.138 through the same fold-to-fold std of
+0.0041, so the missing quantity is signal this pipeline does not extract, not headroom that
+does not exist.
+
+Five hypotheses have been tested against that gap and four falsified, including the most
+promising one. All 292 features are aggregates, hence permutation-invariant — shuffle the
+~176 snapshots inside a sample and none of them changes — so the order of the book's
+evolution is absent by construction. Adding 18 path statistics that no aggregate can
+reproduce (path efficiency, return autocorrelation, RV signature ratio, imbalance slope,
+arrival burstiness) buys **+0.0006, CI spanning zero**. The pre-registered bar was 0.0041,
+so the sequence-model gate stays shut — on evidence rather than on preference.
+
+The honest summary is not "the ceiling is here". It is: **the gap is real, five specific
+explanations are eliminated, and the sixth has not been found.**
 
 Walk-forward CV, full data, 5 folds:
 

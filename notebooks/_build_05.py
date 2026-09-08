@@ -700,6 +700,81 @@ a weight of **0.71** — against a CV that finds it and LightGBM indistinguishab
 models are highly correlated, so their differences are mostly noise and the split swings on
 very little. Two months gives 0.63 / 0.32 / 0.05, which matches the CV ordering.
 """),
+    md("""
+---
+
+## 7. The last hypothesis: does sequence order carry signal?
+
+The leaderboard is the reason to keep going. 187 teams, median **0.138**, this model
+**0.129** — below typical, not near a ceiling. Tuning bought nothing, the ensemble bought
++0.001, more data bought +0.001. Those are exhausted, so what is missing is *information*.
+
+And there is an obvious candidate. All 292 features are **aggregates**, and aggregates are
+permutation-invariant: shuffle the ~176 snapshots inside a sample and not one of them
+changes. Whatever lives in the ORDER of the book's evolution is absent by construction —
+which is awkward, because microstructure is mostly a theory about dynamics.
+
+So: 18 path statistics that no aggregate can reproduce — path efficiency, return
+autocorrelation, sign persistence, the realised-volatility signature ratio, OLS slopes of
+imbalance and spread against time, half-window drift, arrival burstiness — added **on top**
+of the 292 and compared paired.
+
+The decision rule was fixed before running, so it could not be bent afterwards: the gain
+must clear the fold-to-fold noise of 0.0041.
+"""),
+    code("""
+sg = pd.read_csv(feat / "shape_gain.csv")
+sm = json.loads((feat / "shape_gain_meta.json").read_text())
+
+print(sg.to_string(index=False, float_format=lambda v: f"{v:,.5f}"))
+print()
+print(f"paired gain   {sm['paired_gain']:+.5f}   (se {sm['se']:.5f}, n={sm['n_comparisons']})")
+print(f"95% CI        [{sm['ci_low']:+.5f}, {sm['ci_high']:+.5f}]")
+print(f"the bar       {sm['fold_noise']:+.5f}   (fold-to-fold noise, set in advance)")
+print(f"improved      {sm['improved']} of {sm['n_comparisons']}")
+"""),
+    md("""
+### Nothing. The gate stays shut.
+
+The gain is **+0.0006** with a confidence interval that spans zero, and even its optimistic
+edge is less than half the bar. Four of six comparisons improved — about what a coin
+would do.
+
+Before the run I said I expected sequence structure to be real, because the whole
+microstructure literature is about dynamics and this pipeline flattens them. **That was
+the fourth forecast in this notebook to be wrong, and again in the same direction.**
+
+| Forecast | Predicted | Actual |
+|---|---:|---:|
+| Leaderboard, from the hold-out | 0.143 | 0.128 |
+| Spread-mix share of the gap | 26% | ~14% |
+| Gain from ensemble + more data | +0.0047 | +0.0010 |
+| **Gain from sequence shape** | **clears 0.0041** | **+0.0006** |
+
+### What this does and does not establish
+
+It does **not** prove that a sequence model would fail. Eighteen hand-crafted summary
+statistics are not the same object as a 1D-CNN reading the raw ordered snapshots; a
+network could in principle find structure that no small set of scalars captures. What the
+result establishes is narrower and still useful: **the obvious, cheap, interpretable route
+to sequence information pays nothing**, so a sequence model would have to justify itself on
+something other than "order must surely matter".
+
+The pre-registered rule says the gate stays shut, and it stays shut. Moving the bar after
+seeing the number is exactly the move this notebook exists to avoid.
+
+### The honest read of the whole notebook
+
+Five hypotheses tested, four falsified, one confirmed. Every forecast overshot. The
+project's own noise structure explains why — fold-to-fold std 0.0041, period-to-period std
+0.0091 — but it does **not** explain the leaderboard gap, because the median competitor
+scores 0.138 and reaches it with the same noise floor. Somebody is extracting signal this
+pipeline does not, and none of the five hypotheses found where.
+
+That is the accurate place to stop: not "the problem is at its ceiling", which the
+leaderboard refutes, but "the gap is real, five specific explanations have been eliminated,
+and the sixth has not been found."
+"""),
 ]
 
 
