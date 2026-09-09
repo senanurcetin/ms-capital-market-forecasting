@@ -197,9 +197,10 @@ measured → what I changed.**
 
 ## The dashboard
 
-Six pages over the results, and the one worth opening first is **Why the leaderboard
-disagreed** - six hypotheses, five eliminated, laid out as a scoreboard rather than a
-narrative.
+Seven pages, grouped the way the work happened - what the data turned out to be, what the
+model does, and then why the leaderboard disagreed with the hold-out. The last one is the
+one worth opening first: six hypotheses, five eliminated, laid out as a scoreboard rather
+than a narrative.
 
 ```bash
 make streamlit          # :8501
@@ -207,9 +208,17 @@ make streamlit          # :8501
 
 It runs anywhere, with no pipeline and no API. Everything it shows travels in
 [`results/`](results/): derived aggregates only - fold scores, backtest curves, SHAP
-importances, the investigation tables - plus the trained artefact and a 5,000-row sample
+importances, the investigation tables - plus the trained artefact and a 4,970-row sample
 of the feature table. No competition data is redistributed. `make export-results`
 refreshes it from a live pipeline run.
+
+That sample is drawn **evenly across all 71 months**, and the reason is a defect worth
+recording. It used to be `head(5000)`, and because `sample_id` is chronological those rows
+were all month 0 - so every distribution on the published page was one month of data
+captioned as the training set, and the monthly-volatility chart was a single point under a
+caption claiming a 2.69x swing. Per-month statistics are now computed on the full 1.26M
+rows and exported alongside, because a standard deviation from seventy sampled rows is
+noise presented as a regime.
 
 The Predictions page scores **in-process** when no API is reachable, using the same bundle
 the API would have loaded, so a published dashboard is interactive rather than a page of
@@ -597,6 +606,18 @@ The build is multi-stage, one target per service, because the single-image versi
 DuckDB, Polars, the Kaggle client and the GCP clients — none of which are needed to load
 an artefact and score a row.
 
+That constraint shapes how the ensemble is stored. `ship.py` fits three models and
+generates the submission with their blend, so the blend is what produced the leaderboard
+score — but the servable artefact used to be the bare LightGBM booster saved under the
+name `ensemble`, so `/model-info` announced a blend while `/predict` returned one model's
+predictions. Pickling the fitted wrappers would have been one line and would have dragged
+`src.models` into the API image, undoing the separation above. Instead each base model is
+written in a format the runtime dependencies can already read — booster files for LightGBM
+and XGBoost, and for Ridge the fitted sklearn objects **plus the imputation medians**,
+because unwrapping it once lost those and `predict()` then raised `Input X contains NaN`
+on the first gap in the test set. `predict_test()` loads that same artefact, so the
+submission and the endpoint cannot drift apart.
+
 | Image | Size | Contents |
 |---|---:|---|
 | `mscapital:api` | **777 MB** | serving deps + `src/inference` only |
@@ -651,7 +672,7 @@ src/
   models/                baseline · lightgbm · xgboost · ensemble · train (CLI) · finalize
   inference/             predictor — used by the API, which never imports training code
 api/main.py              FastAPI: /health /model-info /predict /batch-predict /reload
-streamlit_app/           six-page dashboard
+streamlit_app/           seven-page dashboard (st.navigation router + pages/)
 sql/                     BigQuery staging DDL
 tests/                   92 tests, none requiring live BigQuery or downloaded data
 ```
