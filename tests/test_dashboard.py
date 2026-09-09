@@ -148,3 +148,39 @@ def test_the_deployment_needs_no_secrets():
     lib = (Path(__file__).resolve().parents[1] / "streamlit_app" / "lib.py").read_text(
         encoding="utf-8")
     assert "gcp_key_path" not in lib and "service_account" not in lib
+
+
+# ------------------------------------------------- every page must read through lib
+
+def test_no_page_addresses_the_data_directories_directly():
+    """Pages that build their own paths cannot see the exported bundle.
+
+    Explainability and Backtesting each did, so on a deployment those two rendered "not
+    available yet" while every loader test still passed - the tests exercise lib, and
+    those pages were not going through lib. Reading through load_csv/load_json is what
+    makes the two-source fallback apply everywhere rather than in most places.
+    """
+    from pathlib import Path
+
+    app = Path(__file__).resolve().parents[1] / "streamlit_app"
+    offenders = [
+        f.name for f in [*app.glob("pages/*.py"), app / "app.py"]
+        if any(t in f.read_text(encoding="utf-8") for t in ("MODELS_DIR /", "FEATURES_DIR /"))
+    ]
+    assert not offenders, f"these build their own paths instead of using lib: {offenders}"
+
+
+def test_every_page_puts_the_repo_root_on_the_path():
+    """A bare `streamlit run` adds the main script's directory, not the repository root.
+
+    Without the bootstrap, `from streamlit_app.lib import ...` raises ModuleNotFoundError
+    on Streamlit Community Cloud while working perfectly under `python -m streamlit`.
+    """
+    from pathlib import Path
+
+    app = Path(__file__).resolve().parents[1] / "streamlit_app"
+    missing_boot = [
+        f.name for f in [*app.glob("pages/*.py"), app / "app.py"]
+        if f.stem != "__init__" and "sys.path.insert" not in f.read_text(encoding="utf-8")
+    ]
+    assert not missing_boot, f"no sys.path bootstrap in: {missing_boot}"

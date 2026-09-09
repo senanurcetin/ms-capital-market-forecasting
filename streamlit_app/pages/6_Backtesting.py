@@ -11,10 +11,9 @@ from pathlib import Path
 # and breaks on deploy, which is the worst place to find out.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import pandas as pd
 import streamlit as st
 
-from streamlit_app.lib import FEATURES_DIR, missing, page_header
+from streamlit_app.lib import load_csv, missing, page_header
 
 st.set_page_config(page_title="Backtesting", layout="wide")
 page_header("Backtest", "Assessing predictions in a trading-like framing")
@@ -23,15 +22,11 @@ st.warning(
     "power and its robustness to transaction costs."
 )
 
-cost_path = FEATURES_DIR / "backtest_cost_sensitivity.csv"
-sweep_path = FEATURES_DIR / "backtest_trade_fraction.csv"
-equity_path = FEATURES_DIR / "backtest_equity.csv"
-
-if not cost_path.exists():
+cost = load_csv("backtest_cost_sensitivity.csv")
+if cost is None:
     missing("Backtest results", "python -m src.models.finalize")
     st.stop()
 
-cost = pd.read_csv(cost_path)
 st.subheader("Transaction-cost sensitivity")
 st.dataframe(cost, use_container_width=True)
 if {"cost_bps", "total_return"} <= set(cost.columns):
@@ -41,8 +36,8 @@ st.caption(
     "even a small cost means the ranking power is weak."
 )
 
-if sweep_path.exists():
-    sweep = pd.read_csv(sweep_path)
+sweep = load_csv("backtest_trade_fraction.csv")
+if sweep is not None:
     st.subheader("Performance by traded fraction")
     st.dataframe(sweep, use_container_width=True)
     st.caption(
@@ -50,8 +45,8 @@ if sweep_path.exists():
         "absolute cut - cosine is scale-invariant, so magnitudes are not calibrated."
     )
 
-if equity_path.exists():
-    eq = pd.read_csv(equity_path)
+eq = load_csv("backtest_equity.csv")
+if eq is not None:
     st.subheader("Cumulative return (hold-out months 65-70)")
     st.line_chart(eq.iloc[:, 0])
     st.caption("The backtest runs ONLY on the hold-out months - no look-ahead.")
