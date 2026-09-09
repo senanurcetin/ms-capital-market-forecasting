@@ -828,6 +828,88 @@ That is the accurate place to stop: not "the problem is at its ceiling", which t
 leaderboard refutes, but "the gap is real, five specific explanations have been eliminated,
 and the sixth has not been found."
 """),
+    md("""
+---
+
+## 8. Training the loss the metric rewards
+
+One idea was left, and unlike the others it came out of this project's **own** metric
+analysis rather than from general practice.
+
+Every model here is fitted with L2 and then scored with cosine. The decomposition above
+shows what cosine actually does: it weights rows by **magnitude**. A target three sigma
+from zero counts for far more than one sitting at the tick, and the 5.5% of targets that
+are exactly zero contribute nothing at all. L2 knows none of that — it weights every row
+identically and spends capacity fitting rows the metric ignores.
+
+So: weight each training row by `|y|^alpha`. `alpha = 0` is current behaviour, `alpha = 1`
+matches the metric's linear weighting, `alpha = 0.5` is the compromise. Same bar as
+always: clear the fold-to-fold noise of 0.0041.
+
+(Zero targets are floored rather than dropped. At `alpha >= 1` they would get zero weight
+and leave training entirely — a different experiment from reweighting, and one that
+discards 70k rows which still say where the boundary between moving and not moving lies.)
+"""),
+    code("""
+ma = pd.read_csv(feat / "metric_alignment.csv")
+mm = json.loads((feat / "metric_alignment_meta.json").read_text())
+summ = pd.DataFrame(mm["summary"])
+
+print(summ[["alpha", "cosine", "gain", "ci_low", "ci_high", "improved", "n"]]
+      .to_string(index=False, float_format=lambda v: f"{v:,.5f}"))
+print()
+print(f"bar (fold noise)  {mm['fold_noise']:+.5f}")
+print(f"verdict           {mm['verdict']}")
+"""),
+    md("""
+### It does not merely fail — it actively hurts
+
+This is the first negative in the notebook that is not a null. The effect is monotone in
+alpha, the confidence intervals are nowhere near zero, and **0 of 6 comparisons improved
+in either arm**:
+
+| alpha | cosine | change |
+|---:|---:|---:|
+| 0.0 | +0.14018 | — |
+| 0.5 | +0.13379 | **−0.0064** |
+| 1.0 | +0.11672 | **−0.0235** |
+
+### The reasoning was wrong, and it is worth being precise about how
+
+The argument was: *cosine weights rows by magnitude, so training should too.* That sounds
+like alignment. It is not, and the flaw is specific.
+
+**The weights are a function of the target.** Fitting with `w_i = |y_i|` does not estimate
+`E[y|x]` — it estimates a magnitude-tilted quantity closer to `E[y|y|·|x] / E[|y||x]`. The
+model is no longer predicting the conditional mean, it is predicting a biased functional of
+it, and cosine is maximised by the conditional mean. Using a function of `y` as a sample
+weight is a form of target leakage into the fitting procedure: legitimate in the sense that
+no test information is used, but it distorts the estimand.
+
+Cosine's magnitude weighting is a property of **how scores aggregate across rows**, not an
+instruction about where to spend model capacity. Those are different objects, and
+conflating them is the whole error.
+
+A second effect points the same way: large-|y| rows are the *least* predictable ones — big
+moves are dominated by information the book does not contain — so upweighting them shifts
+capacity towards the noisiest part of the data. Both effects push the same direction, which
+is consistent with the monotone decline.
+
+### Five forecasts, five overshoots
+
+| Forecast | Predicted | Actual |
+|---|---:|---:|
+| Leaderboard, from the hold-out | 0.143 | 0.128 |
+| Spread-mix share of the gap | 26% | ~14% |
+| Gain from ensemble + more data | +0.0047 | +0.0010 |
+| Gain from sequence shape | clears 0.0041 | +0.0006 |
+| **Gain from metric alignment** | **small but positive** | **−0.0064** |
+
+Five predictions, five wrong, every one in the same direction. At this point the pattern is
+better evidence than any individual result: **on this problem my priors about what should
+help are systematically optimistic, and only the measurement settles it.** That is not a
+comfortable finding, and it is the most transferable one here.
+"""),
 ]
 
 

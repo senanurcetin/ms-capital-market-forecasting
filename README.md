@@ -68,6 +68,7 @@ And the forecast itself was **built wrong**: cosine factors exactly as
 | Spread-mix share of the gap | 26% | ~14% |
 | Gain from ensemble + more training data | +0.0047 | +0.0010 |
 | Gain from sequence-shape features | clears 0.0041 | +0.0006 |
+| Gain from aligning the loss with the metric | small but positive | **−0.0064** |
 
 Different reasoning each time, the same direction of error every time — which points at one
 cause rather than three mistakes. **Effects of order 0.002–0.005, measured on internal
@@ -78,7 +79,15 @@ them is small beside what separates one period from another.
 
 The rule that survives: below roughly the fold-to-fold std, treat an internal gain as
 evidence about **which** model to prefer, never as a quantity that will reach a leaderboard.
-Both submissions are consistent with that; none of the four forecasts were.
+Both submissions are consistent with that; none of the five forecasts were.
+
+The last one is the sharpest, because it is the only idea that came from this project's own
+metric analysis. Cosine weights rows by magnitude, so weighting the training loss by
+`|y|^alpha` looked like alignment. It is not: **the weights are a function of the target**,
+so the fit no longer estimates `E[y|x]` but a magnitude-tilted functional of it — and cosine
+is maximised by the conditional mean. Cosine's weighting describes how scores *aggregate
+across rows*, not where a model should spend capacity. Conflating those cost −0.0064 at
+alpha 0.5 and −0.0235 at alpha 1.0, with 0 of 6 comparisons improving in either arm.
 
 ### Where it actually stands, against other people
 
