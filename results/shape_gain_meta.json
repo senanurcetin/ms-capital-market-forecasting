@@ -1,0 +1,18 @@
+{
+  "seeds": [
+    0,
+    1
+  ],
+  "folds": 3,
+  "rounds": 800,
+  "n_base": 292,
+  "n_shape": 18,
+  "paired_gain": 0.0006060136058779938,
+  "se": 0.0006736046539404807,
+  "n_comparisons": 6,
+  "ci_low": -0.0007142515158453485,
+  "ci_high": 0.001926278727601336,
+  "fold_noise": 0.0041,
+  "improved": 4,
+  "verdict": "gate stays SHUT - measured, not assumed"
+}

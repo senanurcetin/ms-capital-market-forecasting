@@ -1,0 +1,23 @@
+{
+  "holdout_months": [
+    65,
+    70
+  ],
+  "spread_col": "mkt_rel_spread_last",
+  "bucket_edges": [
+    6.314581696642563e-06,
+    0.0005594118847511709,
+    0.0009519097511656582,
+    0.00156125143985264,
+    0.02172553911805153
+  ],
+  "count_weighted": 0.14955347425288243,
+  "magnitude_weighted": 0.15171282751514087,
+  "forecast_count_weighted": 0.14474480212043256,
+  "forecast_magnitude_weighted": 0.14843753946356117,
+  "actual_leaderboard": 0.128,
+  "pooled": 0.15171282751514084,
+  "rebuilt": 0.15171282751514087,
+  "abs_error": 2.7755575615628914e-17,
+  "weight_sum": 0.9906191250083978
+}

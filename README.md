@@ -195,6 +195,38 @@ measured → what I changed.**
 
 ---
 
+## The dashboard
+
+Six pages over the results, and the one worth opening first is **Why the leaderboard
+disagreed** - six hypotheses, five eliminated, laid out as a scoreboard rather than a
+narrative.
+
+```bash
+make streamlit          # :8501
+```
+
+It runs anywhere, with no pipeline and no API. Everything it shows travels in
+[`results/`](results/): derived aggregates only - fold scores, backtest curves, SHAP
+importances, the investigation tables - plus the trained artefact and a 5,000-row sample
+of the feature table. No competition data is redistributed. `make export-results`
+refreshes it from a live pipeline run.
+
+The Predictions page scores **in-process** when no API is reachable, using the same bundle
+the API would have loaded, so a published dashboard is interactive rather than a page of
+error messages. With `make api` running it uses the real serving path instead.
+
+**Deploying it** (free): [Streamlit Community Cloud](https://share.streamlit.io) reads this
+repository directly - point it at `streamlit_app/app.py` on `main`. Root
+`requirements.txt` is deliberately lean for exactly this reason: the pipeline-only packages
+(MLflow, SHAP, DuckDB, Polars, Kaggle) sit in `requirements-pipeline.txt` so the deployed
+app does not install them to draw a bar chart.
+
+> Vercel is not an option here and it is worth saying why: it runs serverless functions,
+> while Streamlit is a long-lived server holding a WebSocket per viewer. The hacks that
+> claim otherwise are fragile, and a broken link in a portfolio is worse than no link.
+
+---
+
 ## Run it in 30 seconds
 
 The real pipeline needs Kaggle credentials, a GCP project, ~20 GB of disk and hours of

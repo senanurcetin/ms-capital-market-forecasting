@@ -1,8 +1,18 @@
 """Shared data access for the Streamlit pages.
 
-Design: every loader returns None instead of crashing on missing data, so the
-dashboard stays usable at any stage of the pipeline and tells the user what is
-missing - an explicit state rather than a blank screen.
+TWO SOURCES, IN ORDER
+
+  1. `MSCAPITAL_DATA_ROOT` - the full local pipeline output, when running beside it
+  2. `results/` in the repository - the exported summaries, when running anywhere else
+
+The second is what makes the dashboard publishable. It carries only derived aggregates -
+fold scores, backtest curves, SHAP importances, the investigation results - plus a 20k-row
+sample of the feature table for the overview charts. No competition data travels, and
+every number shown is one already published in the notebooks.
+
+Design: every loader returns None instead of crashing on missing data, so the dashboard
+stays usable at any stage of the pipeline and tells the user what is missing - an explicit
+state rather than a blank screen.
 """
 from __future__ import annotations
 
@@ -12,12 +22,28 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from src.inference.predictor import Predictor
 
 DATA_ROOT = Path(os.environ.get("MSCAPITAL_DATA_ROOT", "C:/mscapital_data"))
-API_URL = os.environ.get("MSCAPITAL_API_URL", "http://localhost:8000")
+API_URL = os.environ.get("MSCAPITAL_API_URL", "")
 
 FEATURES_DIR = DATA_ROOT / "features"
 MODELS_DIR = DATA_ROOT / "models"
+BUNDLED = Path(__file__).resolve().parents[1] / "results"
+
+
+def find(*names: str) -> Path | None:
+    """First existing match, local pipeline output before the bundled export.
+
+    Order matters: someone running beside the real pipeline should see their own fresh
+    numbers, not a snapshot committed weeks ago.
+    """
+    for d in (FEATURES_DIR, MODELS_DIR, BUNDLED):
+        for name in names:
+            p = d / name
+            if p.exists():
+                return p
+    return None
 
 DISCLAIMER = (
     "This dashboard is for **research and model evaluation**. "
@@ -36,31 +62,70 @@ def missing(what: str, how: str) -> None:
     st.info(f"**{what}** is not available yet.\n\nTo produce it, run: `{how}`")
 
 
+def histogram(values: pd.Series, bins: int = 50, label: str = "value") -> pd.DataFrame:
+    """A binned distribution Streamlit can actually plot.
+
+    `value_counts(bins=)` returns an IntervalIndex, and st.bar_chart renders those as raw
+    {"left": ..., "right": ...} dicts sorted LEXICOGRAPHICALLY - so "10.8" lands between
+    "1.2" and "2.4". Reducing each interval to its midpoint gives a numeric axis in the
+    right order.
+
+    Midpoints are rounded to four significant figures: the raw value carries float noise
+    (10.241499999999999) that Streamlit prints in full and that means nothing to a reader.
+    """
+    binned = values.value_counts(bins=bins).sort_index()
+    mids = [float(f"{iv.mid:.4g}") for iv in binned.index]
+    return pd.DataFrame(
+        {"samples": binned.to_numpy()},
+        index=pd.Index(mids, name=label),
+    )
+
+
 @st.cache_data(show_spinner=False)
 def load_summary() -> dict | None:
-    for name in ("walkforward_summary.json", "smoke_summary.json"):
-        p = FEATURES_DIR / name
-        if p.exists():
-            return json.loads(p.read_text(encoding="utf-8"))
-    return None
+    """Per-fold walk-forward scores for every model."""
+    p = find("walkforward_summary.json", "smoke_summary.json")
+    return json.loads(p.read_text(encoding="utf-8")) if p else None
 
 
 @st.cache_data(show_spinner=False)
 def load_results_table() -> pd.DataFrame | None:
-    for name in ("walkforward_summary.csv", "smoke_summary.csv"):
-        p = FEATURES_DIR / name
-        if p.exists():
-            return pd.read_csv(p)
-    return None
+    """The model comparison table: mean, std, min and max cosine per model."""
+    p = find("walkforward_summary.csv", "smoke_summary.csv")
+    return pd.read_csv(p) if p else None
+
+
+@st.cache_data(show_spinner=False)
+def load_csv(name: str) -> pd.DataFrame | None:
+    """Any exported result table, by filename."""
+    p = find(name)
+    return pd.read_csv(p) if p else None
+
+
+@st.cache_data(show_spinner=False)
+def load_json(name: str) -> dict | None:
+    """Any exported result document, by filename."""
+    p = find(name)
+    return json.loads(p.read_text(encoding="utf-8")) if p else None
 
 
 @st.cache_data(show_spinner=False)
 def load_features(n_rows: int = 50_000, columns: list[str] | None = None) -> pd.DataFrame | None:
-    """A slice of the feature set. The full file is ~1.4 GB and is never fully loaded."""
-    p = FEATURES_DIR / "dataset_train.parquet"
-    if not p.exists():
+    """A slice of the feature set.
+
+    The full table is ~1.4 GB and is never fully loaded. Away from the pipeline this falls
+    back to the 20k-row sample exported into `results/`, which carries the ten columns the
+    overview charts plot and nothing else.
+    """
+    p = find("dataset_train.parquet", "feature_sample.parquet")
+    if p is None:
         return None
     import pyarrow.parquet as pq
+
+    if p.name == "feature_sample.parquet":
+        df = pq.read_table(p).to_pandas()
+        keep = [c for c in (columns or df.columns) if c in df.columns]
+        return df[keep].head(n_rows)
 
     pf = pq.ParquetFile(p)
     batches = pf.iter_batches(batch_size=min(n_rows, 65_536), columns=columns)
@@ -76,15 +141,43 @@ def load_features(n_rows: int = 50_000, columns: list[str] | None = None) -> pd.
 
 @st.cache_data(show_spinner=False)
 def feature_columns() -> list[str] | None:
-    p = FEATURES_DIR / "dataset_train.parquet"
-    if not p.exists():
+    """Column names of whichever feature table is available."""
+    p = find("dataset_train.parquet", "feature_sample.parquet")
+    if p is None:
         return None
     import pyarrow.parquet as pq
 
     return pq.ParquetFile(p).schema_arrow.names
 
 
+@st.cache_resource(show_spinner=False)
+def load_local_model():
+    """The shipped model, loaded in-process - no API required.
+
+    A published dashboard has no FastAPI beside it, so a Predictions page that can only
+    report "cannot reach the API" would be dead on the one deployment that matters. The
+    artefact travels in `results/`, and `Predictor` is already independent of the training
+    code, which is what makes this cheap.
+    """
+    from src.inference.predictor import load_bundle
+
+    for d in (MODELS_DIR / "current", BUNDLED):
+        if (d / "model.txt").exists() and (d / "model_meta.json").exists():
+            try:
+                return Predictor(load_bundle(d))
+            except Exception:
+                return None
+    return None
+
+
 def api_get(path: str) -> dict | None:
+    """Call the FastAPI service, or return None when it is not configured.
+
+    Empty by default: a published dashboard has no API beside it, and spending five
+    seconds timing out against localhost on every page load is worse than saying so.
+    """
+    if not API_URL:
+        return None
     import urllib.error
     import urllib.request
 
@@ -96,6 +189,9 @@ def api_get(path: str) -> dict | None:
 
 
 def api_post(path: str, payload: dict) -> tuple[int, dict | None]:
+    """POST to the FastAPI service. Returns (0, None) when it is unreachable."""
+    if not API_URL:
+        return 0, None
     import urllib.error
     import urllib.request
 

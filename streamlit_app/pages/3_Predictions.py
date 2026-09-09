@@ -1,27 +1,55 @@
-"""Page 3 - Prediction."""
+"""Page 3 - Prediction.
+
+Two backends, and the fallback is the one that matters. Against a running FastAPI the page
+exercises the real serving path, contract and all. Published, there is no API beside it, so
+it loads the shipped artefact in-process instead - the same bundle the API would have
+loaded. A page that could only say "cannot reach the API" would be dead on the one
+deployment anybody actually sees.
+"""
 import math
 
 import streamlit as st
 
-from streamlit_app.lib import api_get, api_post, load_features, missing, page_header
+from streamlit_app.lib import (
+    api_get,
+    api_post,
+    load_features,
+    load_local_model,
+    missing,
+    page_header,
+)
 
 st.set_page_config(page_title="Predictions", layout="wide")
 page_header("Prediction", "Pick a sample and ask the model")
 
 health = api_get("/health")
-if not health:
-    st.error("Cannot reach the API. Start it with `make api` or `docker compose up api`.")
-    st.stop()
-if health.get("status") != "ok":
-    st.warning(f"API degraded: {health.get('detail')}")
+local = None if health else load_local_model()
 
-info = api_get("/model-info") or {}
-metrics = info.get("metrics") or {}
+if health:
+    if health.get("status") != "ok":
+        st.warning(f"API degraded: {health.get('detail')}")
+    info = api_get("/model-info") or {}
+    metrics = info.get("metrics") or {}
+    name, version = info.get("model_name", "-"), info.get("model_version", "-")
+    n_features = info.get("n_features", "-")
+    st.caption("Scoring through the FastAPI service.")
+elif local is not None:
+    b = local.bundle
+    metrics = b.metrics or {}
+    name, version, n_features = b.name, b.version, len(b.features)
+    st.caption(
+        "Scoring in-process with the shipped artefact - no API needed. Run `make api` to "
+        "exercise the real serving path instead."
+    )
+else:
+    st.error("No model available: neither the API nor a local artefact could be reached.")
+    st.stop()
+
 cosine = metrics.get("cosine")
 c = st.columns(4)
-c[0].metric("Model", info.get("model_name", "-"))
-c[1].metric("Version", info.get("model_version", "-"))
-c[2].metric("Features", info.get("n_features", "-"))
+c[0].metric("Model", name)
+c[1].metric("Version", version)
+c[2].metric("Features", n_features)
 c[3].metric("Hold-out cosine", f"{cosine:+.4f}" if isinstance(cosine, int | float) else "-")
 
 df = load_features(n_rows=5_000)
@@ -38,7 +66,15 @@ features = {
 }
 
 if st.button("Predict", type="primary"):
-    status, body = api_post("/predict", {"features": features})
+    if health:
+        status, body = api_post("/predict", {"features": features})
+    else:
+        value = float(local.predict([features])[0])
+        status, body = 200, {
+            "predicted_return": value,
+            "direction": local.direction(value),
+            "model_name": name, "model_version": version,
+        }
     if status == 200 and body:
         a, b, d = st.columns(3)
         a.metric("Predicted return", f"{body['predicted_return'] * 1e4:+.2f} bps")

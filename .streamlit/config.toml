@@ -1,0 +1,18 @@
+# Theme for the published dashboard. Streamlit Community Cloud reads this from the repo,
+# so the deployed app looks the same as a local run rather than defaulting to whatever
+# the viewer's browser prefers.
+[theme]
+base = "dark"
+primaryColor = "#4C9AFF"
+backgroundColor = "#0E1117"
+secondaryBackgroundColor = "#161A23"
+textColor = "#E6E6E6"
+font = "sans serif"
+
+[server]
+# The dashboard reads committed result files; nothing is uploaded to it.
+maxUploadSize = 1
+enableStaticServing = false
+
+[browser]
+gatherUsageStats = false

@@ -1,0 +1,19 @@
+{
+  "n_shape": 18,
+  "n_duplicates": 5,
+  "n_novel": 9,
+  "novel": [
+    "shp_rv_signature_ratio",
+    "shp_sign_persistence",
+    "shp_spread_slope",
+    "shp_mid_range_over_path",
+    "shp_depth_slope",
+    "shp_mid_path_efficiency",
+    "shp_depth_drift",
+    "shp_mid_autocorr1",
+    "shp_spread_drift"
+  ],
+  "standalone_all": 0.04804012663415244,
+  "standalone_novel": 0.0057413776021542256,
+  "median_max_corr": 0.591711014509201
+}

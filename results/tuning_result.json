@@ -1,0 +1,31 @@
+{
+  "n_trials": 40,
+  "trials_completed": 23,
+  "sample_frac": 0.3,
+  "search_folds": 3,
+  "time_budget_min": 60.0,
+  "baseline_cv": 0.1369125581872487,
+  "best_cv": 0.13951167489462965,
+  "claimed_gain": 0.002599116707380944,
+  "tuned_rescored_mean": 0.1371830952131126,
+  "baseline_rescored_mean": 0.13656529847539065,
+  "tuned_rescored_std": 0.0008210856636696497,
+  "baseline_rescored_std": 0.0008201942991993786,
+  "honest_gain": 0.0006177967377219429,
+  "selection_optimism": 0.001981319969659001,
+  "check_seeds": [
+    43,
+    44,
+    45
+  ],
+  "best_params": {
+    "learning_rate": 0.02015369312797273,
+    "num_leaves": 173,
+    "min_data_in_leaf": 1018,
+    "feature_fraction": 0.8374043008245924,
+    "bagging_fraction": 0.8856351733429728,
+    "lambda_l1": 0.0019777828512462727,
+    "lambda_l2": 0.21181366627251402,
+    "max_bin": 127
+  }
+}

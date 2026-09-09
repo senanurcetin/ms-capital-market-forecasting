@@ -23,3 +23,7 @@ kaggle.json
 gcp-key.json
 .env*
 .demo/
+
+# Tooling caches and coverage output
+.coverage
+htmlcov/

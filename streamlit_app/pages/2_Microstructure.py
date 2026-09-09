@@ -1,7 +1,7 @@
 """Page 2 - Market microstructure."""
 import streamlit as st
 
-from streamlit_app.lib import load_features, missing, page_header
+from streamlit_app.lib import histogram, load_features, missing, page_header
 
 st.set_page_config(page_title="Microstructure", layout="wide")
 page_header("Market Microstructure", "Order book, order flow and trade dynamics")
@@ -24,9 +24,9 @@ tab1, tab2, tab3 = st.tabs(["Order book", "Order flow", "Trades"])
 with tab1:
     c1, c2 = st.columns(2)
     c1.subheader("Relative spread (bps)")
-    c1.bar_chart((df["mkt_rel_spread_last"] * 1e4).clip(0, 60).value_counts(bins=50).sort_index())
+    c1.bar_chart(histogram((df["mkt_rel_spread_last"] * 1e4).clip(0, 60), label="bps"))
     c2.subheader("Depth imbalance (L1)")
-    c2.bar_chart(df["mkt_depth_imb1_last"].value_counts(bins=50).sort_index())
+    c2.bar_chart(histogram(df["mkt_depth_imb1_last"], label="imbalance"))
     st.subheader("Volatility: 60 s vs 600 s")
     st.line_chart(df.groupby("month")[["mkt_mid_std_60s", "mkt_mid_std_600s"]].mean())
     st.caption("The market window is 600 s; order and transaction are 60 s - measured, not assumed.")
@@ -41,14 +41,14 @@ with tab1:
 with tab2:
     c1, c2 = st.columns(2)
     c1.subheader("Order flow imbalance (60s)")
-    c1.bar_chart(df["ord_ofi_60s"].value_counts(bins=50).sort_index())
+    c1.bar_chart(histogram(df["ord_ofi_60s"], label="OFI"))
     c2.subheader("Cancel-to-new order ratio")
-    c2.bar_chart(df["ord_cancel_new_ratio_60s"].clip(0, 3).value_counts(bins=50).sort_index())
+    c2.bar_chart(histogram(df["ord_cancel_new_ratio_60s"].clip(0, 3), label="cancel / new"))
     st.caption("side 0 = BID, 1 = ASK; order_action 0 = NEW, 1 = CANCEL (resolved empirically).")
 
 with tab3:
     c1, c2 = st.columns(2)
     c1.subheader("Trade volume imbalance")
-    c1.bar_chart(df["txn_volume_imbalance_60s"].value_counts(bins=50).sort_index())
+    c1.bar_chart(histogram(df["txn_volume_imbalance_60s"], label="signed volume"))
     c2.subheader("Trade intensity (trades/s)")
-    c2.bar_chart(df["txn_intensity_60s"].clip(0, 10).value_counts(bins=50).sort_index())
+    c2.bar_chart(histogram(df["txn_intensity_60s"].clip(0, 10), label="trades / s"))

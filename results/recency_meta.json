@@ -1,0 +1,15 @@
+{
+  "eval_months": [
+    65,
+    70
+  ],
+  "rounds": 800,
+  "seeds": [
+    0,
+    1
+  ],
+  "cumulative_slope_per_month": -0.0006302517672245984,
+  "fixed_window_slope_per_month": 0.000174668700428227,
+  "per_month_gain": 0.0006302517672246016,
+  "projected_gain_7_months": 0.004411762370572211
+}

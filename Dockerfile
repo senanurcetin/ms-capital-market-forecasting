@@ -73,8 +73,8 @@ CMD ["streamlit", "run", "streamlit_app/app.py", \
 # ---------------------------------------------------------------- full
 FROM base AS full
 
-COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+COPY requirements.txt requirements-pipeline.txt ./
+RUN pip install --upgrade pip && pip install -r requirements-pipeline.txt
 
 COPY src/ ./src/
 COPY api/ ./api/

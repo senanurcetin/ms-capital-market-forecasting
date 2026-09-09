@@ -1,0 +1,15 @@
+# Building the data and running the experiments - everything the published dashboard
+# does NOT need. Kept out of requirements.txt so the deployed app does not install
+# MLflow and CUDA wheels to draw a bar chart.
+-r requirements.txt
+scipy==1.17.0
+duckdb==1.5.2
+polars==1.44.1
+shap==0.51.0
+mlflow==3.15.2
+pandera==0.33.1
+tqdm==4.67.3
+kaggle==2.1.2
+google-cloud-bigquery==3.41.0
+google-cloud-bigquery-storage==2.41.0
+db-dtypes==1.6.0

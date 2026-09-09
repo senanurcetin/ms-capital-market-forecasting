@@ -1,0 +1,9 @@
+{
+  "n_features": 292,
+  "n_effective": 264,
+  "threshold": 0.999,
+  "n_sample": 150000,
+  "pairs_above_0.999": 31,
+  "pairs_above_0.99": 72,
+  "pairs_above_0.95": 240
+}

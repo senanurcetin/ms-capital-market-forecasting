@@ -1,24 +1,19 @@
+# What the APPLICATION needs to run: the dashboard, the API, and loading a model.
+#
+# Deliberately lean, and it is the root requirements.txt for a reason - Streamlit
+# Community Cloud installs this file and nothing else, so anything here is something the
+# published dashboard waits for on every rebuild. The heavy pipeline-only packages
+# (mlflow, shap, duckdb, polars, kaggle) live in requirements-pipeline.txt.
 pandas==2.2.3
 numpy==2.4.6
 pyarrow==24.0.0
-duckdb==1.5.2
-polars==1.44.1
-scipy==1.17.0
 scikit-learn==1.8.0
 lightgbm==4.6.0
 xgboost==3.2.0
-shap==0.51.0
-mlflow==3.15.2
+joblib==1.5.3
+pyyaml==6.0.3
 fastapi==0.136.1
 uvicorn==0.30.6
 pydantic==2.13.4
 streamlit==1.57.0
 plotly==6.7.0
-pyyaml==6.0.3
-google-cloud-bigquery==3.41.0
-google-cloud-bigquery-storage==2.41.0
-db-dtypes==1.6.0
-joblib==1.5.3
-pandera==0.33.1
-tqdm==4.67.3
-kaggle==2.1.2

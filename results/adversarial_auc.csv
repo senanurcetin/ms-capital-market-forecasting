@@ -1,0 +1,10 @@
+comparison,kind,distance_months,auc,n_per_side
+months 10-19,within-train,10.0,0.7543330350433304,40000
+months 20-29,within-train,20.0,0.8083291855832919,40000
+months 30-39,within-train,30.0,0.8835025538350255,40000
+months 40-49,within-train,40.0,0.9074803140748031,40000
+months 50-59,within-train,50.0,0.9026368515263685,40000
+months 60-70,within-train,60.5,0.8811621013116209,40000
+TEST (vs reference block),train-vs-test,,0.9181895766818957,40000
+TEST (vs last block),train-vs-test,,0.7490325599903256,40000
+TEST (vs pooled train),diagnostic,,0.7909798454097985,40000

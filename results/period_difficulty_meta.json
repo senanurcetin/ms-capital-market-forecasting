@@ -1,0 +1,25 @@
+{
+  "train_months": [
+    0,
+    34
+  ],
+  "holdout": [
+    65,
+    70
+  ],
+  "block_size": 3,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "rounds": 300,
+  "holdout_cosine": 0.13853572205667833,
+  "typical_cosine": 0.1286067272313976,
+  "ratio": 1.0772043192376386,
+  "holdout_percentile": 0.8333333333333334,
+  "reported": 0.15171,
+  "debiased": 0.14083679139661132,
+  "actual": 0.128,
+  "share_of_gap": 0.45859167454191024
+}
