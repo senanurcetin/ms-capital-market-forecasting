@@ -365,7 +365,14 @@ pipeline enforces rather than something a future reader has to rediscover:
 | `<= 999 rows` per sample | the truncation ceiling |
 | descending seconds within a sample | the chronological order `ARRAY_AGG` relies on |
 
-`make validate` runs them against the real data. As with the fold guard,
+**Code against artefact.** The BigQuery feature tables are *materialised*: generated once,
+then queried for months, while the SQL that produced them stays editable in git. The two can
+drift apart with no error and no NaN — and once did here, when the generators emitted 82
+order and 53 transaction features while BigQuery still held 81 and 52. `make schema-check`
+compares the column set the SQL will emit against the column set the tables actually have,
+and `tests/test_validation.py` simulates drift in both directions to prove the check fires.
+
+`make validate` runs the contracts against the real data. As with the fold guard,
 `tests/test_validation.py` **injects each violation** and asserts it is caught — a schema
 nobody has seen fail is a schema nobody knows works.
 

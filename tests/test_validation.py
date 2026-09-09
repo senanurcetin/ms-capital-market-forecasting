@@ -136,3 +136,88 @@ def test_duplicate_sample_id_in_label_is_rejected():
     })
     with pytest.raises(SchemaErrors):
         label_schema().validate(df, lazy=True)
+
+
+# ---------------------------------------------- code vs materialised BigQuery tables
+
+class _FakeField:
+    def __init__(self, name):
+        self.name = name
+
+
+class _FakeTable:
+    def __init__(self, names):
+        self.schema = [_FakeField(n) for n in names]
+
+
+class _FakeBQ:
+    """Returns a canned schema per table, so drift can be simulated without BigQuery."""
+
+    def __init__(self, schemas):
+        self.schemas = schemas
+
+    def get_table(self, table_id):
+        for key, names in self.schemas.items():
+            if table_id.endswith(key):
+                return _FakeTable(names)
+        raise AssertionError(f"unexpected table {table_id}")
+
+
+def _live_schemas(mutate=None):
+    """The schema BigQuery would hold if it matched the code exactly."""
+    from src.data.validation import GENERATORS, sql_aliases
+
+    out = {}
+    for table, (prefix, module_path) in GENERATORS.items():
+        cols = sql_aliases(module_path, prefix) | {"sample_id"}
+        out[f"{table}_train"] = mutate(table, cols) if mutate else cols
+    return out
+
+
+def test_schema_check_passes_when_they_agree():
+    from src.data.validation import validate_feature_schema
+
+    report = validate_feature_schema("train", bq=_FakeBQ(_live_schemas()))
+    assert all(r["in_code"] == r["in_bigquery"] for r in report.values())
+
+
+def test_a_feature_added_in_code_but_not_rebuilt_is_caught():
+    """The real failure: someone edits the SQL and forgets to re-run the generator."""
+    from src.data.validation import validate_feature_schema
+
+    def drop_one(table, cols):
+        return cols - {sorted(c for c in cols if c != "sample_id")[0]} if table == "order" else cols
+
+    with pytest.raises(AssertionError, match="disagree"):
+        validate_feature_schema("train", bq=_FakeBQ(_live_schemas(drop_one)))
+
+
+def test_a_stale_column_left_in_bigquery_is_caught():
+    """The mirror case: a feature removed from code while the table still carries it."""
+    from src.data.validation import validate_feature_schema
+
+    def add_one(table, cols):
+        return cols | {"mkt_removed_last_year"} if table == "market" else cols
+
+    with pytest.raises(AssertionError, match="disagree"):
+        validate_feature_schema("train", bq=_FakeBQ(_live_schemas(add_one)))
+
+
+def test_the_error_names_the_table_and_what_to_do():
+    """A drift message that does not say which table, or to rebuild, wastes the catch."""
+    from src.data.validation import validate_feature_schema
+
+    def rename(table, cols):
+        return cols | {"txn_typo_alias"} if table == "transaction" else cols
+
+    with pytest.raises(AssertionError) as e:
+        validate_feature_schema("train", bq=_FakeBQ(_live_schemas(rename)))
+    assert "transaction" in str(e.value) and "Re-run" in str(e.value)
+
+
+def test_aliases_are_parsed_from_the_sql_not_a_hand_kept_list():
+    """One source of truth: the count must track the SQL, not a literal someone updates."""
+    from src.data.validation import sql_aliases
+
+    assert len(sql_aliases("src.features.transaction_features", "txn")) == 52
+    assert len(sql_aliases("src.features.order_features", "ord")) == 81

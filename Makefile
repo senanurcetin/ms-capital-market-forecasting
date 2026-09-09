@@ -4,7 +4,7 @@
 PY ?= python
 DATA_ROOT ?= C:/mscapital_data
 
-.PHONY: help install test lint fmt check cov validate ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit align api streamlit mlflow \
+.PHONY: help install test lint fmt check cov validate schema-check ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit align api streamlit mlflow \
         docker-build up down logs clean
 
 help:
@@ -17,6 +17,7 @@ help:
 	@echo "fmt           ruff --fix"
 	@echo "train-quick   2 folds on a 25% sample, no MLflow - for smoke testing"
 	@echo "validate      check the raw and feature data against their contracts"
+	@echo "schema-check  do the BigQuery feature tables still match the SQL in git?"
 	@echo "ingest        feather -> parquet -> BigQuery (train)"
 	@echo "features      build the BigQuery feature layer and download it"
 	@echo "train         walk-forward training (logs to MLflow)"
@@ -61,6 +62,9 @@ check: lint test
 
 validate:
 	$(PY) -m src.data.validation --split train
+
+schema-check:
+	$(PY) -m src.data.validation --split train --schema
 
 ingest:
 	$(PY) -c "from src.data.ingestion import convert_table; \

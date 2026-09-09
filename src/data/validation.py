@@ -192,13 +192,85 @@ def validate_features(split: str = "train") -> dict:
     return {"split": split, "rows": len(df), "columns": df.shape[1], "ok": True}
 
 
+# Feature tables in BigQuery are MATERIALISED artefacts: generated once, then queried for
+# months. The SQL that produced them lives in git and can be edited freely, so the two can
+# drift apart silently - no error, no NaN, just a table that no longer matches the code
+# that claims to describe it.
+#
+# This is not hypothetical. It has happened once here: the generators emitted 82 order and
+# 53 transaction features while BigQuery still held 81 and 52. It was caught by eye and
+# fixed by rebuilding, which left the underlying gap - nothing detects it - open.
+GENERATORS = {
+    "market": ("mkt", "src.features.market_features"),
+    "order": ("ord", "src.features.order_features"),
+    "transaction": ("txn", "src.features.transaction_features"),
+    "shape": ("shp", "src.features.shape_features"),
+}
+
+
+def sql_aliases(module_path: str, prefix: str, split: str = "train") -> set[str]:
+    """Column names the generator's SQL will emit, read from the SQL itself.
+
+    Parsing the generated string rather than maintaining a list means the two cannot
+    disagree: there is only one source.
+    """
+    import importlib
+    import re
+
+    mod = importlib.import_module(module_path)
+    return set(re.findall(rf"AS ({prefix}_\w+)", mod.build_sql(split)))
+
+
+def validate_feature_schema(split: str = "train", *, bq=None) -> dict:
+    """Do the materialised feature tables still match the SQL in git?
+
+    Compares column sets, not row counts - a changed expression under an unchanged alias
+    is invisible here, and would need the table rebuilt to detect. What this catches is the
+    common case: a feature added, renamed or removed in code without the table being
+    rebuilt.
+    """
+    from google.cloud import bigquery
+
+    from src.config import gcp_key_path
+
+    cfg = load_config()
+    bq = bq or bigquery.Client.from_service_account_json(str(gcp_key_path()))
+    ds = cfg.bigquery.datasets.features
+    drifted, report = [], {}
+
+    for table, (prefix, module_path) in GENERATORS.items():
+        code = sql_aliases(module_path, prefix, split)
+        schema = bq.get_table(f"{cfg.bigquery.project}.{ds}.{table}_{split}").schema
+        live = {f.name for f in schema} - {"sample_id"}
+        report[table] = {"in_code": len(code), "in_bigquery": len(live),
+                         "code_only": sorted(code - live), "bq_only": sorted(live - code)}
+        if code != live:
+            drifted.append(table)
+        log.info("[%s_%s] code %d / BigQuery %d %s", table, split, len(code), len(live),
+                 "OK" if code == live else "DRIFTED")
+
+    if drifted:
+        raise AssertionError(
+            f"feature SQL and BigQuery disagree for {drifted}. Re-run the generators for "
+            f"those tables, or the model is trained on columns the code no longer produces: "
+            f"{ {t: report[t] for t in drifted} }"
+        )
+    return report
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="Validate data against its contracts")
     ap.add_argument("--split", default="train", choices=["train", "test"])
     ap.add_argument("--rows", type=int, default=2_000_000, help="rows per raw table")
     ap.add_argument("--skip-raw", action="store_true")
+    ap.add_argument("--schema", action="store_true",
+                    help="only check feature SQL against the BigQuery tables")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+
+    if args.schema:
+        validate_feature_schema(args.split)
+        return
 
     if not args.skip_raw:
         tables = ["market", "order", "transaction"] + (["label"] if args.split == "train" else [])
