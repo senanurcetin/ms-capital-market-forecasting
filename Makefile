@@ -4,7 +4,7 @@
 PY ?= python
 DATA_ROOT ?= C:/mscapital_data
 
-.PHONY: help install test lint fmt check cov validate schema-check ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit align export-results api streamlit mlflow \
+.PHONY: help install test lint fmt check cov validate schema-check ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit align export-results site api streamlit mlflow \
         docker-build up down logs clean
 
 help:
@@ -35,6 +35,7 @@ help:
 	@echo "api           run FastAPI locally (:8000)"
 	@echo "streamlit     run the dashboard locally (:8501)"
 	@echo "export-results refresh results/ so the dashboard runs without the pipeline"
+	@echo "site          build the static results page (deployed to Vercel)"
 	@echo "mlflow        MLflow UI (:5000)"
 	@echo "docker-build  build the api, app and full images"
 	@echo "up / down     bring the whole stack up/down with docker compose"
@@ -122,6 +123,9 @@ train-quick:
 
 api:
 	$(PY) -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+site:
+	$(PY) -m src.data.build_site
 
 export-results:
 	$(PY) -m src.data.export_results

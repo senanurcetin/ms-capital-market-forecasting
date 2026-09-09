@@ -4,9 +4,27 @@
     {
       "name": "dashboard",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "streamlit", "run", "streamlit_app/app.py",
-                      "--server.port=8501", "--server.headless=true"],
+      "runtimeArgs": [
+        "-m",
+        "streamlit",
+        "run",
+        "streamlit_app/app.py",
+        "--server.port=8501",
+        "--server.headless=true"
+      ],
       "port": 8501
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8600",
+        "--directory",
+        "site"
+      ],
+      "port": 8600
     }
   ]
 }
