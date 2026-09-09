@@ -1,7 +1,6 @@
 """Ensemble tests - above all the claim that OLS weights are cosine-optimal."""
 import numpy as np
 import pytest
-
 from src.evaluation.metrics import cosine_similarity
 from src.models.ensemble import CosineOptimalEnsemble, evaluate_ensemble_gain
 

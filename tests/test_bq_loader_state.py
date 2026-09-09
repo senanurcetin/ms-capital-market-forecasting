@@ -5,7 +5,6 @@ built, leaving the _loaded.json files behind. Without this guard load_group woul
 silently upload nothing and then fail with a confusing error.
 """
 from google.cloud.exceptions import NotFound
-
 from src.data.bq_loader import reset_state_if_table_missing
 
 

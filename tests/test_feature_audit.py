@@ -6,9 +6,10 @@ removals. The union-find has to be transitive or the effective count comes out w
 """
 import numpy as np
 import pandas as pd
-
 from src.evaluation.feature_audit import (
-    NEAR_DUPLICATE, correlation_pairs, effective_count,
+    NEAR_DUPLICATE,
+    correlation_pairs,
+    effective_count,
 )
 
 

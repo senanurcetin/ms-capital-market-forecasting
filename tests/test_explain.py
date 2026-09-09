@@ -2,7 +2,6 @@
 import numpy as np
 import pandas as pd
 import pytest
-
 from src.evaluation.explain import global_importance, local_explanations
 
 FEATURES = ["mkt_mid_last", "ord_ofi_60s", "txn_intensity_60s", "mkt_spread_last"]

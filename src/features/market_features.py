@@ -14,7 +14,7 @@ i.e. the book state closest to the prediction instant.
 """
 from __future__ import annotations
 
-from src.features.common import cond, feature_table, safe_div, staged, wlabel, windows
+from src.features.common import cond, feature_table, safe_div, staged, windows, wlabel
 
 NEWLINE_SEP = ",\n"
 
@@ -85,7 +85,10 @@ def build_sql(split: str = "train") -> str:
         t = wlabel(w)
         c = cond(w)
 
-        def avg(expr: str) -> str:
+        # c is bound as a default so the closure cannot pick up a later iteration's
+        # value. It is called immediately below, so this changes nothing today - but it
+        # removes the hazard if a caller ever collects these to run after the loop.
+        def avg(expr: str, c: str = c) -> str:
             return f"AVG(IF({c}, {expr}, NULL))"
 
         base += [

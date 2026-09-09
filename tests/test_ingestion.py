@@ -12,7 +12,6 @@ import pyarrow as pa
 import pyarrow.feather as feather
 import pyarrow.parquet as pq
 import pytest
-
 from src.data import ingestion
 
 

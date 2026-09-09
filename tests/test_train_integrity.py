@@ -5,7 +5,6 @@ setups and prove the guard catches them.
 """
 import numpy as np
 import pytest
-
 from src.evaluation.temporal_validation import Fold, build_folds, holdout_months
 from src.models.train import assert_fold_integrity
 
@@ -92,7 +91,6 @@ def test_load_dataset_float32_halves_memory(tmp_path, monkeypatch):
     import pandas as pd
     import pyarrow as pa
     import pyarrow.parquet as pq
-
     from src.config import load_config
     from src.models import train as train_mod
 
@@ -135,7 +133,6 @@ def test_load_dataset_sorts_a_shuffled_artefact(tmp_path, monkeypatch):
     """
     import pyarrow as pa
     import pyarrow.parquet as pq
-
     from src.config import load_config
     from src.models import train as train_mod
 

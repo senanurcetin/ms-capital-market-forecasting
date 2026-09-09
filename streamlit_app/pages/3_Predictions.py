@@ -22,7 +22,7 @@ c = st.columns(4)
 c[0].metric("Model", info.get("model_name", "-"))
 c[1].metric("Version", info.get("model_version", "-"))
 c[2].metric("Features", info.get("n_features", "-"))
-c[3].metric("Hold-out cosine", f"{cosine:+.4f}" if isinstance(cosine, (int, float)) else "-")
+c[3].metric("Hold-out cosine", f"{cosine:+.4f}" if isinstance(cosine, int | float) else "-")
 
 df = load_features(n_rows=5_000)
 if df is None:

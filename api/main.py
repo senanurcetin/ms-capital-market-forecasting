@@ -16,7 +16,6 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-
 from src.inference.predictor import ModelNotLoadedError, Predictor
 
 log = logging.getLogger(__name__)

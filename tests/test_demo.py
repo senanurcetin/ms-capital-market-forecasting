@@ -9,7 +9,6 @@ It is kept small (a few thousand samples, two cheap models) to stay fast.
 """
 import numpy as np
 import pytest
-
 from src.demo import run
 
 

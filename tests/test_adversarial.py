@@ -8,7 +8,6 @@ sides (which was a real bug here, and inverted the answer until it was fixed).
 """
 import numpy as np
 import pandas as pd
-
 from src.evaluation.adversarial import REFERENCE, TARGETS, _auc, _sample
 
 
@@ -89,5 +88,5 @@ def test_reference_block_precedes_every_target():
 
 
 def test_target_blocks_do_not_overlap():
-    for (_, hi), (lo, _) in zip(TARGETS, TARGETS[1:]):
+    for (_, hi), (lo, _) in zip(TARGETS, TARGETS[1:], strict=False):
         assert lo > hi

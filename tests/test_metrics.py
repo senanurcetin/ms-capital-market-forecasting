@@ -2,9 +2,13 @@
 import numpy as np
 import pytest
 from sklearn.metrics.pairwise import cosine_similarity as sk_cosine
-
 from src.evaluation.metrics import (
-    cosine_similarity, directional_accuracy, evaluate, mae, pearson, rmse,
+    cosine_similarity,
+    directional_accuracy,
+    evaluate,
+    mae,
+    pearson,
+    rmse,
 )
 
 rng = np.random.default_rng(0)

@@ -8,7 +8,6 @@ never being allowed to see the folds it will later be judged on.
 import numpy as np
 import pandas as pd
 import pytest
-
 from src.models.tuning import SEARCH_FOLDS, cv_score, suggest
 
 
@@ -110,7 +109,7 @@ def test_search_uses_fewer_folds_than_the_reporting_protocol():
     """The search runs on a cheaper protocol; the winner is confirmed on the full one."""
     from src.evaluation.temporal_validation import build_folds
 
-    assert SEARCH_FOLDS < len(build_folds())
+    assert len(build_folds()) > SEARCH_FOLDS
 
 
 def test_defaults_are_reachable_as_an_empty_override():

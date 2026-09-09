@@ -26,7 +26,7 @@ class CosineOptimalEnsemble:
         self.non_negative = non_negative
         self.weights_: np.ndarray | None = None
 
-    def fit(self, preds: np.ndarray, y: np.ndarray) -> "CosineOptimalEnsemble":
+    def fit(self, preds: np.ndarray, y: np.ndarray) -> CosineOptimalEnsemble:
         """preds: (n_samples, n_models) validation predictions."""
         P = np.asarray(preds, dtype=np.float64)
         yv = np.asarray(y, dtype=np.float64).ravel()
@@ -49,7 +49,7 @@ class CosineOptimalEnsemble:
         return np.asarray(preds, dtype=np.float64) @ self.weights_
 
     def weight_map(self) -> dict[str, float]:
-        return dict(zip(self.model_names, map(float, self.weights_)))
+        return dict(zip(self.model_names, map(float, self.weights_), strict=False))
 
 
 def evaluate_ensemble_gain(

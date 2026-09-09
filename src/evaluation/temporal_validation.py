@@ -16,8 +16,8 @@ HOLD-OUT:
 """
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 
 import numpy as np
 
@@ -26,12 +26,21 @@ from src.config import load_config
 
 @dataclass(frozen=True)
 class Fold:
+    """One expanding-window split, with the embargo made explicit.
+
+    The embargo months belong to NEITHER side. Consecutive samples can share overlapping
+    lookback windows, so training right up to the validation boundary would let the same
+    market minutes appear on both sides of the split. Frozen, because a fold that can be
+    mutated after the integrity check has been verified is not verified.
+    """
+
     index: int
     train_months: tuple[int, int]      # (inclusive, inclusive)
     val_months: tuple[int, int]        # (inclusive, inclusive)
     embargo_months: tuple[int, int]    # (inclusive, inclusive) - used by neither side
 
     def describe(self) -> str:
+        """One line naming all three month ranges, for logs and fold-integrity errors."""
         return (
             f"Fold {self.index}: train months {self.train_months[0]}-{self.train_months[1]} "
             f"| embargo {self.embargo_months[0]}-{self.embargo_months[1]} "
@@ -65,6 +74,12 @@ def build_folds() -> list[Fold]:
 
 
 def holdout_months() -> tuple[int, int]:
+    """The untouched final months, as (first, last) inclusive.
+
+    Read once, at the very end. Notebook 05 shows this period is an unusually FAVOURABLE
+    draw - 83rd percentile of difficulty - so the walk-forward mean, not this, is the
+    honest estimate of what a fresh period will yield.
+    """
     h = load_config().validation.holdout
     return h["start"], h["end"]
 
@@ -78,12 +93,14 @@ def split_indices(months: np.ndarray, fold: Fold) -> tuple[np.ndarray, np.ndarra
 
 
 def iter_folds(months: np.ndarray) -> Iterator[tuple[Fold, np.ndarray, np.ndarray]]:
+    """Yield (fold, train_idx, val_idx) for each split, in chronological order."""
     for fold in build_folds():
         tr, va = split_indices(months, fold)
         yield fold, tr, va
 
 
 def holdout_indices(months: np.ndarray) -> np.ndarray:
+    """Row positions falling inside the hold-out months."""
     lo, hi = holdout_months()
     months = np.asarray(months)
     return np.flatnonzero((months >= lo) & (months <= hi))

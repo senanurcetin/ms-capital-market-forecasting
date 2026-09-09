@@ -6,7 +6,6 @@ the weights were built.
 """
 import numpy as np
 import pytest
-
 from src.models.metric_alignment import ALPHAS, weights
 
 

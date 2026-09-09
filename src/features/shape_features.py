@@ -168,7 +168,7 @@ def run(split: str = "train", *, bq=None) -> dict:
     return {"split": split, "rows": n, "bytes": job.total_bytes_processed}
 
 
-def download(split: str = "train") -> "object":
+def download(split: str = "train") -> object:
     """Pull the shape table down as Parquet, ordered by sample_id.
 
     Same ordering discipline as assemble.download(): bq.list_rows() returns rows in

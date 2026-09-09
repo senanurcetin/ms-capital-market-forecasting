@@ -1,0 +1,49 @@
+# Tool configuration lives here rather than in each command line, so that a local
+# `ruff check` and the one CI runs cannot drift apart.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "api", "streamlit_app", "tests"]
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I import order, B bugbear, UP pyupgrade,
+# SIM simplification, C4 comprehensions.
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4"]
+ignore = [
+    "E501",  # line length is enforced by the formatter setting above, not per-line
+    "B008",  # FastAPI's Depends() in defaults is the documented idiom
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Notebook builders hold long prose strings; tests re-import inside functions on
+# purpose, to keep a slow import out of collection.
+"notebooks/_build_*.py" = ["E501"]
+"tests/*" = ["B011"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = [
+    # LightGBM and pyarrow emit deprecation noise that is not actionable here.
+    "ignore::DeprecationWarning",
+    "ignore::FutureWarning",
+]
+
+[tool.coverage.run]
+source = ["src", "api"]
+omit = [
+    # Orchestration entry points: these drive live BigQuery jobs and multi-hour
+    # training runs. Their pure logic is tested directly; their run() wrappers are
+    # exercised by actually running the pipeline, not by unit tests.
+    "src/data/test_pipeline.py",
+    "src/data/mart.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    'def main\(',
+]

@@ -12,7 +12,13 @@ this module emits RATIOS and RATES rather than raw counts.
 from __future__ import annotations
 
 from src.features.common import (
-    cond, feature_table, imbalance, safe_div, staged, wlabel, windows,
+    cond,
+    feature_table,
+    imbalance,
+    safe_div,
+    staged,
+    windows,
+    wlabel,
 )
 
 NEWLINE_SEP = ",\n"
@@ -29,10 +35,11 @@ def build_sql(split: str = "train") -> str:
         t = wlabel(w)
         c = cond(w)
 
-        def cnt(side: int, action: int) -> str:
+        # c bound as a default - see the note in market_features.build_sql.
+        def cnt(side: int, action: int, c: str = c) -> str:
             return f"COUNTIF({c} AND side = {side} AND order_action = {action})"
 
-        def vol(side: int, action: int) -> str:
+        def vol(side: int, action: int, c: str = c) -> str:
             return f"SUM(IF({c} AND side = {side} AND order_action = {action}, volume, 0))"
 
         new_bid, new_ask = cnt(BID, NEW), cnt(ASK, NEW)

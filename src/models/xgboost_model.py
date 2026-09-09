@@ -46,7 +46,7 @@ class XGBoostModel:
         self.best_iteration_: int | None = None
 
     def fit(self, X: pd.DataFrame, y: np.ndarray,
-            eval_set: tuple[pd.DataFrame, np.ndarray] | None = None, **_) -> "XGBoostModel":
+            eval_set: tuple[pd.DataFrame, np.ndarray] | None = None, **_) -> XGBoostModel:
         self.features_ = feature_columns(X)
         # QuantileDMatrix, not DMatrix. A plain DMatrix keeps the full float32 matrix
         # AND its own copy; on the largest fold (1.05M rows x 294 features) that asked

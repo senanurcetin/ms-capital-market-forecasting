@@ -12,9 +12,11 @@ import numpy as np
 import pandas as pd
 import pytest
 from pandera.errors import SchemaErrors
-
 from src.data.validation import (
-    check_descending_within_sample, check_row_cap, label_schema, order_schema,
+    check_descending_within_sample,
+    check_row_cap,
+    label_schema,
+    order_schema,
     transaction_schema,
 )
 

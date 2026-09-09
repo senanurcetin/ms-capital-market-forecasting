@@ -80,7 +80,6 @@ def step_submission(model_version: str = "v1") -> Path:
     import pandas as pd
 
     from src.inference.predictor import load_bundle
-
     from src.models.train import load_dataset
 
     cfg = load_config()

@@ -121,7 +121,7 @@ def run(*, seeds: tuple[int, ...] = (0, 1), folds: int = FOLDS) -> dict:
         t0 = time.perf_counter()
         b = cv(df, base_cols, seed=seed, folds=folds)
         w = cv(df, both, seed=seed, folds=folds)
-        for i, (bs, ws) in enumerate(zip(b, w)):
+        for i, (bs, ws) in enumerate(zip(b, w, strict=False)):
             rows.append({"seed": seed, "fold": i, "base": bs, "with_shape": ws,
                          "diff": ws - bs})
         log.info("seed %d  base %+.5f  with shape %+.5f  diff %+.5f   [%.0f min]",

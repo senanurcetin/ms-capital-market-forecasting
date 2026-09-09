@@ -1,10 +1,13 @@
 """Temporal split tests - proof that leakage is prevented."""
 import numpy as np
 import pytest
-
 from src.evaluation.temporal_validation import (
-    assert_no_overlap, build_folds, holdout_indices, holdout_months,
-    iter_folds, stability,
+    assert_no_overlap,
+    build_folds,
+    holdout_indices,
+    holdout_months,
+    iter_folds,
+    stability,
 )
 
 

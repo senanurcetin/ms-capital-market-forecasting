@@ -1,13 +1,23 @@
 # MSCapital — Real Financial Market Forecasting
 
-An end-to-end, production-shaped ML system that predicts short-horizon returns from
-market microstructure data, built on the Kaggle
+[![CI](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/workflows/ci.yml/badge.svg)](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/workflows/ci.yml)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Ruff](https://img.shields.io/badge/lint-ruff-261230.svg)](https://docs.astral.sh/ruff/)
+
+An end-to-end, production-shaped ML system that predicts short-horizon returns from market
+microstructure data — **804.5M raw rows** reduced to a scored model, on a 16 GB laptop.
+Built on the Kaggle
 [MSCapital](https://www.kaggle.com/competitions/ms-capital-real-financial-market-forecasting)
 competition dataset.
 
-**Status: complete and handed over.** 26 commits, 200 tests, CI green, five executed
-notebooks, two scored submissions. Nothing is in progress; what remains open is stated
-plainly in [Where this stands](#where-this-stands) rather than left implied.
+`BigQuery` · `LightGBM` · `XGBoost` · `scikit-learn` · `SHAP` · `Optuna` · `Pandera` ·
+`MLflow` · `FastAPI` · `Streamlit` · `Docker` · `GitHub Actions`
+
+**Status: complete and handed over.** Five executed notebooks, two scored submissions, and
+a test suite that injects the failures it claims to prevent. Nothing is in progress; what
+remains open is stated plainly in [Where this stands](#where-this-stands) rather than left
+implied.
 
 **Where to start**, depending on how long you have:
 
@@ -563,6 +573,17 @@ BigQuery compresses this data ~5.4× (`market_g2`: 11.57 GiB logical → 2.12 Gi
 All four datasets use **physical storage billing**, and `mscapital_raw` is dropped once
 staging is verified, leaving ~8 GiB physical — **inside the 10 GiB free tier**. Query
 usage sits at roughly 13% of the 1 TiB monthly free allowance. Batch load jobs are free.
+
+---
+
+## Licence
+
+[MIT](LICENSE) for the code. The competition data is **not** redistributed here and remains
+subject to the
+[Kaggle competition rules](https://www.kaggle.com/competitions/ms-capital-real-financial-market-forecasting).
+
+Nothing here is investment advice: the backtesting module measures a model's ranking power
+for research, and was never evaluated as a trading strategy.
 
 ---
 

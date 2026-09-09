@@ -1,9 +1,12 @@
 """Backtest tests - especially the no-look-ahead and cost behaviour."""
 import numpy as np
 import pytest
-
 from src.evaluation.backtesting import (
-    backtest, cost_sensitivity, make_signals, sweep_trade_fraction, threshold_from_quantile,
+    backtest,
+    cost_sensitivity,
+    make_signals,
+    sweep_trade_fraction,
+    threshold_from_quantile,
 )
 
 rng = np.random.default_rng(11)

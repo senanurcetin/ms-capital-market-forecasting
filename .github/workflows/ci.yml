@@ -29,7 +29,7 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Lint
-        run: ruff check src/ api/ streamlit_app/ tests/ --line-length 100
+        run: ruff check src/ api/ streamlit_app/ tests/   # config in pyproject.toml
 
       # The tests require NO live BigQuery and NO downloaded data: the ingest tests
       # generate a synthetic feather file and the API tests use a fake model artefact.

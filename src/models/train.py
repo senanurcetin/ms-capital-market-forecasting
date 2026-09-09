@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -22,7 +22,10 @@ import pandas as pd
 from src.config import load_config
 from src.evaluation.metrics import evaluate
 from src.evaluation.temporal_validation import (
-    Fold, holdout_months, iter_folds, stability,
+    Fold,
+    holdout_months,
+    iter_folds,
+    stability,
 )
 from src.models.base import feature_columns
 from src.models.ensemble import evaluate_ensemble_gain
@@ -191,7 +194,7 @@ def run_walk_forward(
 
     # Ensemble: does it genuinely beat the best single model, fold by fold?
     ens_rows = []
-    for i, (preds, truth) in enumerate(zip(fold_preds, fold_truth), start=1):
+    for i, (preds, truth) in enumerate(zip(fold_preds, fold_truth, strict=False), start=1):
         if len(preds) > 1:
             gain = evaluate_ensemble_gain(preds, truth)
             gain["fold"] = i

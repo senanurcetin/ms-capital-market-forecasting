@@ -27,6 +27,13 @@ class ModelNotLoadedError(RuntimeError):
 
 @dataclass
 class ModelBundle:
+    """A trained model plus everything needed to score a row with it.
+
+    `features` is the part that matters: it pins the exact column ORDER the model was
+    fitted on. Gradient boosters index features positionally, so serving rows in a
+    different order produces confident nonsense rather than an error.
+    """
+
     model: object
     features: list[str]
     name: str
@@ -92,18 +99,26 @@ def save_bundle(model_dir: str | Path, *, model, kind: str, features: list[str],
     meta = {
         "name": name, "version": version, "kind": kind, "model_file": model_file,
         "features": list(features), "metrics": metrics or {},
-        "trained_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
+        "trained_at": _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds"),
     }
     (model_dir / METADATA_FILE).write_text(json.dumps(meta, indent=2), encoding="utf-8")
     return model_dir
 
 
 class Predictor:
+    """Serving wrapper: dict rows in, predictions out.
+
+    Deliberately independent of the training code - it loads an artefact from disk and
+    knows nothing about BigQuery, folds or the feature pipeline. That is what lets the
+    API image ship without the training dependencies.
+    """
+
     def __init__(self, bundle: ModelBundle) -> None:
         self.bundle = bundle
 
     @classmethod
-    def from_dir(cls, model_dir: str | Path) -> "Predictor":
+    def from_dir(cls, model_dir: str | Path) -> Predictor:
+        """Load an artefact directory written by save_bundle()."""
         return cls(load_bundle(model_dir))
 
     def _frame(self, rows: list[dict]) -> pd.DataFrame:
@@ -125,6 +140,11 @@ class Predictor:
         return df[expected].astype("float32")
 
     def predict(self, rows: list[dict]) -> np.ndarray:
+        """Score a batch of rows given as dicts.
+
+        Missing features raise rather than defaulting to zero: a silently imputed column
+        is a wrong prediction that looks like a right one.
+        """
         if not rows:
             return np.array([], dtype=np.float64)
         X = self._frame(rows)
@@ -137,6 +157,12 @@ class Predictor:
 
     @staticmethod
     def direction(value: float, deadband: float = 0.0) -> str:
+        """Turn a predicted return into UP / DOWN / FLAT.
+
+        Presentation only. The competition metric is scale-invariant, so the sign is
+        interpretable while the magnitude is not - a deadband makes that explicit rather
+        than implying precision the number does not have.
+        """
         if value > deadband:
             return "UP"
         if value < -deadband:
@@ -144,6 +170,7 @@ class Predictor:
         return "FLAT"
 
     def info(self) -> dict:
+        """Artefact metadata for /model-info: name, version, feature count, metrics."""
         b = self.bundle
         return {
             "model_name": b.name, "model_version": b.version,

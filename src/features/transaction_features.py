@@ -9,7 +9,13 @@ side=1 sit 88.7% below mid (mean -5.27 bps) -> SELL.
 from __future__ import annotations
 
 from src.features.common import (
-    cond, feature_table, imbalance, safe_div, staged, wlabel, windows,
+    cond,
+    feature_table,
+    imbalance,
+    safe_div,
+    staged,
+    windows,
+    wlabel,
 )
 
 NEWLINE_SEP = ",\n"

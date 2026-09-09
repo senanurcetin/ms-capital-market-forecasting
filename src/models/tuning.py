@@ -252,7 +252,7 @@ def confirm(best: dict | None = None, *, seed: int = 42,
     log.info("protocol: last %d folds, up to %d rounds, paired", n_folds, rounds)
     tuned_mean, tuned = cv_score(df, best, folds=n_folds, rounds=rounds, seed=seed)
     base_mean, base = cv_score(df, {}, folds=n_folds, rounds=rounds, seed=seed)
-    diffs = [t - b for t, b in zip(tuned, base)]
+    diffs = [t - b for t, b in zip(tuned, base, strict=False)]
 
     log.info("  tuned    %+.5f  folds %s", tuned_mean, [f"{s:+.5f}" for s in tuned])
     log.info("  baseline %+.5f  folds %s", base_mean, [f"{s:+.5f}" for s in base])

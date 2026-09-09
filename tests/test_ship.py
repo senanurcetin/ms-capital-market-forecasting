@@ -8,9 +8,7 @@ first attempt at the ensemble broke.
 import numpy as np
 import pandas as pd
 import pytest
-
 from src.models import recency, ship
-
 
 # --------------------------------------------------------------- ship: the split
 

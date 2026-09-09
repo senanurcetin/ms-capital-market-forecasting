@@ -7,7 +7,6 @@ count - is unsafe.
 """
 import numpy as np
 import pytest
-
 from src.evaluation.cosine_decomposition import decompose, verify_identity
 from src.evaluation.metrics import cosine_similarity
 

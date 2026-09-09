@@ -120,7 +120,7 @@ def publish(run_id: str | None = None) -> dict[str, int]:
     bq = client()
     features_dir = Path(cfg.paths.features)
     models_dir = Path(cfg.paths.data_root) / "models"
-    run_id = run_id or dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_id = run_id or dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
 
     meta_path = models_dir / "current" / "model_meta.json"
     meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
@@ -133,7 +133,7 @@ def publish(run_id: str | None = None) -> dict[str, int]:
             bq, "mart_feature_importance", _importance(models_dir), run_id),
     }
     written["mart_run_metadata"] = _write(bq, "mart_run_metadata", pd.DataFrame([{
-        "published_at": dt.datetime.now(dt.timezone.utc),
+        "published_at": dt.datetime.now(dt.UTC),
         "model_name": meta.get("name"),
         "model_version": meta.get("version"),
         "n_features": len(meta.get("features", [])),

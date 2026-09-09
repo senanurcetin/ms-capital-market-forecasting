@@ -4,7 +4,6 @@ import json
 
 import pytest
 from fastapi.testclient import TestClient
-
 from src.inference.predictor import Predictor, save_bundle
 
 FEATURES = ["mkt_mid_last", "ord_ofi_60s", "txn_intensity_60s"]

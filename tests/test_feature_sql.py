@@ -7,10 +7,13 @@ import itertools
 import re
 
 import pytest
-
 from src.config import load_config
 from src.features import (
-    assemble, common, market_features, order_features, transaction_features,
+    assemble,
+    common,
+    market_features,
+    order_features,
+    transaction_features,
 )
 
 MODULES = {
@@ -110,7 +113,7 @@ def test_market_last_fields_come_from_single_snapshot():
             continue
         expr = re.search(rf"^(.*?)\s+AS {alias}\b", sql, re.MULTILINE)
         assert expr, f"no expression found for {alias}"
-        referenced = {r for r in re.findall(r"\bmkt_\w+", expr.group(1))}
+        referenced = set(re.findall(r"\bmkt_\w+", expr.group(1)))
         assert referenced, f"{alias} is neither derived nor read from the STRUCT"
         assert referenced <= direct, (
             f"{alias} is derived from fields outside the single snapshot: {referenced - direct}"

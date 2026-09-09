@@ -4,13 +4,14 @@
 PY ?= python
 DATA_ROOT ?= C:/mscapital_data
 
-.PHONY: help install test lint fmt check validate ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit align api streamlit mlflow \
+.PHONY: help install test lint fmt check cov validate ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit align api streamlit mlflow \
         docker-build up down logs clean
 
 help:
 	@echo "demo          run the whole project end to end on synthetic data (~30 s)"
 	@echo "install       install dependencies (including dev)"
 	@echo "test          pytest"
+	@echo "cov           pytest with a coverage report"
 	@echo "lint          run ruff"
 	@echo "check         lint + tests"
 	@echo "fmt           ruff --fix"
@@ -47,11 +48,14 @@ install:
 test:
 	$(PY) -m pytest tests/ -q
 
+cov:
+	$(PY) -m pytest tests/ -q --cov --cov-report=term-missing
+
 lint:
-	$(PY) -m ruff check src/ api/ streamlit_app/ tests/ --line-length 100
+	$(PY) -m ruff check src/ api/ streamlit_app/ tests/
 
 fmt:
-	$(PY) -m ruff check src/ api/ streamlit_app/ tests/ --line-length 100 --fix
+	$(PY) -m ruff check src/ api/ streamlit_app/ tests/ --fix
 
 check: lint test
 

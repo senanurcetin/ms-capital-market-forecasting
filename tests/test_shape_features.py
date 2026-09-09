@@ -12,9 +12,7 @@ ANY_VALUE, and CORR returning NaN on samples whose mid never moves.
 """
 import numpy as np
 import pytest
-
 from src.features.shape_features import ORDER, build_sql, feature_names
-
 
 # ------------------------------------------------- the premise: order carries information
 

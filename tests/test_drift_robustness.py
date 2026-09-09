@@ -9,9 +9,11 @@ invent a trend out of nothing.
 import numpy as np
 import pandas as pd
 import pytest
-
 from src.evaluation.drift_robustness import (
-    EVAL_BLOCKS, TRAIN_MONTHS, pruned_columns, trend,
+    EVAL_BLOCKS,
+    TRAIN_MONTHS,
+    pruned_columns,
+    trend,
 )
 
 
@@ -80,5 +82,5 @@ def test_gaps_are_increasing_and_distinct():
 
 
 def test_blocks_do_not_overlap_each_other():
-    for (_, hi), (lo, _) in zip(EVAL_BLOCKS, EVAL_BLOCKS[1:]):
+    for (_, hi), (lo, _) in zip(EVAL_BLOCKS, EVAL_BLOCKS[1:], strict=False):
         assert lo > hi, "overlapping blocks would correlate the lift measurements"

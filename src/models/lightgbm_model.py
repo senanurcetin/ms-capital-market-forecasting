@@ -51,7 +51,7 @@ class LightGBMModel:
         self.best_iteration_: int | None = None
 
     def fit(self, X: pd.DataFrame, y: np.ndarray,
-            eval_set: tuple[pd.DataFrame, np.ndarray] | None = None, **_) -> "LightGBMModel":
+            eval_set: tuple[pd.DataFrame, np.ndarray] | None = None, **_) -> LightGBMModel:
         self.features_ = feature_columns(X)
         dtrain = lgb.Dataset(X[self.features_], label=y, free_raw_data=True)
         valid_sets, callbacks = [], [lgb.log_evaluation(period=200)]
