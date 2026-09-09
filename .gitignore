@@ -5,6 +5,11 @@ venv/
 .env
 *.feather
 *.parquet
+
+# ...except the dashboard's exported bundle. results/ carries derived aggregates and one
+# small feature sample, and it has to be IN the repository or the published dashboard
+# renders empty pages - which looks like a broken app, not a missing file.
+!results/*.parquet
 data/raw/*
 data/processed/*
 data/features/*

@@ -112,3 +112,39 @@ def test_histogram_midpoints_are_rounded(lib):
 def test_histogram_counts_every_row(lib):
     h = lib.histogram(pd.Series(range(500)), bins=13, label="x")
     assert h["samples"].sum() == 500
+
+
+# ------------------------------------------------- the bundle has to be IN the repository
+
+def test_every_bundled_result_is_tracked_by_git():
+    """Present on disk is not the same as present in the repository.
+
+    This is how it failed the first time: .gitignore carries `*.parquet` for the raw data,
+    which silently swallowed results/feature_sample.parquet. Every loader still passed
+    locally - the file was there - while the deployed dashboard would have rendered empty
+    pages, which reads as a broken app rather than a missing file.
+    """
+    import subprocess
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    results = root / "results"
+    if not results.exists():
+        pytest.skip("results/ has not been exported")
+
+    tracked = subprocess.run(
+        ["git", "ls-files", "results/"], cwd=root, capture_output=True, text=True,
+    ).stdout.split()
+    on_disk = {f"results/{p.name}" for p in results.iterdir() if p.is_file()}
+    assert not on_disk - set(tracked), (
+        "these exist on disk but are not in git, so they will not reach a deployment"
+    )
+
+
+def test_the_deployment_needs_no_secrets():
+    """Streamlit Community Cloud gets no credentials, so nothing may require them."""
+    from pathlib import Path
+
+    lib = (Path(__file__).resolve().parents[1] / "streamlit_app" / "lib.py").read_text(
+        encoding="utf-8")
+    assert "gcp_key_path" not in lib and "service_account" not in lib
