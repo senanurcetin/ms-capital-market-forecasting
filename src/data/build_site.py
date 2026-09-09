@@ -58,6 +58,17 @@ def _read_json(name: str) -> dict | None:
 
 # ----------------------------------------------------------------- inline SVG charts
 
+def _tick(v: float) -> str:
+    """Axis label that survives small magnitudes.
+
+    A fixed 3-decimal format prints every SHAP value as "0.000" - the importances are of
+    order 1e-5 - which makes the axis decorative rather than informative.
+    """
+    if v == 0:
+        return "0"
+    return f"{v:.3g}" if abs(v) < 0.01 or abs(v) >= 1000 else f"{v:.3f}"
+
+
 def bar_svg(labels: list[str], values: list[float], *, width: int = 720, height: int = 240,
             colour: str = ACCENT, highlight: int | None = None) -> str:
     """A horizontal-axis bar chart, drawn directly.
@@ -89,23 +100,31 @@ def bar_svg(labels: list[str], values: list[float], *, width: int = 720, height:
         parts.append(f'<line x1="{pad_l}" y1="{y:.1f}" x2="{width - 10}" y2="{y:.1f}" '
                      f'stroke="#2a2f3a" stroke-width="1"/>')
         parts.append(f'<text x="{pad_l - 6}" y="{y + 3:.1f}" fill="{MUTED}" font-size="10" '
-                     f'text-anchor="end">{top * frac:.3f}</text>')
+                     f'text-anchor="end">{_tick(top * frac)}</text>')
     return (f'<svg viewBox="0 0 {width} {height}" width="100%" role="img">'
             + "".join(parts) + "</svg>")
 
 
 def line_svg(values: list[float], *, width: int = 720, height: int = 200,
-             colour: str = GOOD) -> str:
-    """A single path. Used for the equity curve, which is a shape rather than a table."""
+             colour: str = GOOD, max_points: int = 400) -> str:
+    """A single path. Used for the equity curve, which is a shape rather than a table.
+
+    Thinned to at most `max_points`, because the chart is 720 px wide and drawing 2,000
+    points into it writes more coordinates than there are pixels to show them - the shape
+    is identical and the file is several times smaller.
+    """
     if not values:
         return ""
+    if len(values) > max_points:
+        step = len(values) / max_points
+        values = [values[min(int(i * step), len(values) - 1)] for i in range(max_points)]
     pad_l, pad_b, pad_t = 46, 24, 10
     plot_w, plot_h = width - pad_l - 10, height - pad_b - pad_t
     lo, hi = min(values), max(values)
     span = (hi - lo) or 1
     pts = [
-        f"{pad_l + i / (len(values) - 1) * plot_w:.1f},"
-        f"{pad_t + plot_h - (v - lo) / span * plot_h:.1f}"
+        f"{pad_l + i / (len(values) - 1) * plot_w:.0f},"
+        f"{pad_t + plot_h - (v - lo) / span * plot_h:.0f}"
         for i, v in enumerate(values)
     ]
     grid = "".join(
@@ -121,6 +140,24 @@ def line_svg(values: list[float], *, width: int = 720, height: int = 200,
 
 
 # ----------------------------------------------------------------- page pieces
+
+# Truncation loses exactly the part that distinguishes these names: cut
+# "ord_new_count_imbalance_30s" to twelve characters and three different features all
+# read "new_count_im". Abbreviating the common words keeps the window suffix.
+_ABBREV = {
+    "imbalance": "imb", "count": "cnt", "return": "ret", "volume": "vol",
+    "microprice": "micro", "depth": "dep", "aggressor": "aggr", "transaction": "txn",
+    "spread": "sprd", "snapshot": "snap",
+}
+
+
+def _short(name: str, limit: int = 15) -> str:
+    for prefix in ("mkt_", "ord_", "txn_"):
+        name = name.removeprefix(prefix)
+    for long, brief in _ABBREV.items():
+        name = name.replace(long, brief)
+    return name if len(name) <= limit else name[: limit - 1] + "…"
+
 
 def _metric(label: str, value: str, note: str = "", colour: str = INK) -> str:
     return (f'<div class="metric"><div class="label">{html.escape(label)}</div>'
@@ -250,9 +287,11 @@ def build() -> Path:
   <code>cos(y,p) = Σ cos_g · w_g</code> with
   <code>w_g = ‖y_g‖‖p_g‖ / (‖y‖‖p‖)</code> — subgroups are weighted by
   <strong>magnitude</strong>, not row count. The forecast used sample shares.</p>
-  {_table(dec[["group", "n", "cosine", "count_weight", "weight"]],
+  {_table(dec.loc[dec.group.notna(), ["group", "n", "cosine", "count_weight", "weight"]],
           {"cosine": "{:+.5f}", "count_weight": "{:.3f}", "weight": "{:.3f}", "n": "{:,}"})}
-  <p class="cap">Equal-sized quartiles, but the weights the metric applies run 0.209–0.312,
+  <p class="cap">Samples with no measurable spread form a fifth bucket, left out here
+  because it is a data condition rather than a liquidity regime. Equal-sized quartiles, but
+  the weights the metric applies run 0.209–0.312,
   and the heaviest lands where the model is <em>strongest</em>. Redone properly the forecast
   moves to +0.14844 — <strong>further</strong> from the outcome. Fixing the error made the
   story worse, which is why it is worth reporting.</p>
@@ -273,9 +312,7 @@ def build() -> Path:
         parts.append(f"""
 <section>
   <h2>What the model leans on</h2>
-  {bar_svg(top.iloc[:, 0].str.replace("mkt_", "", regex=False)
-              .str.replace("ord_", "", regex=False).str.slice(0, 12).tolist(),
-           top[col].tolist())}
+  {bar_svg([_short(f) for f in top.iloc[:, 0]], top[col].tolist())}
   <p class="cap">TreeSHAP over the hold-out. The strongest signals are imbalance features,
   which is what microstructure theory predicts.</p>
 </section>""")
