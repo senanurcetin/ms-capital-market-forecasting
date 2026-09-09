@@ -3,10 +3,8 @@
   "configurations": [
     {
       "name": "dashboard",
-      "runtimeExecutable": "python",
+      "runtimeExecutable": "streamlit",
       "runtimeArgs": [
-        "-m",
-        "streamlit",
         "run",
         "streamlit_app/app.py",
         "--server.port=8501",

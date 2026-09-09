@@ -1,4 +1,16 @@
 """Page 2 - Market microstructure."""
+import sys
+from pathlib import Path
+
+# Put the repository root on sys.path before importing anything from it.
+#
+# `python -m streamlit` silently adds the working directory; a bare `streamlit run` - which
+# is what Streamlit Community Cloud executes - adds the MAIN SCRIPT'S directory instead. So
+# `streamlit_app/` lands on the path and the repository root does not, and every
+# `from streamlit_app.lib import ...` below fails with ModuleNotFoundError. It works locally
+# and breaks on deploy, which is the worst place to find out.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 import streamlit as st
 
 from streamlit_app.lib import histogram, load_features, missing, page_header
