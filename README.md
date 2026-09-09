@@ -216,10 +216,13 @@ the API would have loaded, so a published dashboard is interactive rather than a
 error messages. With `make api` running it uses the real serving path instead.
 
 **Deploying it** (free): [Streamlit Community Cloud](https://share.streamlit.io) reads this
-repository directly - point it at `streamlit_app/app.py` on `main`. Root
-`requirements.txt` is deliberately lean for exactly this reason: the pipeline-only packages
-(MLflow, SHAP, DuckDB, Polars, Kaggle) sit in `requirements-pipeline.txt` so the deployed
-app does not install them to draw a bar chart.
+repository directly - point it at `streamlit_app/app.py` on `main`, and **set the Python
+version to 3.11** under Advanced settings. That last part is not cosmetic: the default is
+currently 3.14, for which the pinned wheels do not exist, so the build silently falls back
+to compiling pandas and numpy from source and stalls. Root `requirements.txt` is
+deliberately lean for the same class of reason - the pipeline-only packages (MLflow, SHAP,
+DuckDB, Polars, Kaggle) sit in `requirements-pipeline.txt` so the deployed app does not
+install them to draw a bar chart.
 
 > Vercel is not an option here and it is worth saying why: it runs serverless functions,
 > while Streamlit is a long-lived server holding a WebSocket per viewer. The hacks that
