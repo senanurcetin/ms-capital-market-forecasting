@@ -11,10 +11,14 @@ competition data - it is the output of analysis over that data, which is the sam
 already published in the notebooks and the README.
 
 The competition data itself is never exported. Neither is `dataset_train.parquet`, except
-for a deliberately small sample: 20k rows of the ten columns the overview page plots, which
-is enough to show the market's shape and useless for anything else. It is 0.4% of the
-training set, carries no labels beyond the target the notebooks already publish, and is
-capped at a size that keeps the repository small.
+for a deliberately small sample: 5,000 rows - 0.4% of the training set - carrying no labels
+beyond the target the notebooks already publish. It is full width rather than the ten
+columns the charts plot, because the Predictions page has to assemble a complete
+292-feature row and Predictor rejects an incomplete one instead of quietly imputing.
+
+The trained model travels too. A published dashboard has no FastAPI beside it, and a
+Predictions page that could only report "cannot reach the API" would be dead on the one
+deployment anybody sees.
 
 The equity curve is DOWNSAMPLED. It has 20,954 points, and a line chart cannot show them;
 carrying two megabytes to draw a shape that 2,000 points draws identically is waste, not
