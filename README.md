@@ -5,6 +5,18 @@ market microstructure data, built on the Kaggle
 [MSCapital](https://www.kaggle.com/competitions/ms-capital-real-financial-market-forecasting)
 competition dataset.
 
+**Status: complete and handed over.** 26 commits, 200 tests, CI green, five executed
+notebooks, two scored submissions. Nothing is in progress; what remains open is stated
+plainly in [Where this stands](#where-this-stands) rather than left implied.
+
+**Where to start**, depending on how long you have:
+
+| | |
+|---|---|
+| **2 minutes** | [Headline result](#headline-result) — the scores, and the forecast that was wrong |
+| **20 minutes** | ↑ plus [What I found](#what-i-found) and [notebook 01](notebooks/01_data_discovery.ipynb) — the six data findings that drive everything |
+| **an hour** | ↑ plus [notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb) — six hypotheses, five eliminated, two errors caught in my own analysis |
+
 > **For research only. Not investment advice.**
 > The backtesting module exists to measure the model's ranking power, not to propose a strategy.
 
@@ -97,27 +109,17 @@ matters because it refutes the comfortable reading of everything above: the prob
 0.0041, so the missing quantity is signal this pipeline does not extract, not headroom that
 does not exist.
 
-Five hypotheses have been tested against that gap and four falsified, including the most
-promising one. Most of the 292 features are aggregates, so they are permutation-invariant
-— shuffle the ~176 snapshots inside a sample and they do not move — which leaves the order
-of the book's evolution largely absent. Adding 18 path statistics (path efficiency, return
-autocorrelation, RV signature ratio, imbalance slope, arrival burstiness) buys
-**+0.0006, CI spanning zero**, against a pre-registered bar of 0.0041. The sequence-model
-gate stays shut, on evidence rather than preference.
+Six hypotheses have been tested against that gap. One is confirmed, and it is the
+estimator rather than the model: the hold-out sits at the 83rd percentile of period
+difficulty, worth ~46% of the shortfall. The other five are eliminated — including the two
+most promising, sequence order (**+0.0006**, CI spanning zero, against a pre-registered bar
+of 0.0041) and aligning the training loss with the metric (**−0.0064**, which actively
+hurt). Each is worked through in
+[notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb), along with two errors the
+audits found in my own analysis.
 
-A null like that is not self-interpreting, though, and auditing it caught an error in my
-own premise. I had written that *all* 292 are permutation-invariant; the
-`*_delta_300s_vs_600s` family compares nested windows, which is exactly a statement about
-direction of travel, so order information was already partly there. Measuring it: five of
-the eighteen new features correlate above 0.9 with an existing one, `shp_n_snaps` at
-**1.000**. And the split of standalone power is decisive — all 18 predict at **+0.048**,
-but the 9 genuinely novel ones predict at **+0.006**, which is the trivial `mean`
-baseline. **The shape features that predict are the ones that duplicate existing
-features.** That turns a bare null into a specific finding, and had it come out the other
-way the honest conclusion would have been "my features are bad", not "order does not pay".
-
-The honest summary is not "the ceiling is here". It is: **the gap is real, five specific
-explanations are eliminated, and the sixth has not been found.**
+The honest summary is not "the ceiling is here". It is: **the gap is real, six specific
+explanations have been tested, and the one that survives does not account for most of it.**
 
 Walk-forward CV, full data, 5 folds:
 
@@ -436,39 +438,37 @@ thresholds, without a submission.
 
 ## Hyperparameter search: how much of a gain is real?
 
-Tuning was originally deprioritised on the judgement that it buys little per hour. This
-replaces the judgement with a number.
+Tuning was deprioritised on a judgement. This replaced it with a number.
 
 | | gain |
 |---|---:|
 | Claimed by the search (23 trials, 30% of rows) | +0.00260 |
 | Surviving fresh seeds | +0.00062 |
-| **Full data, paired, 3 folds** | **−0.00038** |
+| **Full data, paired** | **−0.00038** |
 
 **Tuning bought nothing.** Three quarters of the apparent gain was selection noise — keeping
 the best of N trials on an objective with fold-to-fold std 0.0041 finds favourable noise as
-well as good parameters — and what survived failed to transfer, coming back *negative* on
-full data with 1 fold of 3 improving. The hand-chosen defaults stand, now on evidence.
+well as good parameters — and what survived reversed sign on full data. The hand-chosen
+defaults stand, now on evidence.
 
 The reusable part is the apparatus: any best-of-N result on a noisy objective is inflated
-by the maximum of N noise draws, and the correction costs one extra evaluation — re-score
-the winner under a fresh resampling and report both numbers. Reporting only the first would
-have claimed a +0.0026 improvement that reverses sign.
+by the maximum of N noise draws, and the correction costs one extra evaluation. Reporting
+only the first number would have claimed a +0.0026 improvement that reverses.
 
 > **A search space is a compute budget in another notation.** The first attempt allowed
-> `num_leaves` 511, `max_bin` 255 and `learning_rate` 0.01 — that last one is the trap,
-> since early stopping never fires and every round runs. Trials there cost ~10x the
-> baseline and a one-hour search was killed after three with nothing to show. The version
-> here bounds the worst trial to ~2x, caps wall-clock, and logs every trial as it lands.
+> `learning_rate` down to 0.01, where early stopping never fires and every round runs.
+> Such trials cost ~10x the baseline and a one-hour search was killed after three with
+> nothing to show. The version here bounds the worst trial to ~2x, caps wall-clock, and
+> logs every trial as it lands.
 
 ---
 
 ## Feature redundancy
 
 Auditing a *new* feature set found five of eighteen columns duplicating something that
-already existed, one at correlation 1.000. The obvious next question was whether the
-original 292 had the same problem. They do: **31 pairs correlate above 0.999**, and
-collapsing them transitively leaves **264 distinct features, not 292**.
+already existed. The obvious next question was whether the original 292 had the same
+problem. They do: **31 pairs correlate above 0.999**, leaving **264 distinct features, not
+292**.
 
 | r | pair | why |
 |---:|---|---|
@@ -476,13 +476,30 @@ collapsing them transitively leaves **264 distinct features, not 292**.
 | 1.0000 | `txn_vwap_60s` / `txn_vwap_total` | the widest nested window *is* the whole sample |
 | 1.0000 | `mkt_spread_mean_5s` / `mkt_rel_spread_mean_5s` | prices are normalised so mid ≈ 1.0 — dividing by it changes nothing |
 
-The last one is the instructive failure. That prices sit near 1.0 is a fact this project
-measured and documented in notebook 01; its consequence for the feature set was simply
-never followed up, so the relative-spread family was built anyway.
+The last is the instructive failure: that prices sit near 1.0 was measured and documented
+in notebook 01, and the consequence for the feature set was simply never followed up.
+Nothing here invalidates a result — boosting is untroubled by correlated inputs — but "292
+features" counts columns, not information. `make feature-audit` reproduces it.
 
-Nothing here invalidates a result — gradient boosting is untroubled by correlated inputs,
-and the ablation, SHAP and drift analyses are unaffected. What it corrects is a headline:
-"292 features" counts columns, not information. `make feature-audit` reproduces it.
+---
+
+## Where this stands
+
+**Finished.** The pipeline runs end to end, `make demo` reproduces it on synthetic data in
+15 seconds, and every claim above is generated by committed code rather than typed in.
+
+**Open, and stated rather than hidden:**
+
+| | |
+|---|---|
+| ~54% of the leaderboard gap | unexplained. Six hypotheses tested, five eliminated; the survivor covers 46%. I do not have a seventh. |
+| Leaderboard 0.129 vs median 0.138 | below typical. Tuning, ensembling, more data, sequence order and metric alignment are all measured at roughly zero or worse, so what is missing is signal this pipeline does not extract. |
+| Prediction horizon | undocumented by the competition; it does not affect the modelling |
+| Official metric | confirmed only indirectly — 0.128 is consistent with cosine or Pearson, and inconsistent with RMSE, MAE or R² |
+
+**Five forecasts, five overshoots, all in the same direction.** That pattern is the most
+transferable thing here: on this problem, priors about what should help are systematically
+optimistic, and only the measurement settles it.
 
 ---
 

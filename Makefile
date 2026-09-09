@@ -13,6 +13,8 @@ help:
 	@echo "test          pytest"
 	@echo "lint          run ruff"
 	@echo "check         lint + tests"
+	@echo "fmt           ruff --fix"
+	@echo "train-quick   2 folds on a 25% sample, no MLflow - for smoke testing"
 	@echo "validate      check the raw and feature data against their contracts"
 	@echo "ingest        feather -> parquet -> BigQuery (train)"
 	@echo "features      build the BigQuery feature layer and download it"
@@ -31,7 +33,10 @@ help:
 	@echo "api           run FastAPI locally (:8000)"
 	@echo "streamlit     run the dashboard locally (:8501)"
 	@echo "mlflow        MLflow UI (:5000)"
+	@echo "docker-build  build the api, app and full images"
 	@echo "up / down     bring the whole stack up/down with docker compose"
+	@echo "logs          follow the compose logs"
+	@echo "clean         remove local run artefacts (never the data)"
 
 demo:
 	$(PY) -m src.demo
