@@ -9,7 +9,10 @@ numpy==2.4.6
 pyarrow==24.0.0
 scikit-learn==1.8.0
 lightgbm==4.6.0
-xgboost==3.2.0
+# xgboost-cpu, NOT xgboost: the default wheel pulls the NVIDIA CUDA runtime,
+# measured at 454 MB, which nothing here uses - this project trains on CPU -
+# and which Streamlit Cloud would download on every rebuild.
+xgboost-cpu==3.2.0
 joblib==1.5.3
 pyyaml==6.0.3
 fastapi==0.136.1
