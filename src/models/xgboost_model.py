@@ -80,7 +80,11 @@ class XGBoostModel:
         # Prediction uses a plain DMatrix: no binning is needed to score an already
         # trained booster, and it avoids the max_bin/ref coupling entirely.
         dm = xgb.DMatrix(X[self.features_], nthread=-1)
-        rng = (0, self.best_iteration_ + 1) if self.best_iteration_ is not None else None
+        # (0, 0) is xgboost's way of saying "every tree". Passing None raises
+        # `'NoneType' object is not subscriptable` inside Booster.predict - which never
+        # showed up because production always fits with early stopping, so
+        # best_iteration_ is always set. It is None whenever early_stopping_rounds is.
+        rng = (0, self.best_iteration_ + 1) if self.best_iteration_ is not None else (0, 0)
         return self.booster_.predict(dm, iteration_range=rng)
 
     def importance(self, kind: str = "gain") -> pd.Series:

@@ -106,25 +106,19 @@ def build(*, rounds: int = 2000, early_stopping: int = 100, version: str = "v4")
 
     out_dir = Path(cfg.paths.features)
     model_dir = Path(cfg.paths.data_root) / "models" / "shipped"
-    # Store the WRAPPERS, not the inner estimators. RidgeModel carries the median
-    # imputation that bare sklearn Ridge has no idea about (see src/models/base.py) -
-    # unwrapping it made predict() fail on the first NaN in the test set. The wrappers
-    # already share one predict(df) contract, which is the whole point of having it.
-    inner = {name: (getattr(m, "booster_", None) or getattr(m, "model", m))
-             for name, m in models.items()}
+    # Save the ENSEMBLE, not one of its members. This used to hand save_bundle the bare
+    # LightGBM booster while still calling the artefact "ensemble", so /model-info
+    # announced a blend and /predict returned single-model predictions - and the score
+    # reported in the README came from predict_test() below, which does use the blend.
+    # The served model and the measured model are now the same object.
     save_bundle(
-        model_dir, model=inner["lightgbm"], kind="lightgbm",
+        model_dir, model={"models": models, "weights": weights}, kind="ensemble",
         features=feature_columns(df), name="ensemble", version=version,
         metrics={"train_months": f"0-{TRAIN_END}", "stop_month": STOP_MONTH,
                  "blend_months": f"{BLEND_MONTHS[0]}-{BLEND_MONTHS[1]}",
                  "blend_in_sample_cosine": round(ens_score, 6),
                  **{f"blend_{k}": round(v, 6) for k, v in singles.items()}},
     )
-    import joblib
-
-    joblib.dump({"models": models, "weights": weights,
-                 "features": feature_columns(df)}, model_dir / "ensemble.joblib")
-
     meta = {"train_months": [0, TRAIN_END], "stop_month": STOP_MONTH,
             "blend_months": list(BLEND_MONTHS), "weights": weights,
             "singles_blend": singles, "ensemble_blend": ens_score,
@@ -136,15 +130,22 @@ def build(*, rounds: int = 2000, early_stopping: int = 100, version: str = "v4")
 
 
 def predict_test(*, out_name: str = "submission_v2.csv") -> Path:
-    """Score the test set with the shipped ensemble and write a submission."""
-    import joblib
+    """Score the test set with the shipped ensemble and write a submission.
+
+    Loads the SERVED artefact rather than a parallel copy of the fitted objects. The two
+    used to be separate files, which meant the submission and the API could drift apart
+    without anything failing; now a difference between what was measured and what is
+    served would have to be a difference in the input, not in the model.
+    """
     import pandas as pd
     import pyarrow.parquet as pq
 
+    from src.inference.ensemble import load_ensemble
+
     cfg = load_config()
     model_dir = Path(cfg.paths.data_root) / "models" / "shipped"
-    bundle = joblib.load(model_dir / "ensemble.joblib")
-    features, weights = bundle["features"], bundle["weights"]
+    artefact = load_ensemble(model_dir)
+    features = artefact.features
 
     feat = Path(cfg.paths.features)
     test = pq.read_table(feat / "dataset_test.parquet",
@@ -152,10 +153,7 @@ def predict_test(*, out_name: str = "submission_v2.csv") -> Path:
     for c in features:
         test[c] = test[c].astype("float32")
 
-    stacked = np.column_stack([
-        bundle["models"][name].predict(test[features]) for name in weights
-    ])
-    pred = stacked @ np.array([weights[name] for name in weights], dtype=float)
+    pred = artefact.predict(test)
 
     sub = pd.DataFrame({"sample_id": test["sample_id"].to_numpy(), "prediction": pred})
     template = pd.read_csv(Path(cfg.paths.raw) / "submission.csv")

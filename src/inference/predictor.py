@@ -43,6 +43,12 @@ class ModelBundle:
 
 
 def _load_booster(path: Path, kind: str):
+    if kind == "ensemble":
+        # `path` is the directory holding the base models, not a single file - an
+        # ensemble is several artefacts plus the weights that combine them.
+        from src.inference.ensemble import load_ensemble
+
+        return load_ensemble(path.parent if path.is_file() else path)
     if kind == "lightgbm":
         import lightgbm as lgb
 
@@ -85,7 +91,15 @@ def save_bundle(model_dir: str | Path, *, model, kind: str, features: list[str],
 
     model_dir = Path(model_dir)
     model_dir.mkdir(parents=True, exist_ok=True)
-    if kind == "lightgbm":
+    if kind == "ensemble":
+        from src.inference.ensemble import META_FILE, save_ensemble
+
+        # `model` is the dict of fitted training wrappers; save_ensemble is the boundary
+        # that converts them into files loadable without the training package.
+        save_ensemble(model_dir, models=model["models"], weights=model["weights"],
+                      features=features)
+        model_file = META_FILE
+    elif kind == "lightgbm":
         model_file = "model.txt"
         model.save_model(str(model_dir / model_file))
     elif kind == "xgboost":
