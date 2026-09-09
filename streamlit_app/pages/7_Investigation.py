@@ -65,6 +65,13 @@ st.dataframe(
          "Verdict": "falsified - +0.0006, CI spans zero"},
     ]),
     width="stretch", hide_index=True,
+    # Explicit widths, because the verdict is the column a reader actually scans and it
+    # was the one being ellipsised - "CI spans zer" is worse than no table.
+    column_config={
+        "Hypothesis": st.column_config.TextColumn(width="medium"),
+        "Method": st.column_config.TextColumn(width="large"),
+        "Verdict": st.column_config.TextColumn(width="medium"),
+    },
 )
 
 st.divider()
@@ -138,6 +145,11 @@ st.dataframe(
          "Actual": "−0.0064"},
     ]),
     width="stretch", hide_index=True,
+    column_config={
+        "Forecast": st.column_config.TextColumn(width="large"),
+        "Predicted": st.column_config.TextColumn(width="small"),
+        "Actual": st.column_config.TextColumn(width="small"),
+    },
 )
 
 st.markdown(

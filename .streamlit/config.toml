@@ -1,13 +1,54 @@
 # Theme for the published dashboard. Streamlit Community Cloud reads this from the repo,
 # so the deployed app looks the same as a local run rather than defaulting to whatever
-# the viewer's browser prefers.
+# the viewer's browser happens to prefer.
+#
+# Both palettes are defined rather than only the dark one. `base` decides the default, but
+# a reader who switches to light in Streamlit's own settings should get a designed page
+# rather than the stock blue - and on a projector or a printout, light is the readable one.
+#
+# The accent is teal rather than Streamlit's default blue for a specific reason: the charts
+# on these pages are already blue, and an accent that matches the data makes the two read
+# as the same thing. A distinct accent keeps "this is interface" and "this is a
+# measurement" visually separate.
+
 [theme]
 base = "dark"
-primaryColor = "#4C9AFF"
-backgroundColor = "#0E1117"
-secondaryBackgroundColor = "#161A23"
-textColor = "#E6E6E6"
 font = "sans serif"
+headingFont = "sans serif"
+codeFont = "monospace"
+baseRadius = "medium"
+showSidebarBorder = true
+
+# Categorical sequence for st.bar_chart / st.line_chart when a frame has several columns.
+# Ordered so the first two - the ones that carry the comparison in almost every chart here
+# - are separable for the most common forms of colour blindness, rather than being two
+# neighbouring hues.
+chartCategoricalColors = [
+    "#4C9AFF",  # blue      - the measurement
+    "#F2A63B",  # amber     - the comparison
+    "#3FBFA8",  # teal      - the accent
+    "#B47CE6",  # violet
+    "#E5698C",  # rose
+    "#8FB339",  # olive
+]
+
+[theme.dark]
+primaryColor = "#3FBFA8"
+backgroundColor = "#0B0E14"
+secondaryBackgroundColor = "#141A24"
+textColor = "#D8DEE9"
+linkColor = "#6FD3C0"
+borderColor = "#242C3A"
+dataframeHeaderBackgroundColor = "#141A24"
+
+[theme.light]
+primaryColor = "#0F8C7A"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F4F6F9"
+textColor = "#1C2430"
+linkColor = "#0F8C7A"
+borderColor = "#DDE3EA"
+dataframeHeaderBackgroundColor = "#F4F6F9"
 
 [server]
 # The dashboard reads committed result files; nothing is uploaded to it.

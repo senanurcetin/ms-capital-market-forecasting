@@ -49,9 +49,14 @@ def fake_root(tmp_path, monkeypatch):
     pd.DataFrame({"equity": np.linspace(1.0, 1.2, 20_000)}).to_csv(
         features / "backtest_equity.csv", index=False)
 
-    df = pd.DataFrame(np.random.default_rng(0).normal(size=(200, 4)),
-                      columns=[f"f{i}" for i in range(4)])
-    df.insert(0, "sample_id", np.arange(200))
+    # Chronological sample_id and several months, because that is the shape the export's
+    # stratified sampling exists to handle - and the shape that made `head()` wrong.
+    n = MONTHS * 6
+    df = pd.DataFrame(np.random.default_rng(0).normal(size=(n, 3)),
+                      columns=[f"f{i}" for i in range(3)])
+    df.insert(0, "sample_id", np.arange(n))
+    df.insert(1, "month", np.repeat(np.arange(MONTHS), 6))
+    df["target"] = np.random.default_rng(2).normal(size=n)
     df.to_parquet(features / "dataset_train.parquet", index=False)
 
     monkeypatch.setattr(
@@ -102,6 +107,30 @@ def test_the_feature_sample_is_capped_and_full_width(fake_root, tmp_path):
     source = pd.read_parquet(fake_root / "features" / "dataset_train.parquet")
     assert len(sample) <= export_results.SAMPLE_ROWS
     assert list(sample.columns) == list(source.columns)
+
+
+def test_the_sample_spans_every_month_rather_than_the_first_rows(fake_root, tmp_path):
+    """The defect this replaced: `head(5000)` on a chronological table is month 0.
+
+    Every distribution on the published overview was one month of data described as the
+    training set, and the monthly-volatility chart was a single point under a caption
+    claiming a 2.69x swing.
+    """
+    out = tmp_path / "out"
+    export_results.run(out=out)
+    sample = pd.read_parquet(out / "feature_sample.parquet")
+    assert sample["month"].nunique() == MONTHS
+
+
+def test_the_monthly_statistics_come_from_the_whole_table(fake_root, tmp_path):
+    """Computed on all rows, not on the sample beside them - a per-month standard
+    deviation from ~70 sampled rows would be noise presented as a regime."""
+    out = tmp_path / "out"
+    export_results.run(out=out)
+    stats = pd.read_csv(out / "target_by_month.csv")
+    source = pd.read_parquet(fake_root / "features" / "dataset_train.parquet")
+    assert len(stats) == MONTHS
+    assert stats["count"].sum() == len(source)
 
 
 def test_the_export_refuses_to_produce_a_bundle_too_big_for_git(fake_root, tmp_path,

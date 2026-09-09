@@ -6,8 +6,9 @@ TWO SOURCES, IN ORDER
   2. `results/` in the repository - the exported summaries, when running anywhere else
 
 The second is what makes the dashboard publishable. It carries only derived aggregates -
-fold scores, backtest curves, SHAP importances, the investigation results - plus a 20k-row
-sample of the feature table for the overview charts. No competition data travels, and
+fold scores, backtest curves, SHAP importances, the investigation results - plus a
+~5k-row sample of the feature table, drawn evenly across all 71 months, for the overview
+charts. No competition data travels, and
 every number shown is one already published in the notebooks.
 
 Design: every loader returns None instead of crashing on missing data, so the dashboard
@@ -111,21 +112,46 @@ def load_json(name: str) -> dict | None:
 
 @st.cache_data(show_spinner=False)
 def load_features(n_rows: int = 50_000, columns: list[str] | None = None) -> pd.DataFrame | None:
-    """A slice of the feature set.
+    """A slice of the feature set - spread over the months when the caller names columns.
 
     The full table is ~1.4 GB and is never fully loaded. Away from the pipeline this falls
-    back to the 20k-row sample exported into `results/`, which carries the ten columns the
-    overview charts plot and nothing else.
+    back to `results/feature_sample.parquet`: 4,970 rows at FULL width, drawn evenly from
+    all 71 months.
+
+    WHY THE SPREAD MATTERS
+
+    Reading the first n rows is not a sample of this table. `sample_id` is chronological,
+    so the first 20,000 rows are months 0-1 - and every distribution on the overview page
+    was drawn from them while being captioned as though it described the training set.
+    The exported bundle had the same defect in worse form: the first 5,000 rows are all
+    month 0, so the monthly-volatility chart had a single point.
+
+    The spread is applied only when `columns` is given, which is the charts' path: a
+    ten-column projection of the whole table is about 50 MB, cheap to read in full and
+    then thin. The full-width path stays streamed, because 295 columns is 1.4 GB - and
+    its one caller is the Predictions page, where the reader picks a sample_id by hand
+    and representativeness is not what the rows are for.
     """
     p = find("dataset_train.parquet", "feature_sample.parquet")
     if p is None:
         return None
+    import numpy as np
     import pyarrow.parquet as pq
 
     if p.name == "feature_sample.parquet":
         df = pq.read_table(p).to_pandas()
         keep = [c for c in (columns or df.columns) if c in df.columns]
         return df[keep].head(n_rows)
+
+    if columns is not None:
+        df = pq.read_table(p, columns=columns).to_pandas()
+        if "month" in df.columns and len(df) > n_rows:
+            per = max(1, n_rows // df["month"].nunique())
+            months = df["month"].to_numpy()
+            idx = np.concatenate([np.flatnonzero(months == m)[:per]
+                                  for m in np.sort(df["month"].unique())])
+            return df.iloc[idx[:n_rows]].reset_index(drop=True)
+        return df.head(n_rows)
 
     pf = pq.ParquetFile(p)
     batches = pf.iter_batches(batch_size=min(n_rows, 65_536), columns=columns)

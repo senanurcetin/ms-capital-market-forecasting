@@ -84,8 +84,9 @@ def test_the_export_list_covers_what_the_pages_request():
     rendering - the worst version, because the page keeps looking authoritative.
     """
     # Not in VERBATIM because the export builds them rather than copying them.
-    special = {"backtest_equity.csv", "feature_sample.parquet", "model.txt",
-               "model_meta.json", "shap_global.csv", "shap_local_examples.csv"}
+    special = {"backtest_equity.csv", "feature_sample.parquet", "target_by_month.csv",
+               "model.txt", "model_meta.json", "shap_global.csv",
+               "shap_local_examples.csv"}
     refreshed = set(VERBATIM) | special
     uncovered = [
         (src, names) for src, names in requested_files()

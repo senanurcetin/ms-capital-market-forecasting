@@ -66,6 +66,39 @@ SAMPLE_ROWS = 5_000
 EQUITY_POINTS = 2_000
 
 
+def _stratified_index(months: pd.Series, n: int) -> np.ndarray:
+    """Row positions spread evenly over every month, rather than the first n rows.
+
+    This was `head(n)`, and because sample_id is chronological that meant the exported
+    sample was ENTIRELY month 0. Every distribution on the published dashboard was
+    therefore one month of data captioned as though it were the training set, and the
+    monthly-volatility chart had a single point under a caption claiming a 2.69x swing.
+
+    Even quotas rather than a proportional draw: the months are near-identical in size
+    (17,187 to 17,852 rows), so the two agree to within a few rows, and a fixed quota
+    cannot leave a month out.
+    """
+    per = max(1, n // months.nunique())
+    picked = [np.flatnonzero(months.to_numpy() == m)[:per]
+              for m in np.sort(months.unique())]
+    return np.concatenate(picked)[:n]
+
+
+def _target_by_month(src: Path, dst: Path) -> int:
+    """Per-month target statistics, computed on the FULL table.
+
+    Read from the whole 1.26M rows rather than from the exported sample, because the
+    point of the chart is the regime shift ACROSS months and a sample cannot carry it
+    faithfully. Two columns of 1.26M rows is a cheap read and 71 rows to carry.
+    """
+    import pyarrow.parquet as pq
+
+    df = pq.read_table(src, columns=["month", "target"]).to_pandas()
+    stats = df.groupby("month")["target"].agg(["std", "mean", "count"]).reset_index()
+    stats.to_csv(dst, index=False)
+    return len(stats)
+
+
 def _downsample_equity(src: Path, dst: Path) -> int:
     """Thin the equity curve to a fixed number of points, keeping the endpoints.
 
@@ -118,10 +151,18 @@ def run(*, out: Path | None = None) -> dict:
     if ds.exists():
         import pyarrow.parquet as pq
 
-        df = pq.read_table(ds, columns=SAMPLE_COLUMNS).to_pandas().head(SAMPLE_ROWS)
+        months = pq.read_table(ds, columns=["month"]).to_pandas()["month"]
+        idx = _stratified_index(months, SAMPLE_ROWS)
+        table = pq.read_table(ds, columns=SAMPLE_COLUMNS)
+        df = table.take(idx).to_pandas()
+        del table
         df = df.astype({c: "float32" for c in df.columns if df[c].dtype == "float64"})
         df.to_parquet(out / "feature_sample.parquet", compression="zstd", index=False)
-        copied.append(f"feature_sample.parquet ({len(df):,} rows x {df.shape[1]})")
+        copied.append(f"feature_sample.parquet ({len(df):,} rows x {df.shape[1]}, "
+                      f"{df['month'].nunique()} months)")
+
+        n = _target_by_month(ds, out / "target_by_month.csv")
+        copied.append(f"target_by_month.csv ({n} months, from the full table)")
 
     total = sum(f.stat().st_size for f in out.glob("*"))
     log.info("exported %d files to %s (%.1f KB)", len(list(out.glob('*'))), out, total / 1024)
