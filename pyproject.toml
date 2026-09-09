@@ -1,15 +1,10 @@
 # Tool configuration lives here rather than in each command line, so that a local
 # `ruff check` and the one CI runs cannot drift apart.
-
-[project]
-name = "mscapital"
-version = "1.0.0"
-description = "Short-horizon return forecasting from market microstructure"
-# 3.11 is not a preference, it is what the pinned wheels exist for. A deployment
-# handed 3.14 resolves the same pins with no binary wheels available and falls back
-# to building pandas and numpy from source - which is how the first Streamlit Cloud
-# build stalled.
-requires-python = ">=3.11,<3.13"
+#
+# Deliberately NOT a package manifest. Adding a [project] block made Streamlit
+# Cloud report "more than one requirements file detected" and treat this as a
+# poetry project - it still chose requirements.txt, but a build that has to pick
+# between two manifests is one upgrade away from picking the wrong one.
 
 [tool.ruff]
 line-length = 100

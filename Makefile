@@ -14,6 +14,7 @@ help:
 	@echo "cov           pytest with a coverage report"
 	@echo "lint          run ruff"
 	@echo "check         lint + tests"
+	@echo "deploy-check  render every page in a venv built from requirements.txt ALONE"
 	@echo "fmt           ruff --fix"
 	@echo "train-quick   2 folds on a 25% sample, no MLflow - for smoke testing"
 	@echo "validate      check the raw and feature data against their contracts"
@@ -55,12 +56,33 @@ cov:
 	$(PY) -m pytest tests/ -q --cov --cov-report=term-missing
 
 lint:
-	$(PY) -m ruff check src/ api/ streamlit_app/ tests/
+	$(PY) -m ruff check src/ api/ streamlit_app/ tests/ scripts/
 
 fmt:
-	$(PY) -m ruff check src/ api/ streamlit_app/ tests/ --fix
+	$(PY) -m ruff check src/ api/ streamlit_app/ tests/ scripts/ --fix
 
 check: lint test
+
+# The check that would have caught the matplotlib defect. `make test` runs in whatever
+# virtualenv you happen to be in, which on a development machine is always richer than
+# the deployment's - matplotlib, mlflow and shap are all there from the pipeline work.
+# This builds an EMPTY interpreter, installs requirements.txt and nothing else, and then
+# actually renders each page. Slow (~2 min, it downloads the wheels) so it is not part of
+# `make check`; CI runs it on every push.
+DEPLOY_VENV := .venv-deploy
+# venv puts the interpreter in Scripts/ on Windows and bin/ everywhere else. This project
+# is developed on Windows and CI runs on Linux, so the target has to work on both.
+ifeq ($(OS),Windows_NT)
+DEPLOY_PY := $(DEPLOY_VENV)/Scripts/python
+else
+DEPLOY_PY := $(DEPLOY_VENV)/bin/python
+endif
+
+deploy-check:
+	$(PY) -m venv $(DEPLOY_VENV)
+	$(DEPLOY_PY) -m pip install -q --upgrade pip
+	$(DEPLOY_PY) -m pip install -q -r requirements.txt
+	$(DEPLOY_PY) scripts/check_deploy.py
 
 validate:
 	$(PY) -m src.data.validation --split train

@@ -560,7 +560,18 @@ optimistic, and only the measurement settles it.
 ```bash
 pip install -r requirements-dev.txt
 make check                 # lint + tests (needs NO live BigQuery and NO downloaded data)
+make deploy-check          # renders every dashboard page on the runtime deps ALONE
 ```
+
+`deploy-check` is separate from `check` for a reason worth stating, because it was learned
+the expensive way. `make check` runs in whatever virtualenv you are in, and a development
+machine always has more installed than the deployment does. A call to
+`Styler.background_gradient` reaches for matplotlib inside pandas at render time -
+no import statement to catch, matplotlib present locally from the pipeline work, 235 tests
+green - and every page on Streamlit Community Cloud raised `ImportError`. `deploy-check`
+builds an empty interpreter, installs `requirements.txt` and nothing else, and renders
+each page. **A clean-clone test verifies the repository; it says nothing about the
+environment.** Those are two different checks and both are needed.
 
 `paths.data_root` in `configs/config.yaml` decides where data is written. The default
 is `C:/mscapital_data`, deliberately **outside** any synced folder, because the

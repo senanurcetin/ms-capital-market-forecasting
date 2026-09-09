@@ -27,7 +27,7 @@ if table is None or summary is None:
 
 st.subheader("Model comparison")
 fmt = {c: "{:+.5f}" for c in table.columns if c.startswith("cosine")}
-st.dataframe(table.style.format(fmt), use_container_width=True)
+st.dataframe(table.style.format(fmt), width="stretch")
 st.caption(
     "Cosine is SCALE-invariant but NOT SHIFT-invariant: the constant-prediction 'mean' "
     "model scores negative. Model selection weighs across-fold std as heavily as the mean."

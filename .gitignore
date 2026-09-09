@@ -2,6 +2,8 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+# built by `make deploy-check`, thrown away after
+.venv-deploy/
 .env
 *.feather
 *.parquet

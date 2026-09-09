@@ -82,10 +82,13 @@ with left:
         missing("Walk-forward results", "python -m src.models.train")
     else:
         show = res[["model", "cosine_mean", "cosine_std", "cosine_min", "cosine_max"]]
+        # No background_gradient: pandas routes it through matplotlib, which is 40 MB of
+        # dependency for one column of colour and is not in requirements.txt. It worked
+        # here only because the notebooks had already installed matplotlib locally.
         st.dataframe(
-            show.style.format({c: "{:+.5f}" for c in show.columns if c != "model"})
-                .background_gradient(subset=["cosine_mean"], cmap="Greens"),
-            use_container_width=True, hide_index=True,
+            show.style.format(dict.fromkeys(
+                [c for c in show.columns if c != "model"], "{:+.5f}")),
+            width="stretch", hide_index=True,
         )
         st.caption(
             "`zero` and `mean` are controls, not candidates. `mean` scores NEGATIVE "

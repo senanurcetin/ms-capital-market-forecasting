@@ -64,7 +64,7 @@ st.dataframe(
          "Method": "18 path statistics added on top, paired",
          "Verdict": "falsified - +0.0006, CI spans zero"},
     ]),
-    use_container_width=True, hide_index=True,
+    width="stretch", hide_index=True,
 )
 
 st.divider()
@@ -113,7 +113,7 @@ else:
     st.dataframe(
         show.style.format({"cosine": "{:+.5f}", "count_weight": "{:.3f}",
                            "weight": "{:.3f}", "n": "{:,}"}),
-        use_container_width=True, hide_index=True,
+        width="stretch", hide_index=True,
     )
     st.warning(
         "Equal-sized quartiles, but the weights the metric applies run **0.209 to 0.312** - "
@@ -137,7 +137,7 @@ st.dataframe(
         {"Forecast": "Gain from aligning loss with metric", "Predicted": "small but positive",
          "Actual": "−0.0064"},
     ]),
-    use_container_width=True, hide_index=True,
+    width="stretch", hide_index=True,
 )
 
 st.markdown(

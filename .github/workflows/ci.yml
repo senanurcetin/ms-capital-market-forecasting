@@ -29,13 +29,40 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Lint
-        run: ruff check src/ api/ streamlit_app/ tests/   # config in pyproject.toml
+        run: ruff check src/ api/ streamlit_app/ tests/ scripts/   # config in pyproject.toml
 
       # The tests require NO live BigQuery and NO downloaded data: the ingest tests
       # generate a synthetic feather file and the API tests use a fake model artefact.
       # That is why CI needs no credentials.
       - name: Test
         run: pytest tests/ -q --maxfail=1
+
+  # The dashboard is published on Streamlit Community Cloud, which installs
+  # requirements.txt into an empty interpreter and runs `streamlit run`. Nothing above
+  # tests that: the lint+test job installs requirements-dev.txt, which is a superset, so
+  # a package missing from the runtime set passes CI and fails on deploy. That is exactly
+  # how `background_gradient` (matplotlib, via pandas, at render time) reached production.
+  deploy-env:
+    name: Dashboard renders on the runtime deps alone
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Pinned to what Streamlit Cloud is configured to use. A mismatch here would
+          # make this job pass against wheels the deployment never sees.
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install the RUNTIME set only
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Render every page
+        run: python scripts/check_deploy.py
 
   docker:
     name: Docker build

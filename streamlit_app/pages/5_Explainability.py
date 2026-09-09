@@ -39,7 +39,7 @@ st.caption(
 )
 
 with st.expander("Full list"):
-    st.dataframe(glob, use_container_width=True)
+    st.dataframe(glob, width="stretch")
 
 local = load_csv("shap_local_examples.csv")
 if local is not None:
@@ -48,4 +48,4 @@ if local is not None:
     chosen = st.selectbox("sample_id", ids)
     sel = local[local["sample_id"] == chosen].sort_values("shap_value", key=abs, ascending=False)
     st.bar_chart(sel.head(15).set_index("feature")["shap_value"])
-    st.dataframe(sel.head(30), use_container_width=True)
+    st.dataframe(sel.head(30), width="stretch")

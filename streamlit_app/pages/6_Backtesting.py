@@ -28,7 +28,7 @@ if cost is None:
     st.stop()
 
 st.subheader("Transaction-cost sensitivity")
-st.dataframe(cost, use_container_width=True)
+st.dataframe(cost, width="stretch")
 if {"cost_bps", "total_return"} <= set(cost.columns):
     st.line_chart(cost.set_index("cost_bps")["total_return"])
 st.caption(
@@ -39,7 +39,7 @@ st.caption(
 sweep = load_csv("backtest_trade_fraction.csv")
 if sweep is not None:
     st.subheader("Performance by traded fraction")
-    st.dataframe(sweep, use_container_width=True)
+    st.dataframe(sweep, width="stretch")
     st.caption(
         "The threshold is a tail percentile of the prediction distribution, not an "
         "absolute cut - cosine is scale-invariant, so magnitudes are not calibrated."

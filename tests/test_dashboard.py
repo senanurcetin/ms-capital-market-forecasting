@@ -9,8 +9,11 @@ dashboard looks broken rather than erroring.
 They run with MSCAPITAL_DATA_ROOT pointed at nothing, which is exactly the deployed
 condition.
 """
+import ast
 import importlib
 import os
+import re
+import sys
 
 import pandas as pd
 import pytest
@@ -184,3 +187,100 @@ def test_every_page_puts_the_repo_root_on_the_path():
         if f.stem != "__init__" and "sys.path.insert" not in f.read_text(encoding="utf-8")
     ]
     assert not missing_boot, f"no sys.path bootstrap in: {missing_boot}"
+
+
+# ------------------------------------------- the deployment installs requirements.txt ONLY
+
+def _requirement_names():
+    """Distribution names pinned in the file Streamlit Community Cloud installs."""
+    from pathlib import Path
+
+    req = Path(__file__).resolve().parents[1] / "requirements.txt"
+    names = set()
+    for line in req.read_text(encoding="utf-8").splitlines():
+        line = line.split("#")[0].strip()
+        if line:
+            names.add(re.split(r"[=<>!~\[]", line)[0].strip().lower().replace("-", "_"))
+    return names
+
+
+def _imports_of(path):
+    """Top-level distribution names imported by a module, read from its AST.
+
+    Static rather than executed: importing a Streamlit page runs it.
+    """
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    out = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            out |= {a.name.split(".")[0] for a in node.names}
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            out.add(node.module.split(".")[0])
+    return out
+
+
+def test_the_dashboard_imports_nothing_outside_requirements():
+    """Every import the published app makes must be installable from requirements.txt.
+
+    This is the check that was missing. The clean-clone test cloned the CODE into a fresh
+    directory and ran it in MY virtualenv, where matplotlib, mlflow and shap were already
+    present from the pipeline - so it proved the repository was complete and proved nothing
+    at all about the environment. Streamlit Community Cloud installs requirements.txt into
+    an empty interpreter, which is a strictly harder test than the one being run.
+    """
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    allowed = (
+        _requirement_names()
+        | set(sys.stdlib_module_names)
+        | {"src", "streamlit_app", "api"}          # first-party
+        # Distribution name on the left of the pin, import name in the code - these three
+        # differ, and treating them as unknown would fail the test on a package that IS
+        # installed.
+        | {"sklearn", "yaml", "xgboost"}
+    )
+    offenders = {}
+    for f in [*(root / "streamlit_app").rglob("*.py"), *(root / "src").rglob("*.py")]:
+        if f.name == "__init__.py":
+            continue
+        extra = {m for m in _imports_of(f) if m.lower().replace("-", "_") not in allowed}
+        if extra:
+            offenders[str(f.relative_to(root))] = sorted(extra)
+
+    # src/ carries the pipeline, which is allowed to need requirements-pipeline.txt. The
+    # dashboard is not: it has to run on the lean set.
+    dash = {k: v for k, v in offenders.items() if k.startswith("streamlit_app")}
+    assert not dash, f"imported but not in requirements.txt: {dash}"
+
+
+def test_no_page_calls_a_styler_method_that_needs_matplotlib():
+    """A missing dependency does not have to be an import to break the deploy.
+
+    `Styler.background_gradient` reaches for matplotlib at RENDER time, inside pandas -
+    nothing in this repository imports it, so the import test above cannot see it, and the
+    page raised ImportError on Streamlit Cloud while every local test passed. The same
+    holds for `Styler.bar` and `Styler.text_gradient`.
+    """
+    from pathlib import Path
+
+    app = Path(__file__).resolve().parents[1] / "streamlit_app"
+    banned = ("background_gradient", "text_gradient", ".bar(")
+
+    def code_of(path):
+        """Source with comments and docstrings dropped.
+
+        A first version scanned raw text and flagged the comment in app.py explaining why
+        background_gradient is NOT used - a test that forbids naming the thing it forbids
+        would push the reasoning out of the file.
+        """
+        return ast.unparse(ast.parse(path.read_text(encoding="utf-8")))
+
+    offenders = {}
+    for f in app.rglob("*.py"):
+        hits = [b for b in banned if b in code_of(f)]
+        if hits:
+            offenders[f.name] = hits
+    assert not offenders, (
+        f"these need matplotlib, which the runtime set does not carry: {offenders}"
+    )
