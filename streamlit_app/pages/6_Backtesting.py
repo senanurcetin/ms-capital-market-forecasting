@@ -11,6 +11,7 @@ from pathlib import Path
 # and breaks on deploy, which is the worst place to find out.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+import pandas as pd
 import streamlit as st
 
 from streamlit_app.lib import load_csv, missing, page_header
@@ -48,5 +49,14 @@ if sweep is not None:
 eq = load_csv("backtest_equity.csv")
 if eq is not None:
     st.subheader("Cumulative return (hold-out months 65-70)")
-    st.line_chart(eq.iloc[:, 0])
-    st.caption("The backtest runs ONLY on the hold-out months - no look-ahead.")
+    # Name the index, or the axis is a bare row number running to ~105,000 and a reader
+    # has no way to tell what it counts. One point per hold-out sample, in time order -
+    # and the published copy is thinned to 2,000 points, which changes the axis range
+    # without changing the shape or the endpoint.
+    curve = eq.iloc[:, 0].copy()
+    curve.index = pd.RangeIndex(len(curve), name="hold-out sample (chronological)")
+    st.line_chart(curve)
+    st.caption(
+        f"{len(curve):,} points, ending at {curve.iloc[-1]:+.2f}. The backtest runs ONLY "
+        "on the hold-out months - no look-ahead."
+    )
