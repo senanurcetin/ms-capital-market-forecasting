@@ -65,18 +65,15 @@ def main(argv: list[str] | None = None) -> None:
 
         model = LightGBMModel(num_boost_round=args.rounds,
                               early_stopping_rounds=args.early_stopping)
-        kind = "lightgbm"
     elif args.model == "xgboost":
         from src.models.xgboost_model import XGBoostModel
 
         model = XGBoostModel(num_boost_round=args.rounds,
                              early_stopping_rounds=args.early_stopping)
-        kind = "xgboost"
     else:
         from src.models.baseline import RidgeModel
 
         model = RidgeModel(alpha=10.0)
-        kind = "sklearn"
 
     model.fit(df.iloc[tr], y[tr], eval_set=(df.iloc[va], y[va]))
 
@@ -100,15 +97,42 @@ def main(argv: list[str] | None = None) -> None:
     log.info("backtest (20%% traded, 1 bps): %s",
              {k: (round(v, 6) if isinstance(v, float) else v) for k, v in bt.items()})
 
-    inner = getattr(model, "booster_", None) or getattr(model, "model", model)
+    # WHAT GETS SAVED, AND WHY IT IS NOT ALWAYS THE BARE ESTIMATOR
+    #
+    # This used to be `getattr(model, "booster_", None) or getattr(model, "model", model)`
+    # for every choice, which quietly broke two of the three:
+    #
+    #   ridge     the wrapper imputes medians and standardises before predicting. The
+    #             bare sklearn Ridge does neither, so it received unscaled features and
+    #             returned predictions wrong by ~3x the target's standard deviation - and
+    #             raised `Input X contains NaN` on the first gap, which the training fold
+    #             does not have but the test set does.
+    #   xgboost   the wrapper predicts with iteration_range up to best_iteration. The bare
+    #             booster predicts with every tree, so the served model was strictly larger
+    #             than the one whose hold-out score is reported beside it.
+    #   lightgbm  safe: Booster.save_model() already truncates at best_iteration. Measured
+    #             rather than assumed - the two agree to 0.0.
+    #
+    # The ensemble artefact format already stores each of these faithfully, so the two
+    # affected models go through it as a single member at weight 1.0. That is not a
+    # workaround: a one-member blend is exactly what they are, and it keeps the serving
+    # layer free of the training package either way.
+    metrics = {**{k: round(v, 6) for k, v in scores.items()},
+               "holdout_months": f"{ho_lo}-{ho_hi}",
+               "backtest_sharpe": round(bt["sharpe"], 4),
+               "backtest_total_return": round(bt["total_return"], 6)}
     model_dir = Path(cfg.paths.data_root) / "models" / "current"
+
+    if args.model == "lightgbm":
+        payload, save_kind = model.booster_, "lightgbm"
+    else:
+        payload = {"models": {args.model: model}, "weights": {args.model: 1.0}}
+        save_kind = "ensemble"
+
     save_bundle(
-        model_dir, model=inner, kind=kind,
+        model_dir, model=payload, kind=save_kind,
         features=feature_columns(df), name=args.model, version=args.version,
-        metrics={**{k: round(v, 6) for k, v in scores.items()},
-                 "holdout_months": f"{ho_lo}-{ho_hi}",
-                 "backtest_sharpe": round(bt["sharpe"], 4),
-                 "backtest_total_return": round(bt["total_return"], 6)},
+        metrics=metrics,
     )
     (out_dir / "holdout_metrics.json").write_text(
         json.dumps({"model": args.model, "scores": scores, "backtest": bt}, indent=2,
