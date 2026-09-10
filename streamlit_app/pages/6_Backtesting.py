@@ -15,7 +15,7 @@ import streamlit as st
 
 from streamlit_app.lib import load_csv, missing, page_header
 
-st.set_page_config(page_title="Backtesting", layout="wide")
+st.set_page_config(page_title="MSCapital · Backtesting", page_icon="📈", layout="wide")
 page_header("Backtest", "Assessing predictions in a trading-like framing")
 st.warning(
     "This is NOT a strategy recommendation. The goal is to measure the model's ranking "

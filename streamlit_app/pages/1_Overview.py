@@ -31,7 +31,7 @@ from streamlit_app.lib import (
     page_header,
 )
 
-st.set_page_config(page_title="MSCapital | Overview", layout="wide")
+st.set_page_config(page_title="MSCapital · Overview", page_icon="📈", layout="wide")
 page_header(
     "MSCapital - Market Intelligence",
     "Short-horizon return prediction from 60 s of order/trade flow and 600 s of book history",

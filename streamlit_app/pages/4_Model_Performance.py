@@ -16,7 +16,7 @@ import streamlit as st
 
 from streamlit_app.lib import load_results_table, load_summary, missing, page_header
 
-st.set_page_config(page_title="Model Performance", layout="wide")
+st.set_page_config(page_title="MSCapital · Model performance", page_icon="📈", layout="wide")
 page_header("Model Performance", "Walk-forward validation - primary metric: cosine similarity")
 
 table = load_results_table()

@@ -284,3 +284,40 @@ def test_no_page_calls_a_styler_method_that_needs_matplotlib():
     assert not offenders, (
         f"these need matplotlib, which the runtime set does not carry: {offenders}"
     )
+
+
+# ------------------------------------------------------- what the browser tab says
+
+def test_every_page_titles_its_tab_the_same_way():
+    """Tab titles are visible when the dashboard is presented from a browser.
+
+    Two pages read "MSCapital | X" and five read only "X", so switching pages during a
+    walkthrough changed the tab to something that did not name the project.
+    """
+    import re
+    from pathlib import Path
+
+    app = Path(__file__).resolve().parents[1] / "streamlit_app"
+    titles = {}
+    for f in [*sorted(app.glob("pages/*.py")), app / "app.py"]:
+        if f.stem == "__init__":
+            continue
+        m = re.search(r'page_title="([^"]+)"', f.read_text(encoding="utf-8"))
+        assert m, f"{f.name} sets no page_title"
+        titles[f.name] = m.group(1)
+
+    odd = {k: v for k, v in titles.items() if not v.startswith("MSCapital")}
+    assert not odd, f"these tabs do not name the project: {odd}"
+
+
+def test_every_page_sets_a_favicon():
+    """Without one the tab shows Streamlit's own icon, which is what a viewer sees in
+    their history and bookmarks rather than anything about this project."""
+    from pathlib import Path
+
+    app = Path(__file__).resolve().parents[1] / "streamlit_app"
+    missing_icon = [
+        f.name for f in [*sorted(app.glob("pages/*.py")), app / "app.py"]
+        if f.stem != "__init__" and "page_icon=" not in f.read_text(encoding="utf-8")
+    ]
+    assert not missing_icon, f"no page_icon in: {missing_icon}"

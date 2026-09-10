@@ -209,12 +209,19 @@ def test_no_surface_still_quotes_the_stale_standing():
     """
     import ast
 
+    # The notebooks are included because that is where the stale figure was still sitting
+    # after the README, both dashboard pages and the static site had been corrected. A
+    # narrative document is the easiest place for a number to hide.
     surfaces = [ROOT / "README.md",
                 ROOT / "streamlit_app" / "pages" / "1_Overview.py",
                 ROOT / "streamlit_app" / "pages" / "7_Investigation.py",
-                ROOT / "src" / "data" / "build_diagram.py"]
+                ROOT / "src" / "data" / "build_diagram.py",
+                *sorted((ROOT / "notebooks").glob("*.ipynb")),
+                *sorted((ROOT / "notebooks").glob("_build_*.py"))]
     for f in [p for p in surfaces if p.exists()]:
         text = f.read_text(encoding="utf-8")
-        if f.suffix == ".py":
+        if f.suffix == ".py" and not f.name.startswith("_build_"):
+            # Builders hold their prose as string literals, so unparsing would drop
+            # nothing and gain nothing; page code has comments worth stripping.
             text = ast.unparse(ast.parse(text))
         assert "187 teams" not in text, f"{f.name} still quotes the stale team count"

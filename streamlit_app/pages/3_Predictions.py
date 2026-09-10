@@ -31,7 +31,7 @@ from streamlit_app.lib import (
     page_header,
 )
 
-st.set_page_config(page_title="Predictions", layout="wide")
+st.set_page_config(page_title="MSCapital · Prediction", page_icon="📈", layout="wide")
 page_header("Prediction", "Pick a sample and ask the model")
 
 health = api_get("/health")

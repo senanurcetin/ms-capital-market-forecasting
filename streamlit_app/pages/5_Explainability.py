@@ -20,7 +20,7 @@ import streamlit as st
 
 from streamlit_app.lib import load_csv, missing, page_header
 
-st.set_page_config(page_title="Explainability", layout="wide")
+st.set_page_config(page_title="MSCapital · Explainability", page_icon="📈", layout="wide")
 page_header("Explainability", "Why did the model make this prediction?")
 
 glob = load_csv("shap_global.csv")

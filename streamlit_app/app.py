@@ -28,6 +28,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import streamlit as st  # noqa: E402
 
+st.set_page_config(page_title="MSCapital", page_icon="📈", layout="wide")
+
 PAGES = Path(__file__).parent / "pages"
 
 

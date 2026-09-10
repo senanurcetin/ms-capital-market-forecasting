@@ -705,8 +705,7 @@ very little. Two months gives 0.63 / 0.32 / 0.05, which matches the CV ordering.
 
 ## 7. The last hypothesis: does sequence order carry signal?
 
-The leaderboard is the reason to keep going. 187 teams, median **0.138**, this model
-**0.129** — below typical, not near a ceiling. Tuning bought nothing, the ensemble bought
+The leaderboard is the reason to keep going. 204 teams, median **0.137**, this model **0.129** — rank 141, below typical, not near a ceiling. (Public standing captured 2026-09-10; it moves, so `results/leaderboard.json` holds the dated figures the rest of the project reads.) Tuning bought nothing, the ensemble bought
 +0.001, more data bought +0.001. Those are exhausted, so what is missing is *information*.
 
 And there is an obvious candidate. All 292 features are **aggregates**, and aggregates are

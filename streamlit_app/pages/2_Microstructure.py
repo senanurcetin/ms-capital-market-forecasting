@@ -15,7 +15,7 @@ import streamlit as st
 
 from streamlit_app.lib import histogram, load_features, missing, page_header
 
-st.set_page_config(page_title="Microstructure", layout="wide")
+st.set_page_config(page_title="MSCapital · Microstructure", page_icon="📈", layout="wide")
 page_header("Market Microstructure", "Order book, order flow and trade dynamics")
 
 COLS = [
