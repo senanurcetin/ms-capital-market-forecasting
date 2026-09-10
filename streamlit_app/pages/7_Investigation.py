@@ -131,8 +131,8 @@ else:
 
 st.divider()
 
-# ------------------------------------------------------------------- six overshoots
-st.subheader("Six forecasts, six overshoots")
+# ------------------------------------------------------------------ five overshoots
+st.subheader("Five forecasts, five overshoots")
 st.dataframe(
     pd.DataFrame([
         {"Forecast": "Leaderboard, from the hold-out", "Predicted": "0.143", "Actual": "0.128"},
@@ -143,8 +143,6 @@ st.dataframe(
          "Actual": "+0.0006"},
         {"Forecast": "Gain from aligning loss with metric", "Predicted": "small but positive",
          "Actual": "−0.0064"},
-        {"Forecast": "Second submission, from the CV gain", "Predicted": "0.132–0.133",
-         "Actual": "0.129"},
     ]),
     width="stretch", hide_index=True,
     column_config={
@@ -156,13 +154,14 @@ st.dataframe(
 
 st.markdown(
     """
-The last row is the cleanest of the six as evidence: **0.132-0.133 was typed into the
-Kaggle submission description at upload time**, before any score came back - pre-registered
-somewhere it cannot be edited afterwards. It was reasoned from the CV gain the ensemble
-showed in 5 folds out of 5, and it overshot like all the others.
+The ensemble row is the best-evidenced of the five. Its forecast was not only recorded in
+a notebook: **the same number, as an absolute score, was typed into the Kaggle submission
+description at upload time** - `0.128 + 0.0047 = 0.1327`, written as "Predicted
+0.132-0.133" - before any score came back, in a field that cannot be edited afterwards.
+It came back 0.129.
 
 Different reasoning each time, the same direction of error every time - which points at one
-cause rather than six mistakes. **Effects of order 0.002–0.005, measured on internal
+cause rather than five mistakes. **Effects of order 0.002–0.005, measured on internal
 splits, sit at this problem's resolution limit.**
 
 The rule that survives: below roughly the fold-to-fold std, treat an internal gain as

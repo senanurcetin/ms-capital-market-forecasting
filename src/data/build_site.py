@@ -211,7 +211,6 @@ def build() -> Path:
         ("Gain from ensemble + more data", "+0.0047", "+0.0010"),
         ("Gain from sequence shape", "clears 0.0041", "+0.0006"),
         ("Gain from aligning loss with metric", "small but positive", "−0.0064"),
-        ("Second submission, from the CV gain", "0.132–0.133", "0.129"),
     ], columns=["Forecast", "Predicted", "Actual"])
 
     parts: list[str] = []
@@ -272,10 +271,10 @@ def build() -> Path:
 </section>
 
 <section>
-  <h2>Six forecasts, six overshoots</h2>
+  <h2>Five forecasts, five overshoots</h2>
   {_table(forecasts)}
   <p class="cap">Different reasoning each time, the same direction of error every time —
-  which points at one cause rather than six mistakes. Effects of order 0.002–0.005,
+  which points at one cause rather than five mistakes. Effects of order 0.002–0.005,
   measured on internal splits, sit at this problem's resolution limit: fold-to-fold std is
   0.0041, period-to-period std 0.0091.</p>
 </section>""")

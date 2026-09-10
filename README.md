@@ -82,7 +82,7 @@ And the forecast itself was **built wrong**: cosine factors exactly as
 
 **→ The full investigation is [notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb).**
 
-### Six forecasts, six overshoots
+### Five forecasts, five overshoots
 
 | Prediction | Predicted | Actual |
 |---|---:|---:|
@@ -91,15 +91,14 @@ And the forecast itself was **built wrong**: cosine factors exactly as
 | Gain from ensemble + more training data | +0.0047 | +0.0010 |
 | Gain from sequence-shape features | clears 0.0041 | +0.0006 |
 | Gain from aligning the loss with the metric | small but positive | **−0.0064** |
-| Second submission, from the CV gain | 0.132–0.133 | 0.129 |
 
-The last row is the cleanest of the six as evidence: `0.132–0.133` was typed into the
-Kaggle submission description at upload time, before any score came back, so it is
-pre-registered in a place that cannot be edited after the fact. It was reasoned from the
-CV gain the ensemble showed in 5 folds of 5 — and overshot by the same margin as the rest.
+The ensemble row is the best-evidenced of the five, because it was pre-registered somewhere
+it cannot be edited afterwards. The same forecast, written as an absolute score
+(`0.128 + 0.0047 = 0.1327`), went into the Kaggle submission description at upload time as
+"Predicted 0.132–0.133". It came back **0.129**.
 
 Different reasoning each time, the same direction of error every time — which points at one
-cause rather than six mistakes. **Effects of order 0.002–0.005, measured on internal
+cause rather than five mistakes. **Effects of order 0.002–0.005, measured on internal
 splits, sit at this problem's resolution limit.** Fold-to-fold std is 0.0041;
 period-to-period std is 0.0091. A CV gap of +0.0022 appearing in 5 folds of 5 is a real
 *ordering* of two models and still buys almost nothing externally, because what separates
@@ -107,7 +106,7 @@ them is small beside what separates one period from another.
 
 The rule that survives: below roughly the fold-to-fold std, treat an internal gain as
 evidence about **which** model to prefer, never as a quantity that will reach a leaderboard.
-Both submissions are consistent with that; none of the six forecasts were.
+Both submissions are consistent with that; none of the five forecasts were.
 
 The last one is the sharpest, because it is the only idea that came from this project's own
 metric analysis. Cosine weights rows by magnitude, so weighting the training loss by
@@ -564,7 +563,7 @@ features" counts columns, not information. `make feature-audit` reproduces it.
 | Prediction horizon | undocumented by the competition; it does not affect the modelling |
 | Official metric | confirmed only indirectly — 0.128 is consistent with cosine or Pearson, and inconsistent with RMSE, MAE or R² |
 
-**Six forecasts, six overshoots, all in the same direction.** That pattern is the most
+**Five forecasts, five overshoots, all in the same direction.** That pattern is the most
 transferable thing here: on this problem, priors about what should help are systematically
 optimistic, and only the measurement settles it.
 
