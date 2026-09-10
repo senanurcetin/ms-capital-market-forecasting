@@ -1,0 +1,15 @@
+{
+  "captured": "2026-09-10",
+  "source": "kaggle competitions leaderboard (public)",
+  "n_teams": 204,
+  "our_rank": 141,
+  "our_score": 0.129,
+  "our_submissions": 2,
+  "teams_tied_with_us": 8,
+  "median": 0.137,
+  "p25": 0.127,
+  "p75": 0.146,
+  "best": 0.172,
+  "worst": 0.054,
+  "note": "Aggregates and our own row only - no other competitor is identified. The public leaderboard moves, so every standing quoted in this repository reads from this file rather than from prose written once."
+}

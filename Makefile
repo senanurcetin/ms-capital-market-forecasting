@@ -36,7 +36,8 @@ help:
 	@echo "api           run FastAPI locally (:8000)"
 	@echo "streamlit     run the dashboard locally (:8501)"
 	@echo "export-results refresh results/ so the dashboard runs without the pipeline"
-	@echo "site          build the static results page (deployed to Vercel)"
+	@echo "site          build the static results page (a single local file)"
+	@echo "diagram       redraw docs/architecture.svg from results/"
 	@echo "mlflow        MLflow UI (:5000)"
 	@echo "docker-build  build the api, app and full images"
 	@echo "up / down     bring the whole stack up/down with docker compose"
@@ -145,6 +146,9 @@ train-quick:
 
 api:
 	$(PY) -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+diagram:
+	$(PY) -m src.data.build_diagram
 
 site:
 	$(PY) -m src.data.build_site

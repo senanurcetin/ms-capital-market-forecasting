@@ -59,11 +59,15 @@ c2.metric("Hold-out (months 65-70)", f"{ho:+.5f}" if ho else "-",
           help="Single LightGBM, months 0-63 - the only model with these six months "
                "untouched, which is what makes the number measurable. Read once. It is "
                "also an unusually favourable period.")
-c3.metric("Leaderboard", "+0.12900", delta=f"{0.129 - cv:+.5f} vs CV" if cv else None,
-          delta_color="inverse",
-          help="Ensemble on months 0-67 - the externally graded number, 187 teams, "
-               "median 0.138. The LightGBM above scored 0.128 on the same test set, so "
-               "the four extra months and the blend are worth +0.001.")
+lb = load_json("leaderboard.json") or {}
+lb_score = lb.get("our_score", 0.129)
+c3.metric("Leaderboard", f"+{lb_score:.5f}",
+          delta=f"{lb_score - cv:+.5f} vs CV" if cv else None, delta_color="inverse",
+          help=(f"Ensemble on months 0-67 - the externally graded number. Rank "
+                f"{lb.get('our_rank', '-')} of {lb.get('n_teams', '-')}, median "
+                f"{lb.get('median', 0):.3f}, captured {lb.get('captured', '-')}. The "
+                "LightGBM above scored 0.128 on the same test set, so the four extra "
+                "months and the blend are worth +0.001."))
 
 def _ordinal(n: int) -> str:
     """83rd, not 83th. 11-13 are the exceptions that catch a naive suffix rule."""
@@ -222,3 +226,16 @@ by column-group projection, peak RAM 7.92 GB instead of 11.53.
     if findings is not None:
         st.metric("Feature pairs correlating above 0.999", len(findings.query("abs_corr > 0.999")))
         st.caption("292 columns, 264 distinct. `make feature-audit` reproduces it.")
+
+st.divider()
+
+# ---------------------------------------------------------------- how it is built
+# The diagram is generated from results/ by src/data/build_diagram.py, so the feature
+# counts printed on it are the ones measured above rather than a picture drawn once and
+# left to describe whatever the project used to be.
+st.subheader("How it is built")
+_diagram = Path(__file__).resolve().parents[2] / "docs" / "architecture.svg"
+if _diagram.exists():
+    st.image(str(_diagram), width="stretch")
+else:
+    missing("Architecture diagram", "make diagram")

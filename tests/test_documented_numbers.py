@@ -131,3 +131,90 @@ def test_the_two_submissions_are_not_confused_for_one_model():
     assert table, "the results table no longer separates the two submissions"
     block = table.group(0)
     assert "0.12800" in block and "0.12900" in block
+
+
+# ------------------------------------------------------------------ the diagram
+
+def test_the_architecture_diagram_is_current():
+    """A regenerated diagram must equal the committed one.
+
+    The whole reason it is generated rather than drawn is that a picture goes stale
+    silently: it keeps describing the project as it was, and nobody re-reads a diagram
+    they have already understood. If `make diagram` would change the file, the committed
+    image is out of date and this fails instead.
+    """
+    from src.data import build_diagram
+
+    committed = (ROOT / "docs" / "architecture.svg").read_text(encoding="utf-8")
+    rebuilt = build_diagram.build().read_text(encoding="utf-8")
+    assert rebuilt == committed, "run `make diagram` - docs/architecture.svg is stale"
+
+
+def test_the_diagram_states_the_measured_feature_counts():
+    """The counts on the picture come from results/, not from memory."""
+    audit = load_json("feature_audit.json")
+    svg = (ROOT / "docs" / "architecture.svg").read_text(encoding="utf-8")
+    assert str(audit["n_features"]) in svg
+    assert str(audit["n_effective"]) in svg
+
+
+def test_the_diagram_needs_no_network():
+    """It is shown in a README, in the app and on a projector. A remote font or image
+    would make it fail in exactly the setting where failing is most expensive."""
+    svg = (ROOT / "docs" / "architecture.svg").read_text(encoding="utf-8")
+    for needle in ("http://", "https://", "<image", "@import"):
+        assert needle not in svg.replace('xmlns="http://www.w3.org/2000/svg"', ""), (
+            f"the diagram reaches outside itself: {needle}"
+        )
+
+
+# ------------------------------------------------------------------ the standing
+
+def test_the_leaderboard_standing_is_read_from_the_snapshot():
+    """Every surface quotes the capture, not a number typed once.
+
+    The documented standing was 187 teams / median 0.138 / rank ~125. By the time it was
+    checked the public leaderboard held 204 teams, median 0.137, rank 141 - the story
+    unchanged, the figures all wrong. Prose cannot be re-measured; a file can.
+    """
+    lb = load_json("leaderboard.json")
+    assert lb["n_teams"] > 0 and 0 < lb["median"] < 1
+    assert readme_has(str(lb["n_teams"])), "the README does not quote the captured team count"
+    assert readme_has(f"{lb['median']:.3f}"), "the README does not quote the captured median"
+    assert readme_has(str(lb["our_rank"])), "the README does not quote the captured rank"
+    assert readme_has(lb["captured"]), "the README does not date the standing"
+
+
+def test_the_dashboard_states_the_standing_from_the_snapshot():
+    """Absence of the stale number is not presence of the right one.
+
+    Replacing the hardcoded paragraph on the investigation page silently failed while the
+    deletion succeeded, so the page simply stopped saying where the model stands - and the
+    "no stale figures" test below passed happily, because deleted text quotes nothing.
+    A test that only forbids is only half a test.
+    """
+    page = (ROOT / "streamlit_app" / "pages" / "7_Investigation.py").read_text(
+        encoding="utf-8")
+    assert "leaderboard.json" in page, "the investigation page no longer reads the standing"
+    assert "our_rank" in page, "the rank is not shown"
+
+
+def test_no_surface_still_quotes_the_stale_standing():
+    """187 teams and a 0.138 median were true in early September and are not now.
+
+    Comments are stripped before checking. A note explaining why the figure moved has to
+    be able to name the figure it replaced, and a test that forbids writing down its own
+    reason pushes the reasoning out of the file - which is how the number got stuck there
+    unexamined in the first place.
+    """
+    import ast
+
+    surfaces = [ROOT / "README.md",
+                ROOT / "streamlit_app" / "pages" / "1_Overview.py",
+                ROOT / "streamlit_app" / "pages" / "7_Investigation.py",
+                ROOT / "src" / "data" / "build_diagram.py"]
+    for f in [p for p in surfaces if p.exists()]:
+        text = f.read_text(encoding="utf-8")
+        if f.suffix == ".py":
+            text = ast.unparse(ast.parse(text))
+        assert "187 teams" not in text, f"{f.name} still quotes the stale team count"

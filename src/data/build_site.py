@@ -182,6 +182,9 @@ def build() -> Path:
     res = _read_csv("walkforward_summary.csv")
     hold = _read_json("holdout_metrics.json") or {}
     period_meta = _read_json("period_difficulty_meta.json") or {}
+    # The public leaderboard moves. Reading a captured snapshot keeps this page from
+    # asserting a standing that was true in early September and quietly stopped being so.
+    lb = _read_json("leaderboard.json") or {}
     period = _read_csv("period_difficulty.csv")
     equity = _read_csv("backtest_equity.csv")
     shap = _read_csv("shap_global.csv")
@@ -320,7 +323,8 @@ def build() -> Path:
     parts.append(f"""
 <section>
   <h2>Where this stands</h2>
-  <p>187 teams, median 0.138, this model 0.129 — below typical, so the problem is
+  <p>{lb['n_teams']} teams, median {lb['median']:.3f}, this model {lb['our_score']:.3f} —
+  rank {lb['our_rank']}, below typical, so the problem is
   <em>not</em> at its noise ceiling. Six hypotheses tested, one confirmed at 46%, and the
   rest of the gap is real (5σ above the test set's own period noise) and still
   unidentified. Saying so is more useful than a tidy story.</p>

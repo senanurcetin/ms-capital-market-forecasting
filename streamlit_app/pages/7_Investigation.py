@@ -167,9 +167,25 @@ splits, sit at this problem's resolution limit.**
 The rule that survives: below roughly the fold-to-fold std, treat an internal gain as
 evidence about *which* model to prefer, never as a quantity that will reach a leaderboard.
 
-**Where it stands.** 187 teams, median 0.138, this model 0.129 - below typical, so the
-problem is not at its noise ceiling. Six hypotheses tested, one confirmed at 46%, and the
-rest of the gap is real (5σ above the test set's own period noise) and still unidentified.
-Saying so is more useful than a tidy story.
+Six hypotheses tested, one confirmed at 46%, and the rest of the gap is real (5σ above the
+test set's own period noise) and still unidentified. Saying so is more useful than a tidy
+story.
 """
 )
+
+# The standing is read from a captured file rather than written into the prose above.
+# The figures quoted here were once 187 teams and a 0.138 median; by the time anyone
+# checked, the public leaderboard held 204 teams and a 0.137 median. The story did not
+# change and every number in it had. Prose cannot be re-measured; a snapshot can.
+_lb = load_json("leaderboard.json")
+if _lb:
+    st.info(
+        f"**Where it stands.** {_lb['n_teams']} teams, median {_lb['median']:.3f}, this "
+        f"model {_lb['our_score']:.3f} — **rank {_lb['our_rank']}**, with "
+        f"{_lb['teams_tied_with_us']} teams tied on the same score. The best is "
+        f"{_lb['best']:.3f} and the upper quartile begins at {_lb['p75']:.3f}, so the "
+        "problem is *not* at its noise ceiling: other people extract signal this pipeline "
+        f"does not.\n\nPublic leaderboard, captured {_lb['captured']}."
+    )
+else:
+    missing("Leaderboard standing", "results/leaderboard.json")
