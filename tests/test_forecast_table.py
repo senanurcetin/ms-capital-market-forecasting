@@ -114,3 +114,72 @@ def test_no_forecast_is_counted_twice():
     assert "0.132" not in table, (
         "the ensemble forecast appears twice - once as a gain and once as a score"
     )
+
+
+# ------------------------------------------------------------------ the hypothesis table
+
+HYPOTHESIS_ANCHOR = "The hold-out was a lucky period"
+
+
+def _hypothesis_node(path: Path, kind) -> ast.List:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.List) and node.elts
+                and isinstance(node.elts[0], kind)):
+            continue
+        if HYPOTHESIS_ANCHOR in ast.dump(node):
+            return node
+    raise AssertionError(f"no hypothesis table found in {path.name}")
+
+
+def _hypothesis_rows(path: Path, kind) -> int:
+    return len(_hypothesis_node(path, kind).elts)
+
+
+def readme_hypothesis_rows() -> int:
+    body = README.read_text(encoding="utf-8")
+    start = body.index("| Hypothesis | Verdict |")
+    rows = 0
+    for line in body[start:].splitlines():
+        if line.startswith("|"):
+            if not re.match(r"^\|[\s:|-]+\|$", line):
+                rows += 1
+        elif rows:
+            break
+    return rows - 1
+
+
+def test_every_surface_lists_the_same_hypotheses():
+    """The README's table carried five rows while its own prose said six.
+
+    The missing one was sequence order - the most expensive experiment of the set, 18 path
+    statistics built in BigQuery and paired against a control. It was described everywhere
+    except the table that is supposed to summarise the work.
+    """
+    counts = {
+        "README": readme_hypothesis_rows(),
+        "dashboard": _hypothesis_rows(PAGE, ast.Dict),
+        "static site": _hypothesis_rows(SITE_BUILDER, ast.Tuple),
+    }
+    assert len(set(counts.values())) == 1, f"the hypothesis tables disagree: {counts}"
+
+
+def test_the_verdict_counts_add_up():
+    """"Six hypotheses, five eliminated" counted a surviving hypothesis as dead.
+
+    The spread-regime mix was not eliminated: it was measured, corrected downward, and
+    still explains ~14% of the gap. One confirmed, one real, four falsified - and the
+    prose has to say that, because "eliminated" is the word that makes the remaining
+    unexplained share sound larger than it is.
+    """
+    # Only the table, not the page. The prose around it discusses falsification too, and
+    # counting the whole module made this read 5 where the table holds 4.
+    verdicts = ast.dump(_hypothesis_node(PAGE, ast.Dict))
+    assert verdicts.count("falsified") == 4, "the falsified count has changed"
+    assert "CONFIRMED" in verdicts
+
+    for name, text in (("README", README.read_text(encoding="utf-8")),
+                       ("dashboard", PAGE.read_text(encoding="utf-8"))):
+        assert "five eliminated" not in text.lower(), (
+            f"{name} still counts the spread-regime hypothesis as eliminated"
+        )

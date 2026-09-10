@@ -54,3 +54,31 @@ def test_servable_artefact_is_written(demo_result):
     bundle = load_bundle(Path(demo_result["artefact"]))
     assert bundle.name == "lightgbm" and bundle.version == "demo"
     assert len(bundle.features) == demo_result["n_features"]
+
+
+# --------------------------------------------------------------- running it a SECOND time
+
+def test_a_second_run_over_a_read_only_leftover_succeeds(tmp_path):
+    """The demo has to survive its own previous run, which it did not.
+
+    Every test above starts from a fresh `tmp_path`, so the cleanup branch never ran and
+    a real defect sat behind it: a synced folder leaves `.demo/features` at mode 0o40555 -
+    empty, read-only, and undeletable - and `shutil.rmtree` raises
+    `PermissionError: [WinError 5]`. So `make demo` worked once per machine and greeted
+    the second attempt with a traceback, on the one command whose entire purpose is that
+    a stranger can run this project.
+
+    Reproduced by taking the write bit off a directory rather than by mocking the error,
+    because the fix has to survive the real filesystem: on POSIX the same mode blocks
+    removal of that directory's entries, so this fails on both platforms without it.
+    """
+    import stat
+
+    run(samples=800, models=["zero"], root=tmp_path)
+    victim = tmp_path / "features"
+    assert victim.is_dir(), "the demo no longer creates features/ - update this test"
+    victim.chmod(0o555)
+
+    second = run(samples=800, models=["zero"], root=tmp_path)
+    assert second["ingest_ok"]
+    assert (victim.stat().st_mode & stat.S_IWRITE), "the directory was left unwritable"

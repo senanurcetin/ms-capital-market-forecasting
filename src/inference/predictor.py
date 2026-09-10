@@ -84,6 +84,20 @@ def load_bundle(model_dir: str | Path) -> ModelBundle:
     )
 
 
+# Every filename this module can write, plus `ensemble.joblib` from the format that
+# preceded it. save_bundle clears the lot before writing, so a directory always holds
+# exactly one artefact.
+#
+# Without this, rebuilding an ensemble over a single-model bundle left a stale `model.txt`
+# beside the new `model_lightgbm.txt` - same size, older date, read by nothing. The next
+# person to look would have had to diff the metadata to work out which was live.
+ARTEFACT_FILES = (
+    "model.txt", "model.json", "model.joblib",
+    "ensemble_meta.json", "ensemble.joblib",
+    "model_lightgbm.txt", "model_xgboost.json", "model_ridge.joblib",
+)
+
+
 def save_bundle(model_dir: str | Path, *, model, kind: str, features: list[str],
                 name: str, version: str, metrics: dict | None = None) -> Path:
     """Called from the training side; writes the artefact in servable form."""
@@ -91,6 +105,8 @@ def save_bundle(model_dir: str | Path, *, model, kind: str, features: list[str],
 
     model_dir = Path(model_dir)
     model_dir.mkdir(parents=True, exist_ok=True)
+    for stale in ARTEFACT_FILES:
+        (model_dir / stale).unlink(missing_ok=True)
     if kind == "ensemble":
         from src.inference.ensemble import META_FILE, save_ensemble
 

@@ -25,7 +25,7 @@ implied.
 |---|---|
 | **2 minutes** | [Headline result](#headline-result) — the scores, and the forecast that was wrong |
 | **20 minutes** | ↑ plus [What I found](#what-i-found) and [notebook 01](notebooks/01_data_discovery.ipynb) — the six data findings that drive everything |
-| **an hour** | ↑ plus [notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb) — six hypotheses, five eliminated, two errors caught in my own analysis |
+| **an hour** | ↑ plus [notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb) — six hypotheses — one confirmed, one real but smaller than forecast, four falsified — and two errors caught in my own analysis |
 
 > **For research only. Not investment advice.**
 > The backtesting module exists to measure the model's ranking power, not to propose a strategy.
@@ -63,7 +63,7 @@ below would need a different explanation.
 
 It stays where it was written, with the correction beneath it, because a forecast is only
 evidence of understanding if it is recorded before the answer and reported honestly after.
-Five hypotheses were then stated and tested, **none of them costing a further submission**:
+Six hypotheses were then stated and tested, **none of them costing a further submission**:
 
 | Hypothesis | Verdict |
 |---|---|
@@ -72,6 +72,16 @@ Five hypotheses were then stated and tested, **none of them costing a further su
 | High-drift rate features hurt under shift | falsified at two thresholds |
 | Skill decays with elapsed time | falsified — the slope is *positive* |
 | Test set is categorically different | falsified — it is a *continuation* of training |
+| Sequence order carries missing signal | falsified — **+0.0006**, CI spanning zero |
+
+The fifth is worth one line of detail, because the obvious way to test it gives the wrong
+answer. Adversarial validation against *pooled* training data separates the test set at
+AUC **0.7910**, which looks like a different regime — but a narrow block always separates
+cleanly from a heterogeneous pool, so the number says nothing about drift. Compared
+block-to-block, the test set separates from the last training block at **0.7490**, which is
+*lower* than months 10–19 separate from months 0–9 (**0.7543**). By the only calibrated
+measure available, the test period is a continuation of the training period, not a break
+from it.
 
 Two results are worth pulling out. The hold-out sits at the **83rd percentile** of period
 difficulty (which swings 0.117–0.148 under a fixed model), and de-biasing for that gives
@@ -126,7 +136,8 @@ does not exist.
 
 Six hypotheses have been tested against that gap. One is confirmed, and it is the
 estimator rather than the model: the hold-out sits at the 83rd percentile of period
-difficulty, worth ~46% of the shortfall. The other five are eliminated — including the two
+difficulty, worth ~46% of the shortfall. One more is real but smaller than forecast (the
+spread-regime mix, ~14%). The remaining four are falsified — including the two
 most promising, sequence order (**+0.0006**, CI spanning zero, against a pre-registered bar
 of 0.0041) and aligning the training loss with the metric (**−0.0064**, which actively
 hurt). Each is worked through in
@@ -196,7 +207,7 @@ measured → what I changed.**
 | [02 — The Target, and Why Random Splits Are Banned](notebooks/02_target_and_leakage.ipynb) | the validation rule settled by experiment: a random split inflates the score by +0.0047 (1.04×) |
 | [03 — Features, and Whether They Survive the Test Set](notebooks/03_features_and_drift.ipynb) | SHAP × drift: the top-20 features shift 4.2× less than average |
 | [04 — Models, and Where They Fail](notebooks/04_models_and_errors.ipynb) | error analysis by liquidity regime — and the risk it exposes |
-| [05 — Why the Leaderboard Disagreed](notebooks/05_why_the_leaderboard_disagreed.ipynb) | **the longest one, and the one to read**: five hypotheses, three falsified, two analysis errors found and corrected |
+| [05 — Why the Leaderboard Disagreed](notebooks/05_why_the_leaderboard_disagreed.ipynb) | **the longest one, and the one to read**: six hypotheses, four falsified, two analysis errors found and corrected |
 
 ---
 
@@ -204,7 +215,7 @@ measured → what I changed.**
 
 Seven pages, grouped the way the work happened - what the data turned out to be, what the
 model does, and then why the leaderboard disagreed with the hold-out. The last one is the
-one worth opening first: six hypotheses, five eliminated, laid out as a scoreboard rather
+one worth opening first: six hypotheses, four falsified, laid out as a scoreboard rather
 than a narrative.
 
 ```bash
@@ -558,7 +569,7 @@ features" counts columns, not information. `make feature-audit` reproduces it.
 
 | | |
 |---|---|
-| ~54% of the leaderboard gap | unexplained. Six hypotheses tested, five eliminated; the survivor covers 46%. I do not have a seventh. |
+| ~54% of the leaderboard gap | unexplained. Six hypotheses tested; period difficulty covers 46% and the spread-regime mix ~14%, four were falsified. I do not have a seventh. |
 | Leaderboard 0.129 vs median 0.138 | below typical. Tuning, ensembling, more data, sequence order and metric alignment are all measured at roughly zero or worse, so what is missing is signal this pipeline does not extract. |
 | Prediction horizon | undocumented by the competition; it does not affect the modelling |
 | Official metric | confirmed only indirectly — 0.128 is consistent with cosine or Pearson, and inconsistent with RMSE, MAE or R² |

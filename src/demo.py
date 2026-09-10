@@ -21,9 +21,11 @@ rests on anything produced here.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import logging
 import os
 import shutil
+import stat
 import time
 from pathlib import Path
 
@@ -51,12 +53,31 @@ def default_root() -> Path:
     return Path(os.environ.get("MSCAPITAL_DEMO_ROOT") or (REPO_ROOT / ".demo"))
 
 
+def _clear(root: Path) -> None:
+    """Remove a previous demo run, including read-only directories.
+
+    `shutil.rmtree` fails on Windows with `PermissionError: [WinError 5]` when a directory
+    has lost its write bit, which is what a synced folder does to `.demo/features` between
+    runs - mode 0o40555, empty, and undeletable. Nothing holds it open; `os.rmdir` simply
+    refuses. So the demo greeted its second run with a traceback, on the one command whose
+    entire purpose is that a stranger can run this project.
+
+    Clearing the bit depth-first and retrying is the whole fix. Errors from chmod itself
+    are ignored: if a path cannot be made writable, the rmtree below reports it properly
+    rather than being masked here.
+    """
+    for path in [*sorted(root.rglob("*"), reverse=True), root]:
+        with contextlib.suppress(OSError):
+            path.chmod(path.stat().st_mode | stat.S_IWRITE)
+    shutil.rmtree(root)
+
+
 def run(samples: int = 4000, keep: bool = False,
         models: list[str] | None = None, root: Path | None = None) -> dict:
     cfg = load_config()
     root = Path(root) if root is not None else default_root()
     if root.exists() and not keep:
-        shutil.rmtree(root)
+        _clear(root)
     raw, features, models_dir = root / "raw", root / "features", root / "models"
     for d in (raw, features, models_dir):
         d.mkdir(parents=True, exist_ok=True)

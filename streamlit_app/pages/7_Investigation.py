@@ -25,7 +25,7 @@ from streamlit_app.lib import load_csv, load_json, missing, page_header
 st.set_page_config(page_title="MSCapital | Investigation", layout="wide")
 page_header(
     "Why the leaderboard disagreed",
-    "One forecast, recorded before the answer. Six hypotheses. Five eliminated.",
+    "One forecast, recorded before the answer. Six hypotheses. Four falsified.",
 )
 
 st.markdown(

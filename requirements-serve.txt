@@ -6,7 +6,10 @@
 # No pyarrow: the predictor never reads Parquet - it takes JSON rows and builds a
 # DataFrame. pandas treats pyarrow as optional, and dropping it saves 153 MB.
 #
-# scikit-learn stays because Predictor can load a joblib-pickled sklearn model.
+# scikit-learn and xgboost-cpu are not optional: the shipped artefact is an ENSEMBLE, and
+# src/inference/ensemble.py rebuilds it from a LightGBM booster, an XGBoost booster and the
+# fitted sklearn Ridge with its imputation medians. Dropping either would load a bundle
+# that raises on the first request rather than one that is merely worse.
 fastapi==0.136.1
 uvicorn==0.30.6
 pydantic==2.13.4

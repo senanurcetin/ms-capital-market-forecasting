@@ -231,3 +231,39 @@ def test_predictor_serves_the_ensemble_from_dict_rows(tmp_path, fitted, weights,
     np.testing.assert_allclose(out, blend_of(fitted, weights, data.head(5)),
                                rtol=1e-3, atol=1e-7)
     assert predictor.info()["model_name"] == "ensemble"
+
+
+# ------------------------------------------------------------------ one artefact per dir
+
+def test_saving_over_a_previous_bundle_leaves_nothing_from_it(tmp_path, fitted, weights,
+                                                              features, data):
+    """A directory must hold one artefact, not the sediment of every save into it.
+
+    Rebuilding the ensemble over the single-model bundle used to leave a stale `model.txt`
+    beside the new `model_lightgbm.txt` - identical size, older timestamp, read by nothing.
+    It is exactly the sort of file someone points a server at.
+    """
+    save_bundle(tmp_path, model=fitted["lightgbm"].booster_, kind="lightgbm",
+                features=features, name="lightgbm", version="v1")
+    assert (tmp_path / "model.txt").exists()
+
+    save_bundle(tmp_path, model={"models": fitted, "weights": weights}, kind="ensemble",
+                features=features, name="ensemble", version="v2")
+
+    assert not (tmp_path / "model.txt").exists(), "the single-model file outlived its bundle"
+    assert (tmp_path / "model_lightgbm.txt").exists()
+    assert load_bundle(tmp_path).name == "ensemble"
+
+
+def test_saving_a_single_model_over_an_ensemble_clears_the_members(tmp_path, fitted,
+                                                                   weights, features):
+    """The same in the other direction - the ensemble's three files must not linger."""
+    save_bundle(tmp_path, model={"models": fitted, "weights": weights}, kind="ensemble",
+                features=features, name="ensemble", version="v1")
+    save_bundle(tmp_path, model=fitted["lightgbm"].booster_, kind="lightgbm",
+                features=features, name="lightgbm", version="v2")
+
+    left = [n for n in ("model_xgboost.json", "model_ridge.joblib", "ensemble_meta.json")
+            if (tmp_path / n).exists()]
+    assert not left, f"ensemble members outlived the ensemble: {left}"
+    assert load_bundle(tmp_path).name == "lightgbm"
