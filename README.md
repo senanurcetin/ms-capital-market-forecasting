@@ -606,14 +606,20 @@ The build is multi-stage, one target per service, because the single-image versi
 DuckDB, Polars, the Kaggle client and the GCP clients — none of which are needed to load
 an artefact and score a row.
 
-**Which artefact is published, and why it is not the best one.** The dashboard serves the
-LightGBM v3 that `finalize.py` trains on months 0-63. That is the model behind every
-number on the page - the hold-out cosine, the backtest, and the 0.129 leaderboard result.
-`ship.py` builds a stronger candidate: the three-model blend, trained through month 67
-because a hold-out has done its job the moment it is read. It scores no hold-out by
-construction and has never been graded externally, so publishing it beside v3's numbers
-would put a model on the page that produced none of them. `submission_v2.csv` is built
-and sitting unsubmitted.
+**Which artefact is published, and why the dashboard shows two models' numbers.** Both
+models were submitted and both were graded: the single LightGBM on months 0-63 scored
+**0.128**, and the ship.py ensemble on months 0-67 scored **0.129**. The ensemble is the
+better model and its score is the one quoted as the leaderboard result.
+
+What travels in `results/` is nonetheless the LightGBM. The reason is the hold-out: it was
+trained on months 0-63, so months 65-70 are untouched for it and the 0.15171 cosine, the
+backtest curve and the SHAP importances are all measurable. The ensemble trains through
+month 67 - deliberately, because a hold-out has done its job the moment it is read - which
+buys four more months of data and forfeits any hold-out score at all. Publishing it would
+leave the Predictions page serving a model with no measured performance beside it.
+
+So the page carries the LightGBM's measurements and the ensemble's leaderboard result, and
+says which is which rather than implying one model produced both.
 
 That constraint shapes how the ensemble is stored. `ship.py` fits three models and
 generates the submission with their blend, so the blend is what produced the leaderboard

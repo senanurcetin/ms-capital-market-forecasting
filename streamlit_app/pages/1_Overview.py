@@ -45,15 +45,25 @@ period = load_json("period_difficulty_meta.json")
 cv = float(res.loc[res.model == "ensemble", "cosine_mean"].iloc[0]) if res is not None else None
 ho = (hold or {}).get("scores", {}).get("cosine")
 
+# Two models stand behind these three numbers, and the page says so rather than letting
+# them read as one. The hold-out can only be measured on a model that did not train on
+# months 65-70, which the single LightGBM did not; the ensemble deliberately trains
+# through month 67, buying four more months and forfeiting any hold-out score. Both were
+# submitted - 0.128 and 0.129 - so the comparison is external and settled.
 c1, c2, c3 = st.columns(3)
 c1.metric("Walk-forward CV", f"{cv:+.5f}" if cv else "-",
-          help="Averaged over 5 periods. The honest internal estimate.")
+          help="Ensemble, averaged over 5 periods with an embargo between them. "
+               "The honest internal estimate.")
 c2.metric("Hold-out (months 65-70)", f"{ho:+.5f}" if ho else "-",
           delta=f"{ho - cv:+.5f} vs CV" if (ho and cv) else None,
-          help="Measured once on untouched data - but an unusually favourable period.")
+          help="Single LightGBM, months 0-63 - the only model with these six months "
+               "untouched, which is what makes the number measurable. Read once. It is "
+               "also an unusually favourable period.")
 c3.metric("Leaderboard", "+0.12900", delta=f"{0.129 - cv:+.5f} vs CV" if cv else None,
-          delta_color="inverse", help="The only externally graded number. 187 teams, "
-                                      "median 0.138.")
+          delta_color="inverse",
+          help="Ensemble on months 0-67 - the externally graded number, 187 teams, "
+               "median 0.138. The LightGBM above scored 0.128 on the same test set, so "
+               "the four extra months and the blend are worth +0.001.")
 
 def _ordinal(n: int) -> str:
     """83rd, not 83th. 11-13 are the exceptions that catch a naive suffix rule."""
