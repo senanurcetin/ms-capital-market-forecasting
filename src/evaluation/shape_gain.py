@@ -1,7 +1,7 @@
 """Does sequence order carry signal the aggregates do not already have?
 
-The leaderboard is the reason to ask. 187 teams, median 0.138, this model 0.129 - below
-typical, so the problem is not at its noise ceiling. Tuning bought nothing measurable, the
+The leaderboard is the reason to ask. 204 teams, median 0.137, this model 0.129 at rank
+141 - below typical, so the problem is not at its noise ceiling. (standing captured 2026-09-10; `results/leaderboard.json` is what the rest of the project reads) Tuning bought nothing measurable, the
 ensemble bought +0.001, more training data bought +0.001. Those levers are spent, so what
 is missing is information, and sequence order was the largest identifiable candidate.
 

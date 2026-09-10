@@ -17,7 +17,8 @@ The premise still holds for the rest: microstructure theory is mostly about dyna
 imbalance builds, whether price moves trend or revert, how quoting bursts cluster - and
 little of that survives a GROUP BY.
 
-The leaderboard says the gap is real: 187 teams, median 0.138, this model 0.129. Tuning
+The leaderboard says the gap is real: 204 teams, median 0.137, this model 0.129 at rank
+141. (standing captured 2026-09-10; `results/leaderboard.json` is what the rest of the project reads) Tuning
 bought nothing measurable and the ensemble bought +0.001, so the missing quantity is
 information rather than method. Sequence order is the largest identifiable candidate.
 
