@@ -326,8 +326,10 @@ def build() -> Path:
   <p>{lb['n_teams']} teams, median {lb['median']:.3f}, this model {lb['our_score']:.3f} —
   rank {lb['our_rank']}, below typical, so the problem is
   <em>not</em> at its noise ceiling. Six hypotheses tested, one confirmed at 46%, and the
-  rest of the gap is real (5σ above the test set's own period noise) and still
-  unidentified. Saying so is more useful than a tidy story.</p>
+  remaining +0.0128 has no identified cause. Against the spread of a single period
+  (period-to-period std 0.0091) that is 1.4&#963; — large enough to keep looking for, and
+  not large enough to rule out an unlucky test period. Saying so is more useful than a
+  tidy story.</p>
   <p class="cap">This page is static and shows results only. The interactive dashboard —
   live prediction, microstructure explorer, drift analysis — is a Streamlit app in the
   repository: <code>make streamlit</code>.</p>

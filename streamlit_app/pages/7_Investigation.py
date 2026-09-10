@@ -167,9 +167,16 @@ splits, sit at this problem's resolution limit.**
 The rule that survives: below roughly the fold-to-fold std, treat an internal gain as
 evidence about *which* model to prefer, never as a quantity that will reach a leaderboard.
 
-Six hypotheses tested, one confirmed at 46%, and the rest of the gap is real (5σ above the
-test set's own period noise) and still unidentified. Saying so is more useful than a tidy
-story.
+Six hypotheses tested, one confirmed at 46%. What is left is **+0.0128** of gap with no
+identified cause - and how impressive that is depends entirely on what you compare it to.
+Against the spread of a single period (period-to-period std **0.0091**) it is **1.4σ**, so
+an unusually hard test period could account for a real part of it. Against the precision of
+the difficulty estimate itself (0.0026) it is 4.9σ from zero, but that is the error on an
+average, not the range one period can show.
+
+The first comparison is the one that answers "could this just be bad luck?", so that is the
+one to quote: the residual is large enough to keep looking for, and not large enough to
+rule luck out. Saying so is more useful than a tidy story.
 """
 )
 

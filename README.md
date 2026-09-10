@@ -110,7 +110,8 @@ it cannot be edited afterwards. The same forecast, written as an absolute score
 Different reasoning each time, the same direction of error every time — which points at one
 cause rather than five mistakes. **Effects of order 0.002–0.005, measured on internal
 splits, sit at this problem's resolution limit.** Fold-to-fold std is 0.0041;
-period-to-period std is 0.0091. A CV gap of +0.0022 appearing in 5 folds of 5 is a real
+period-to-period std is 0.0091. A CV gap that is positive in 5 folds of 5 — averaging
++0.0022, but ranging +0.0004 to +0.0052 across them — is a real
 *ordering* of two models and still buys almost nothing externally, because what separates
 them is small beside what separates one period from another.
 

@@ -4,7 +4,8 @@ The artefact behind the 0.128 leaderboard score had two handicaps, both visible 
 metadata rather than inferred:
 
   1. It was a single LightGBM. This project's own walk-forward CV puts the ensemble ahead
-     in 5 folds out of 5, by +0.0022.
+     in 5 folds out of 5, by +0.0022 on average - though the per-fold margin ranges
+     from +0.0004 to +0.0052, which is itself a reminder of how little separates them.
   2. It was trained on months 0-63 only. `finalize.py` keeps 65-70 out so the hold-out can
      be read once - correct for MEASURING, wrong for SHIPPING. A hold-out has done its job
      the moment it is read; carrying it through to the deployed artefact discards 7 of 71
