@@ -132,6 +132,15 @@ def run(*, out: Path | None = None) -> dict:
     # model.txt travels too, so the dashboard can predict without a running API. A
     # published dashboard has no FastAPI beside it, and a Predictions page that can only
     # show "cannot reach the API" is worse than no page at all.
+    #
+    # WHICH artefact travels is a deliberate choice, and not the newest one. This copies
+    # `models/current` - the LightGBM v3 that finalize.py trained on months 0-63 - rather
+    # than `models/shipped`, the v4 ensemble ship.py builds. v3 is the model behind every
+    # number the dashboard displays: the hold-out cosine, the backtest curve, and the
+    # 0.129 leaderboard score all came from it. v4 is a better candidate, but it has no
+    # hold-out score by construction (it trains through month 67) and it has never been
+    # scored externally, so serving it beside v3's numbers would put a model on the page
+    # that produced none of them.
     for name in ("shap_global.csv", "shap_local_examples.csv", "model_meta.json",
                  "model.txt"):
         p = models_dir / name

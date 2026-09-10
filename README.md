@@ -606,6 +606,15 @@ The build is multi-stage, one target per service, because the single-image versi
 DuckDB, Polars, the Kaggle client and the GCP clients — none of which are needed to load
 an artefact and score a row.
 
+**Which artefact is published, and why it is not the best one.** The dashboard serves the
+LightGBM v3 that `finalize.py` trains on months 0-63. That is the model behind every
+number on the page - the hold-out cosine, the backtest, and the 0.129 leaderboard result.
+`ship.py` builds a stronger candidate: the three-model blend, trained through month 67
+because a hold-out has done its job the moment it is read. It scores no hold-out by
+construction and has never been graded externally, so publishing it beside v3's numbers
+would put a model on the page that produced none of them. `submission_v2.csv` is built
+and sitting unsubmitted.
+
 That constraint shapes how the ensemble is stored. `ship.py` fits three models and
 generates the submission with their blend, so the blend is what produced the leaderboard
 score — but the servable artefact used to be the bare LightGBM booster saved under the
