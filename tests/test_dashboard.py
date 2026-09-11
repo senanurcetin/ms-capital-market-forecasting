@@ -321,3 +321,33 @@ def test_every_page_sets_a_favicon():
         if f.stem != "__init__" and "page_icon=" not in f.read_text(encoding="utf-8")
     ]
     assert not missing_icon, f"no page_icon in: {missing_icon}"
+
+
+def test_the_fold_count_metric_reads_the_record_it_summarises():
+    """It displayed "0 / 0" - the strongest number on the page, shown as its own opposite.
+
+    The page asked the summary for `beats_best_single_in_folds` and `n_folds`. Neither key
+    exists; the file carries a `per_fold` list whose entries hold `beats_best_single`. Both
+    lookups fell through to their defaults and the metric rendered zeros, which reads as
+    "the ensemble never won" when it won every fold.
+
+    A default of 0 on a missing key is what made this silent, so the test asserts the
+    displayed value rather than the code path.
+    """
+    import json
+    from pathlib import Path
+
+    from streamlit.testing.v1 import AppTest
+
+    root = Path(__file__).resolve().parents[1]
+    folds = json.loads((root / "results" / "walkforward_summary.json").read_text(
+        encoding="utf-8"))["ensemble"]["per_fold"]
+    expected = f"{sum(1 for f in folds if f['beats_best_single'])} / {len(folds)}"
+
+    at = AppTest.from_file(
+        str(root / "streamlit_app" / "pages" / "4_Model_Performance.py"),
+        default_timeout=180,
+    ).run()
+    shown = next(m.value for m in at.metric if "beat the best single" in m.label)
+    assert shown == expected, f"page shows {shown!r}, the record says {expected!r}"
+    assert not shown.startswith("0 /"), "the metric is back to reporting zero wins"

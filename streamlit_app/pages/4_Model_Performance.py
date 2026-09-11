@@ -50,10 +50,15 @@ if rows:
     )
 
 if "ensemble" in summary:
-    ens = summary["ensemble"]
+    # Counted from the per-fold record rather than read from summary keys. It used to
+    # look for `beats_best_single_in_folds` and `n_folds`, neither of which the file
+    # carries, so both fell through to their defaults and the page displayed "0 / 0" -
+    # the strongest number on it, rendered as its own opposite.
+    folds = summary["ensemble"].get("per_fold", [])
+    won = sum(1 for f in folds if f.get("beats_best_single"))
     st.metric(
         "Folds where the ensemble beat the best single model",
-        f"{ens.get('beats_best_single_in_folds', 0)} / {ens.get('n_folds', 0)}",
+        f"{won} / {len(folds)}",
     )
     st.caption(
         "The weights come from a closed form, not a grid search: because cosine is "
