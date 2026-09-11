@@ -198,7 +198,7 @@ this repository.
 | # | Finding | If missed | Where |
 |---|---|---|---|
 | 1 | The market table's window is **600 s**, not the 60 s of the other two | 90% of the order-book history is silently discarded | [01](notebooks/01_data_discovery.ipynb) |
-| 2 | `price = 0` is an **empty-level sentinel**, not a price | mean relative spread reads **−0.0064** instead of **+0.0013** — the sign flips | [01](notebooks/01_data_discovery.ipynb) |
+| 2 | `price = 0` is an **empty-level sentinel**, not a price | mean relative spread reads **−0.005648** instead of **+0.001258** — the sign flips | [01](notebooks/01_data_discovery.ipynb) |
 | 3 | `side` and `order_action` encodings are **recoverable by measurement** | order-flow features get built backwards | [01](notebooks/01_data_discovery.ipynb) |
 | 4 | The `*_last` features were reading from **different snapshots** | `mkt_depth_imb1_last` deviated by 1.994 — the full width of its range | [01](notebooks/01_data_discovery.ipynb) |
 | 5 | Predictive features and **transferable** features are the same features | — (this one is the payoff, not a trap) | [03](notebooks/03_features_and_drift.ipynb) |
@@ -361,7 +361,7 @@ value is always `>= 0`, **look-ahead is structurally impossible**.
 
 **`price = 0` is not a price but an "empty level" sentinel** — it always comes with
 `volume = 0`. Real prices live in 0.909–1.052. Left uncleaned, mean `rel_spread` reads
-−0.0064 instead of the correct +0.001264. There are **no genuinely crossed books** (0 rows).
+−0.005648 instead of the correct +0.001258. There are **no genuinely crossed books** (0 rows).
 
 **Target.** std 0.002618 (26 bps), median exactly 0 (5.54% exact zeros — a tick-size
 artefact), autocorrelation between consecutive samples ≈ 0. Monthly std swings by

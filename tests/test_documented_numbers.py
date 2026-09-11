@@ -267,3 +267,57 @@ def test_the_app_url_is_written_once_per_surface_and_not_guessed():
     assert f'APP = "{APP_URL}"' in builder, (
         "the static site should hold the URL in a named constant, not inline in markup"
     )
+
+
+# ------------------------------------------------- figures the notebooks measured
+
+def test_the_spread_sentinel_figures_match_the_notebook_that_measured_them():
+    """The README quoted -0.0064; the measurement is -0.005648.
+
+    The wrong figure is the metric-alignment result from a completely unrelated
+    experiment, which had been copied into this row - and it survived because the
+    documented-numbers tests only covered values exported to `results/`. This one lives
+    in notebook 01's stored output, which is the only record of it, so that output is
+    what the README is checked against.
+
+    It matters more than most: the sentinel finding is one of the four the project leads
+    with, and a headline discovery quoting a number from a different experiment is the
+    kind of error a reader checks first.
+    """
+    import json
+
+    nb = json.loads((ROOT / "notebooks" / "01_data_discovery.ipynb").read_text(
+        encoding="utf-8"))
+    printed = "".join(
+        "".join(out.get("text", []))
+        for cell in nb["cells"]
+        for out in cell.get("outputs", [])
+        if out.get("output_type") == "stream"
+    )
+
+    match = re.search(r"sign flip:\s*(-?[\d.]+)\s*->\s*(\+?[\d.]+)", printed)
+    assert match, "notebook 01 no longer records the sign-flip measurement"
+    naive, cleaned = match.group(1), match.group(2).lstrip("+")
+
+    # Checked in the SENTENCES that make the claim, not anywhere in the file. A first
+    # version searched the whole README, so corrupting one of the two places still passed:
+    # the other copy satisfied the search. The figure appears twice and both must be right.
+    naive_forms = (naive, naive.replace("-", "\u2212"))
+    # Only the two sentences that carry the figures. "empty-level sentinel" alone also
+    # matches a data-contract row that quotes nothing, and including it made this fail
+    # for the wrong reason.
+    claims = [
+        line for line in README.splitlines()
+        if "no genuinely crossed books" in line
+        or ("empty-level sentinel" in line and "relative spread" in line)
+    ]
+    assert len(claims) == 2, f"expected both sentinel claims, found {len(claims)}"
+
+    for line in claims:
+        assert any(form in line for form in naive_forms), (
+            f"this sentence does not quote the measured {naive}: {line[:90]}"
+        )
+        assert cleaned in line, (
+            f"this sentence does not quote the measured {cleaned}: {line[:90]}"
+        )
+    assert float(naive) < 0 < float(cleaned), "the sign flip itself has gone"
