@@ -61,8 +61,8 @@ st.dataframe(
          "Method": "adversarial validation, calibrated against within-train distance",
          "Verdict": "falsified - it is a continuation"},
         {"Hypothesis": "Sequence order carries missing signal",
-         "Method": "18 path statistics added on top, paired",
-         "Verdict": "falsified - +0.0006, CI spans zero"},
+         "Method": "18 hand-built path statistics added on top, paired",
+         "Verdict": "those statistics falsified - +0.0006, CI spans zero"},
     ]),
     width="stretch", hide_index=True,
     # Explicit widths, because the verdict is the column a reader actually scans and it
@@ -131,6 +131,74 @@ else:
 
 st.divider()
 
+# ------------------------------------------------- the metric's own geometry
+st.subheader("Three free corrections, and why none of them survived")
+geo = load_csv("prediction_geometry.csv")
+gm = load_json("prediction_geometry_meta.json")
+if geo is None or gm is None:
+    missing("Prediction geometry", "make pred-geometry")
+else:
+    def gain_of(variant: str) -> float:
+        """Pull one measured gain out of the table by name.
+
+        Read from the exported result rather than written into the prose, so the sentences
+        below cannot drift from the experiment that produced them.
+        """
+        return float(geo.loc[geo["variant"] == variant, "gain"].iloc[0])
+
+    pooled = gm["best_pooled_gain"]
+    honest = gm["honest_out_of_sample_gain"]
+    shift = gm["shift_per_month"]
+
+    st.markdown(
+        "Cosine has structure the training loss cannot see: it is **not shift-invariant**, "
+        "it weights rows by **magnitude**, and it is computed **once over the whole test "
+        "set** - so relative magnitudes across regimes are part of the score. Each of "
+        "those suggests a correction that needs no retraining. All three were measured."
+    )
+
+    left, right = st.columns([3, 2])
+    with left:
+        st.dataframe(
+            geo[["family", "variant", "gain", "out_of_sample"]]
+                .style.format({"gain": "{:+.5f}"}),
+            width="stretch", hide_index=True,
+            column_config={
+                "variant": st.column_config.TextColumn(width="large"),
+                "out_of_sample": st.column_config.CheckboxColumn(
+                    "honest?",
+                    help="Unchecked means the variant was chosen on the same rows it is "
+                         "scored on."),
+            },
+        )
+    with right:
+        st.metric("Best regime gain, pooled", f"{pooled:+.5f}")
+        st.metric("Same correction, chosen out of sample", f"{honest:+.5f}")
+        st.caption(
+            f"De-meaning gains {gain_of('subtract own mean'):+.5f} pooled and improves "
+            f"only {shift['months_improved']} of {shift['n_months']} months "
+            f"(std {shift['std']:.5f}). An average of coin tosses."
+        )
+
+    st.warning(
+        "**Every reshaping of the magnitudes loses.** Rank-transforming costs "
+        f"{gain_of('rank transform'):+.5f} and keeping only the sign costs "
+        f"{gain_of('sign only'):+.5f}, so the predicted magnitudes carry real information "
+        "beyond their ordering - the model is already close to the best form cosine can "
+        "read it in."
+    )
+    st.info(
+        "**The regime correction is the interesting failure.** It describes something "
+        "true: across volatility quartiles the target spans **1.69x** while the model "
+        f"spans **1.55x**, so it does under-scale. Fitted in place that is worth "
+        f"**{pooled:+.5f}** - comparable to the ensemble, and it would have made a "
+        f"respectable sixth forecast. Choosing its one free parameter out of sample "
+        f"leaves **{honest:+.5f}**: not smaller, gone. The pooled number was measuring "
+        "the freedom to pick alpha."
+    )
+
+st.divider()
+
 # ------------------------------------------------------------------ five overshoots
 st.subheader("Five forecasts, five overshoots")
 st.dataframe(
@@ -150,6 +218,15 @@ st.dataframe(
         "Predicted": st.column_config.TextColumn(width="small"),
         "Actual": st.column_config.TextColumn(width="small"),
     },
+)
+
+st.info(
+    "**The fifth verdict is narrower than it looks.** The experiment added 18 hand-built "
+    "path statistics and they bought +0.0006. But the nine novel ones score **0.0057 "
+    "standing alone** - the constant-mean predictor scores 0.0059 - so the summary carries "
+    "almost nothing, and the test cannot separate *the path holds no signal* from "
+    "*eighteen numbers were the wrong way to look at it*. Telling those apart needs a "
+    "learned representation over the ~176 snapshots, which is not built here."
 )
 
 st.markdown(

@@ -235,3 +235,62 @@ def test_the_cosine_decomposition_reproduces_the_pooled_score_exactly():
     assert meta["magnitude_weighted"] != meta["count_weighted"], (
         "the two weightings have become identical - the finding depended on them differing"
     )
+
+
+# ------------------------------------------------------------------ prediction geometry
+
+def test_the_geometry_table_and_its_summary_agree():
+    """The pooled and out-of-sample numbers are the whole point of that experiment.
+
+    They are quoted in three places - the README table, the investigation page and the
+    meta file - and the finding is the GAP between them. If the summary drifted from the
+    table, the page would still read convincingly and say something untrue.
+    """
+    table = load_csv("prediction_geometry.csv")
+    meta = load_json("prediction_geometry_meta.json")
+    pooled = table.query("family == 'regime'")["gain"].max()
+    assert meta["best_pooled_gain"] == pytest.approx(pooled, abs=1e-9)
+
+
+def test_choosing_the_parameter_out_of_sample_removes_the_gain():
+    """The result this experiment exists to record.
+
+    Fitted in place the regime correction is worth about +0.002 - comparable to the
+    ensemble gain, and it would have made a sixth forecast. Chosen out of sample it is
+    indistinguishable from zero. If that ever reverses, the conclusion has to be rewritten
+    rather than restated.
+    """
+    meta = load_json("prediction_geometry_meta.json")
+    assert meta["best_pooled_gain"] > 0.0015
+    assert abs(meta["honest_out_of_sample_gain"]) < 0.0005
+    assert len(meta["out_of_sample_splits"]) >= 8, "too few splits to average over"
+
+
+def test_every_reshaping_of_the_magnitudes_loses():
+    """The claim that the model is already in the right form for the metric.
+
+    Rank-transform, sign-only and every power transform must come out negative. One of
+    them turning positive would mean the predicted magnitudes are not carrying information
+    beyond their ordering, which is a different project.
+    """
+    table = load_csv("prediction_geometry.csv")
+    shape = table.query("family == 'shape'")
+    assert len(shape) >= 5
+    assert (shape["gain"] < 0).all(), (
+        f"a magnitude reshaping now helps: {shape.loc[shape.gain >= 0, 'variant'].tolist()}"
+    )
+
+
+def test_the_de_meaning_gain_is_reported_with_its_instability():
+    """It is the only honest positive in the table, and it is an average of coin tosses.
+
+    Quoting +0.0006 without the month-by-month spread would make it look like a free win,
+    which is exactly the error this project keeps finding in its own prose.
+    """
+    meta = load_json("prediction_geometry_meta.json")
+    shift = meta["shift_per_month"]
+    assert shift["n_months"] == 6
+    assert shift["months_improved"] < shift["n_months"], "it no longer changes sign"
+    assert shift["std"] > abs(shift["mean"]), (
+        "the spread no longer swamps the mean - the instability claim needs rechecking"
+    )

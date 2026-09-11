@@ -55,6 +55,7 @@ VERBATIM = [
     "metric_alignment.csv", "metric_alignment_meta.json",
     "recency.csv", "recency_meta.json",
     "feature_audit.json", "feature_redundancy.csv",
+    "prediction_geometry.csv", "prediction_geometry_meta.json",
 ]
 
 # FULL WIDTH, deliberately short. The overview charts only need a few columns, but the

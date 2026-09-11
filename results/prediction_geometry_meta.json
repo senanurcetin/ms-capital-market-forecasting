@@ -1,0 +1,150 @@
+{
+  "baseline_cosine": 0.15171282751514084,
+  "n_rows": 104770,
+  "holdout_months": [
+    65,
+    70
+  ],
+  "regime_feature": "mkt_mid_std_60s",
+  "best_pooled_gain": 0.0022028068860422134,
+  "honest_out_of_sample_gain": -0.00020438270957389795,
+  "inflation_factor": -10.77785342328947,
+  "fold_to_fold_std": 0.00413,
+  "shift_per_month": {
+    "gains": [
+      -0.00013147483265865678,
+      0.00027007291087385865,
+      0.00174350744419699,
+      0.001395903371936319,
+      -0.004392164165716639,
+      0.006642220142392435
+    ],
+    "mean": 0.0009213441451707179,
+    "std": 0.0035607733349970754,
+    "months_improved": 4,
+    "n_months": 6
+  },
+  "out_of_sample_splits": [
+    {
+      "variant": "w=200 causal",
+      "alpha": 0.5,
+      "fit_months": [
+        65,
+        66,
+        67
+      ],
+      "gain": 0.0006199888652891061
+    },
+    {
+      "variant": "w=200 causal",
+      "alpha": 1.0,
+      "fit_months": [
+        68,
+        69,
+        70
+      ],
+      "gain": -0.0002976290687899119
+    },
+    {
+      "variant": "w=200 two-sided",
+      "alpha": 0.5,
+      "fit_months": [
+        65,
+        66,
+        67
+      ],
+      "gain": 0.0004979209874010071
+    },
+    {
+      "variant": "w=200 two-sided",
+      "alpha": 1.0,
+      "fit_months": [
+        68,
+        69,
+        70
+      ],
+      "gain": -0.0001880157863422549
+    },
+    {
+      "variant": "w=1000 causal",
+      "alpha": 0.5,
+      "fit_months": [
+        65,
+        66,
+        67
+      ],
+      "gain": 0.0003420228971270367
+    },
+    {
+      "variant": "w=1000 causal",
+      "alpha": 1.0,
+      "fit_months": [
+        68,
+        69,
+        70
+      ],
+      "gain": 0.0004805545504938391
+    },
+    {
+      "variant": "w=1000 two-sided",
+      "alpha": 0.5,
+      "fit_months": [
+        65,
+        66,
+        67
+      ],
+      "gain": 0.00035064726632372256
+    },
+    {
+      "variant": "w=1000 two-sided",
+      "alpha": 1.0,
+      "fit_months": [
+        68,
+        69,
+        70
+      ],
+      "gain": 0.0012434724575467737
+    },
+    {
+      "variant": "w=5000 causal",
+      "alpha": 0.25,
+      "fit_months": [
+        65,
+        66,
+        67
+      ],
+      "gain": 0.0001967402252022188
+    },
+    {
+      "variant": "w=5000 causal",
+      "alpha": 1.5,
+      "fit_months": [
+        68,
+        69,
+        70
+      ],
+      "gain": -0.005104311067630013
+    },
+    {
+      "variant": "w=5000 two-sided",
+      "alpha": 0.5,
+      "fit_months": [
+        65,
+        66,
+        67
+      ],
+      "gain": 0.0003917121435386417
+    },
+    {
+      "variant": "w=5000 two-sided",
+      "alpha": 1.5,
+      "fit_months": [
+        68,
+        69,
+        70
+      ],
+      "gain": -0.0009856959850469416
+    }
+  ],
+  "verdict": "No free correction survives. Every reshaping of the magnitudes loses, so the model is already close to the best form cosine can read it in. De-meaning gains on the pooled hold-out and changes sign across months, which makes it an average of noise. The regime correction describes a real under-scaling - the model spans 1.55x across volatility quartiles where the target spans 1.69x - but choosing its one parameter out of sample turns +0.0022 into roughly zero."
+}

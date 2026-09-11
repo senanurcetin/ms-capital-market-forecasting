@@ -139,13 +139,29 @@ problem is **not** at its noise ceiling. The best score is 0.172 and the upper q
 begins at 0.146, reached through the same fold-to-fold std of 0.0041 — so the missing
 quantity is signal this pipeline does not extract, not headroom that does not exist.
 
+It also bounds what period difficulty can be blamed for. Difficulty is a property of the
+test window, so every team met the same one; it explains why *this* model scored below its
+own hold-out, and it cannot explain why it scored below other people's models on identical
+data. Roughly 0.008 of cosine separates it from the median, and that part is not luck and
+not the period — it is signal that was available and not found.
+
 Six hypotheses have been tested against that gap. One is confirmed, and it is the
 estimator rather than the model: the hold-out sits at the 83rd percentile of period
 difficulty, worth ~46% of the shortfall. One more is real but smaller than forecast (the
-spread-regime mix, ~14%). The remaining four are falsified — including the two
-most promising, sequence order (**+0.0006**, CI spanning zero, against a pre-registered bar
-of 0.0041) and aligning the training loss with the metric (**−0.0064**, which actively
-hurt). Each is worked through in
+spread-regime mix, ~14%). The remaining four are falsified — including aligning the
+training loss with the metric (**−0.0064**, which actively hurt).
+
+One of those four deserves a narrower statement than it usually gets. The sequence-order
+hypothesis was tested by adding **18 hand-built path statistics** to the existing 292, and
+they bought **+0.0006** with a CI spanning zero. That falsifies *those statistics*, not the
+hypothesis: the nine novel ones score **0.0057 standing alone**, which is where the
+constant-mean predictor sits (0.0059), so the summary carries essentially nothing and the
+experiment cannot separate "the path holds no signal" from "eighteen numbers were the wrong
+way to look at it". Distinguishing them needs a learned representation over the ~176
+snapshots rather than a hand-picked digest of them — the [DeepLOB](https://arxiv.org/abs/1808.03668)
+line of work is exactly that, and it is not done here. See [where this stands](#where-this-stands).
+
+Each is worked through in
 [notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb), along with two errors the
 audits found in my own analysis.
 
@@ -584,10 +600,38 @@ features" counts columns, not information. `make feature-audit` reproduces it.
 
 | | |
 |---|---|
-| ~54% of the leaderboard gap | unexplained. Six hypotheses tested; period difficulty covers 46% and the spread-regime mix ~14%, four were falsified. I do not have a seventh. |
+| ~54% of the leaderboard gap | unexplained. Six hypotheses tested; period difficulty covers 46% and the spread-regime mix ~14%, four were falsified. The one candidate left is a learned sequence representation, and the reason it is a candidate is that the experiment which "falsified" sequence order tested eighteen hand-built statistics rather than the hypothesis. |
 | Leaderboard 0.129 vs median 0.137 | below typical. Tuning, ensembling, more data, sequence order and metric alignment are all measured at roughly zero or worse, so what is missing is signal this pipeline does not extract. |
 | Prediction horizon | undocumented by the competition; it does not affect the modelling |
 | Official metric | confirmed only indirectly — 0.128 is consistent with cosine or Pearson, and inconsistent with RMSE, MAE or R² |
+
+### Three free corrections, and a sixth forecast that did not happen
+
+Cosine has structure the training loss cannot see, and each piece of it suggests a
+correction that costs no retraining: it is not shift-invariant, it weights rows by
+magnitude, and it is computed once over the whole test set so relative magnitudes *across*
+regimes are part of the score. `make pred-geometry` measures all three.
+
+| Correction | Gain | Chosen out of sample? |
+|---|---:|---|
+| Regime scaling, best configuration | **+0.00220** | no |
+| Regime scaling, same correction | **-0.00020** | yes |
+| Subtract the prediction's own mean | +0.00062 | yes, but improves only 4 of 6 months |
+| Rank-transform the predictions | -0.01951 | yes |
+| Keep only the sign | -0.05000 | yes |
+
+Every reshaping of the magnitudes loses, which says the model is already close to the best
+form the metric can read it in — the predicted magnitudes carry information beyond their
+ordering, or rank-transforming would be free.
+
+The regime correction is the useful failure. It describes something real: across volatility
+quartiles the target spans **1.69×** while the model spans **1.55×**, so the model does
+under-scale, and the one context its 292 features cannot see is what the market is doing
+around each sample. Fitted in place it is worth **+0.00220** — comparable to the
+ensemble, and it would have been a perfectly respectable sixth forecast. Choosing its single
+free parameter out of sample leaves **-0.00020**: not smaller, gone. The pooled number
+was measuring the freedom to pick alpha, and the protocol is the only thing that separated
+the two.
 
 **Five forecasts, five overshoots, all in the same direction.** That pattern is the most
 transferable thing here: on this problem, priors about what should help are systematically

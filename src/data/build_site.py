@@ -204,8 +204,9 @@ def build() -> Path:
          "falsified — the slope is POSITIVE"),
         ("The test set is categorically different", "adversarial validation, calibrated",
          "falsified — it is a continuation"),
-        ("Sequence order carries missing signal", "18 path statistics added on top, paired",
-         "falsified — +0.0006, CI spans zero"),
+        ("Sequence order carries missing signal",
+         "18 hand-built path statistics added on top, paired",
+         "those statistics falsified — +0.0006"),
     ], columns=["Hypothesis", "Method", "Verdict"])
 
     forecasts = pd.DataFrame([

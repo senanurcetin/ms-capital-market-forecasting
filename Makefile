@@ -33,6 +33,7 @@ help:
 	@echo "shape         build sequence-shape features, then test whether they pay"
 	@echo "feature-audit how many of the 292 features are actually distinct?"
 	@echo "align         weight the loss the way cosine weights rows (it hurts)"
+	@echo "pred-geometry can the prediction vector be improved without retraining?"
 	@echo "api           run FastAPI locally (:8000)"
 	@echo "streamlit     run the dashboard locally (:8501)"
 	@echo "export-results refresh results/ so the dashboard runs without the pipeline"
@@ -135,6 +136,9 @@ feature-audit:
 
 align:
 	$(PY) -m src.models.metric_alignment
+
+pred-geometry:
+	$(PY) -m src.evaluation.prediction_geometry
 
 shape:
 	$(PY) -m src.features.shape_features --split train
