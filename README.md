@@ -1,5 +1,6 @@
 # MSCapital — Real Financial Market Forecasting
 
+[![Live dashboard](https://img.shields.io/badge/dashboard-live-3FBFA8.svg)](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)
 [![CI](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/workflows/ci.yml/badge.svg)](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/workflows/ci.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -10,6 +11,9 @@ microstructure data — **804.5M raw rows** reduced to a scored model, on a 16 G
 Built on the Kaggle
 [MSCapital](https://www.kaggle.com/competitions/ms-capital-real-financial-market-forecasting)
 competition dataset.
+
+**▶ [Open the live dashboard](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)** — seven pages over the results, no install required.
+The page worth opening first is *Why the leaderboard disagreed*.
 
 `BigQuery` · `LightGBM` · `XGBoost` · `scikit-learn` · `SHAP` · `Optuna` · `Pandera` ·
 `MLflow` · `FastAPI` · `Streamlit` · `Docker` · `GitHub Actions`
@@ -260,6 +264,8 @@ noise presented as a regime.
 The Predictions page scores **in-process** when no API is reachable, using the same bundle
 the API would have loaded, so a published dashboard is interactive rather than a page of
 error messages. With `make api` running it uses the real serving path instead.
+
+**It is running here: [ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)**
 
 **Deploying it** (free): [Streamlit Community Cloud](https://share.streamlit.io) reads this
 repository directly - point it at `streamlit_app/app.py` on `main`, and **set the Python

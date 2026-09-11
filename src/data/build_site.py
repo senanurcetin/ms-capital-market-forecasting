@@ -36,6 +36,9 @@ ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / "results"
 SITE = ROOT / "site"
 REPO = "https://github.com/senanurcetin/ms-capital-market-forecasting"
+# The interactive version. This page is the static summary; someone who wants to
+# click through the folds, the SHAP values or the prediction endpoint needs the app.
+APP = "https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/"
 
 INK = "#e8eaed"
 MUTED = "#9aa0a6"
@@ -334,7 +337,8 @@ def build() -> Path:
   <p class="cap">This page is static and shows results only. The interactive dashboard —
   live prediction, microstructure explorer, drift analysis — is a Streamlit app in the
   repository: <code>make streamlit</code>.</p>
-  <p class="links"><a href="{REPO}">github.com/senanurcetin/ms-capital-market-forecasting</a></p>
+  <p class="links"><a href="{REPO}">github.com/senanurcetin/ms-capital-market-forecasting</a>
+  &nbsp;·&nbsp; <a href="{APP}">interactive dashboard</a></p>
 </section>
 <footer>For research and model evaluation. Not investment advice.
 MIT licensed; competition data is not redistributed.</footer>""")

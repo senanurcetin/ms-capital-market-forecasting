@@ -230,3 +230,40 @@ def test_no_surface_still_quotes_the_stale_standing():
         assert "187 teams" not in text, (
             f"{f.relative_to(ROOT)} still quotes the stale team count"
         )
+
+
+# ------------------------------------------------------------------ the live deployment
+
+APP_URL = "https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/"
+
+
+def test_the_readme_reaches_the_running_dashboard():
+    """A portfolio repository whose demo cannot be reached from it is half a portfolio.
+
+    The README described how to DEPLOY the dashboard for 750 lines without once saying
+    where the deployed one is, so a visitor could read the whole thing and never open it.
+    """
+    assert APP_URL in README, "the README no longer links the live dashboard"
+    assert README.count(APP_URL) >= 2, (
+        "the link should survive both a skim (badge, intro) and a read (deployment section)"
+    )
+
+
+def test_the_static_page_links_the_interactive_one():
+    """The two published surfaces should know about each other.
+
+    The static page is the summary; anyone wanting to click through the folds or the SHAP
+    values needs the app, and the only place to learn it exists is this link.
+    """
+    site = ROOT / "site" / "index.html"
+    if not site.exists():
+        pytest.skip("site/ has not been built")
+    assert APP_URL in site.read_text(encoding="utf-8")
+
+
+def test_the_app_url_is_written_once_per_surface_and_not_guessed():
+    """One constant per file, so a moved deployment is a small edit rather than a hunt."""
+    builder = (ROOT / "src" / "data" / "build_site.py").read_text(encoding="utf-8")
+    assert f'APP = "{APP_URL}"' in builder, (
+        "the static site should hold the URL in a named constant, not inline in markup"
+    )
