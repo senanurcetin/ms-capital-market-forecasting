@@ -4,8 +4,12 @@ ZeroPredictor is deliberately included: cosine similarity is undefined (norm 0)
 for a constant-zero prediction and returns 0.0 here. Seeing that 0.0 is a
 necessary control that the other scores really do carry signal.
 
-MeanPredictor is the empirical demonstration that cosine is NOT shift-invariant:
-predicting the training mean scores NEGATIVE (-0.0036 on the walk-forward folds).
+MeanPredictor is the empirical demonstration that cosine is NOT shift-invariant. A
+constant carries no information, so its score is noise around zero - and crucially it can
+go NEGATIVE, which a metric bounded below by zero could not do. Across the walk-forward
+folds it ranges -0.0071 to +0.0219, negative in three of five, averaging +0.0059. The sign
+is decided by whether the fold's target mean happens to agree with the constant, which is
+exactly the point: a shift is not free.
 """
 from __future__ import annotations
 

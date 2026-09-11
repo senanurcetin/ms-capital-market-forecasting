@@ -264,7 +264,9 @@ def build() -> Path:
   {_table(res[["model", "cosine_mean", "cosine_std", "cosine_min", "cosine_max"]],
           dict.fromkeys(("cosine_mean", "cosine_std", "cosine_min", "cosine_max"), "{:+.5f}"))}
   <p class="cap"><code>zero</code> and <code>mean</code> are controls. <code>mean</code>
-  scores NEGATIVE because cosine is not shift-invariant — a constant bias actively hurts.
+  carries no information, so its score is noise around zero — and it goes negative in three
+  folds of five, which a metric bounded below by zero could not do. Cosine is not
+  shift-invariant: a constant is not free.
   The two tree models differ by less than a fifth of the fold-to-fold noise (0.0041).</p>
 </section>""")
 

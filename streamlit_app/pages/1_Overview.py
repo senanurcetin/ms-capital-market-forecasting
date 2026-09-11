@@ -105,8 +105,10 @@ with left:
             width="stretch", hide_index=True,
         )
         st.caption(
-            "`zero` and `mean` are controls, not candidates. `mean` scores NEGATIVE "
-            "because cosine is not shift-invariant - a constant bias actively hurts. The "
+            "`zero` and `mean` are controls, not candidates. `mean` carries no "
+            "information, so its score is noise around zero - and it goes NEGATIVE in "
+            "three folds of five, which a metric bounded below by zero could not do. "
+            "That is cosine failing to be shift-invariant: a constant is not free. The "
             "two tree models differ by less than a fifth of the fold-to-fold noise "
             "(0.0041), so they are statistically indistinguishable and stability decides."
         )

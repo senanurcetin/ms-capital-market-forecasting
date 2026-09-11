@@ -75,7 +75,9 @@ footer{color:#9aa0a6;font-size:12px;text-align:center;padding:24px 0 0}
   <h2>Model comparison</h2>
   <table><thead><tr><th>model</th><th>cosine_mean</th><th>cosine_std</th><th>cosine_min</th><th>cosine_max</th></tr></thead><tbody><tr><td>ensemble</td><td>+0.14088</td><td>+0.00413</td><td>+0.13527</td><td>+0.14405</td></tr><tr><td>lightgbm</td><td>+0.13869</td><td>+0.00332</td><td>+0.13484</td><td>+0.14246</td></tr><tr><td>xgboost</td><td>+0.13815</td><td>+0.00471</td><td>+0.13125</td><td>+0.14191</td></tr><tr><td>ridge</td><td>+0.11813</td><td>+0.00501</td><td>+0.11156</td><td>+0.12379</td></tr><tr><td>mean</td><td>+0.00588</td><td>+0.01374</td><td>-0.00712</td><td>+0.02193</td></tr><tr><td>zero</td><td>+0.00000</td><td>+0.00000</td><td>+0.00000</td><td>+0.00000</td></tr></tbody></table>
   <p class="cap"><code>zero</code> and <code>mean</code> are controls. <code>mean</code>
-  scores NEGATIVE because cosine is not shift-invariant — a constant bias actively hurts.
+  carries no information, so its score is noise around zero — and it goes negative in three
+  folds of five, which a metric bounded below by zero could not do. Cosine is not
+  shift-invariant: a constant is not free.
   The two tree models differ by less than a fifth of the fold-to-fold noise (0.0041).</p>
 </section>
 <section>

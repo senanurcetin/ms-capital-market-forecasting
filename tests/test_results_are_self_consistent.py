@@ -294,3 +294,32 @@ def test_the_de_meaning_gain_is_reported_with_its_instability():
     assert shift["std"] > abs(shift["mean"]), (
         "the spread no longer swamps the mean - the instability claim needs rechecking"
     )
+
+
+def test_the_mean_control_is_described_as_it_measures(folds):
+    """It was documented as scoring NEGATIVE. It averages +0.0059.
+
+    The claim said "-0.0036 on the walk-forward folds" and appeared in three places
+    including the dashboard's front page. The measurement is -0.0071 to +0.0219, negative
+    in three folds of five, mean +0.0059.
+
+    The underlying point survives and is arguably better made by the truth: a constant
+    carries no information, so its cosine is noise around zero - and it can go negative,
+    which a metric bounded below by zero could not do. That IS cosine failing to be
+    shift-invariant. Claiming it is reliably negative overstates a real effect, which is
+    the specific failure mode this project keeps finding in its own prose.
+    """
+    from pathlib import Path
+
+    scores = np.array(fold_scores(folds, "mean"))
+    assert scores.mean() > 0, "the mean control no longer averages positive"
+    assert (scores < 0).sum() == 3, "the number of negative folds has changed"
+    assert scores.min() == pytest.approx(-0.0071, abs=5e-5)
+    assert scores.max() == pytest.approx(0.0219, abs=5e-5)
+
+    root = Path(__file__).resolve().parents[1]
+    for rel in ("src/models/baseline.py",
+                "streamlit_app/pages/1_Overview.py",
+                "src/data/build_site.py"):
+        text = (root / rel).read_text(encoding="utf-8")
+        assert "-0.0036" not in text, f"{rel} still quotes the figure that never measured"
