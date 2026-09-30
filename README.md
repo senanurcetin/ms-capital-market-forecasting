@@ -13,6 +13,8 @@ Built on the Kaggle
 competition dataset.
 
 **▶ [Open the live dashboard](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)** — seven pages over the results, no install required.
+
+**Kaggle notebook:** [MS Capital: My Hold-out Was a Lucky Stretch](https://www.kaggle.com/code/senanuretin/ms-capital-my-hold-out-was-a-lucky-stretch) — the period-difficulty and walk-forward analysis behind the headline result, runnable on Kaggle.
 The page worth opening first is *Why the leaderboard disagreed*.
 
 `BigQuery` · `LightGBM` · `XGBoost` · `scikit-learn` · `SHAP` · `Optuna` · `Pandera` ·
