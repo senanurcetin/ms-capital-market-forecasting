@@ -29,6 +29,9 @@ Notable changes to the code, the serving API and the published results. The form
 - The coverage floor rose from 60% to 68% (measured 71%).
 
 ### Fixed
+- Dependabot was opening a single 22-update group that failed as a whole, plus major bumps of the
+  numerics stack (pandas 3). The numerics libraries are no longer auto-updated (a bump can change
+  predictions or break loading a saved booster); the rest are grouped by what breaks together.
 - A non-ASCII `X-Admin-Token` crashed `/reload` with a 500 (`hmac.compare_digest` rejects non-ASCII
   `str`); credentials are now compared as bytes.
 - Missing values (NaN) were counted as out-of-range inputs.
