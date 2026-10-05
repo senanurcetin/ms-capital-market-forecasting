@@ -27,6 +27,14 @@ Notable changes to the code, the serving API and the published results. The form
   matching `X-Admin-Token` (401 otherwise). Deployments that call it must set the token.
 - `MSCAPITAL_DATA_ROOT` relocates every data path, not only the API's.
 - The coverage floor rose from 60% to 68% (measured 71%).
+- **`RidgeModel` fits in chunks.** The full-data `make ship` was killed by the memory limit of a
+  16 GB machine inside the Ridge step: `MedianImputer.fit` made a ~4 GB temporary copy, and
+  `StandardScaler` plus sklearn's `Ridge` made further float64 copies of the 1.2M x 292 frame.
+  Medians are now computed a block of columns at a time, and the scaler and the normal equations
+  are accumulated chunk by chunk in float64. On real data (460k training rows) the predictions
+  differ from the old pipeline by at most 2.5e-14 and the cosine score is identical, so no
+  published number moves; `tests/test_baseline_chunked.py` pins the equivalence. Ridge's peak on
+  the full training set fell from 11.7 GB (and then OOM) to 7.2 GB, most of which is the data.
 
 ### Dependencies
 - GitHub Actions: `actions/checkout` 7, `actions/setup-python` 7, `docker/build-push-action` 7,

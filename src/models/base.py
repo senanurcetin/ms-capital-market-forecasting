@@ -52,19 +52,30 @@ class Model(Protocol):
 class MedianImputer:
     """Median imputation fitted on the training fold, plus infinity cleanup."""
 
+    COLUMN_BLOCK = 32
+
     def __init__(self) -> None:
         self.medians_: pd.Series | None = None
 
-    def fit(self, X: pd.DataFrame) -> MedianImputer:
+    def fit(self, X: pd.DataFrame, columns: list[str] | None = None) -> MedianImputer:
         """Learn a median per column FROM THE TRAINING FOLD ONLY.
 
         Fitting on validation or test rows would be leakage, and a subtle kind: the model
         would look better in every fold and worse in production.
+
+        Medians are independent per column, so they are computed a block of columns at a
+        time. Doing the infinity cleanup on the whole frame first needs a full extra copy
+        plus the sort buffers of median(), about 4 GB on the 1.2M x 292 training set.
+        `columns` restricts the fit without first copying those columns into a new frame.
         """
-        clean = X.replace([np.inf, -np.inf], np.nan)
-        self.medians_ = clean.median()
+        cols = list(X.columns if columns is None else columns)
+        parts = []
+        for i in range(0, len(cols), self.COLUMN_BLOCK):
+            block = X[cols[i:i + self.COLUMN_BLOCK]]
+            parts.append(block.replace([np.inf, -np.inf], np.nan).median())
+        medians = pd.concat(parts) if parts else pd.Series(dtype=np.float64)
         # Columns that are entirely missing fall back to 0.
-        self.medians_ = self.medians_.fillna(0.0)
+        self.medians_ = medians.fillna(0.0)
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
