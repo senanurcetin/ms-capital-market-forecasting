@@ -59,23 +59,67 @@ class RidgeModel:
 
     name = "ridge"
 
-    def __init__(self, alpha: float = 1.0) -> None:
+    def __init__(self, alpha: float = 1.0, chunk_rows: int = 100_000) -> None:
         self.alpha = alpha
+        self.chunk_rows = chunk_rows
         self.imputer = MedianImputer()
         self.scaler = StandardScaler()
         self.model = Ridge(alpha=alpha, random_state=0)
         self.features_: list[str] = []
+
+    def _chunks(self, n: int):
+        for start in range(0, n, self.chunk_rows):
+            yield slice(start, min(start + self.chunk_rows, n))
+
+    def _block(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Impute one slice of rows, as float64 and still a frame.
+
+        Staying a DataFrame lets the scaler record the feature names, as it always did, so
+        serving code that passes it a frame does not trip sklearn's names warning.
+        """
+        return self.imputer.transform(X[self.features_]).astype(np.float64)
 
     def fit(self, X: pd.DataFrame, y: np.ndarray, **_) -> RidgeModel:
         """Fit imputer, scaler and Ridge in sequence, all on this fold only.
 
         The column order is recorded so predict() can reindex - Ridge is positional and
         would otherwise pair coefficients with the wrong columns without complaining.
+
+        The data is streamed in chunks, never materialised whole. Handing the full frame to
+        StandardScaler and sklearn's Ridge cost three or four float64 copies of it; on the
+        1.2M x 292 training set that is what killed `make ship` on a 16 GB machine. Ridge
+        itself is solved from the normal equations accumulated in float64, with the same
+        centring sklearn applies for fit_intercept=True, so the coefficients agree with
+        Ridge.fit to rounding error (tests/test_baseline_chunked.py pins this).
         """
         self.features_ = feature_columns(X)
-        Xf = self.imputer.fit_transform(X[self.features_])
-        Xs = self.scaler.fit_transform(Xf)
-        self.model.fit(Xs, y)
+        y = np.asarray(y, dtype=np.float64).ravel()
+        n = len(X)
+        self.imputer.fit(X, columns=self.features_)
+
+        self.scaler = StandardScaler()
+        for sl in self._chunks(n):
+            self.scaler.partial_fit(self._block(X.iloc[sl]))
+
+        p = len(self.features_)
+        gram, xty = np.zeros((p, p)), np.zeros(p)
+        sum_z, sum_y = np.zeros(p), 0.0
+        for sl in self._chunks(n):
+            Z = self.scaler.transform(self._block(X.iloc[sl]))
+            yc = y[sl]
+            gram += Z.T @ Z
+            xty += Z.T @ yc
+            sum_z += Z.sum(axis=0)
+            sum_y += yc.sum()
+
+        z_bar, y_bar = sum_z / n, sum_y / n
+        gram -= n * np.outer(z_bar, z_bar)
+        xty -= n * z_bar * y_bar
+        coef = np.linalg.solve(gram + self.alpha * np.eye(p), xty)
+
+        self.model.coef_ = coef
+        self.model.intercept_ = y_bar - z_bar @ coef
+        self.model.n_features_in_ = p
         return self
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -85,5 +129,6 @@ class RidgeModel:
         frame whose columns arrive in a different order would otherwise pair each
         coefficient with the wrong feature, silently.
         """
-        Xf = self.imputer.transform(X[self.features_])
-        return self.model.predict(self.scaler.transform(Xf))
+        out = [self.model.predict(self.scaler.transform(self._block(X.iloc[sl])))
+               for sl in self._chunks(len(X))]
+        return np.concatenate(out) if out else np.empty(0)
