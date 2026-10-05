@@ -1,0 +1,37 @@
+name: Scheduled checks
+
+# Nothing in the repository changes between pushes, but the world does: a dependency gets a
+# CVE, a wheel is yanked, Streamlit Cloud moves its Python. This catches that on a quiet week
+# instead of on the next unrelated push.
+on:
+  schedule:
+    - cron: "17 5 * * 1"      # Mondays, 05:17 UTC
+  workflow_dispatch:
+
+jobs:
+  audit:
+    name: Vulnerability audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pip-audit==2.10.1
+      - name: Audit every pinned runtime set
+        run: |
+          for f in requirements.txt requirements-serve.txt requirements-app.txt requirements-pipeline.txt; do
+            echo "== $f"
+            pip-audit -r "$f"
+          done
+
+  dashboard:
+    name: Dashboard still renders on a fresh install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python scripts/check_deploy.py

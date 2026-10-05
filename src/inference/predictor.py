@@ -12,6 +12,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -34,7 +35,7 @@ class ModelBundle:
     different order produces confident nonsense rather than an error.
     """
 
-    model: object
+    model: Any  # lightgbm.Booster, xgboost.Booster, sklearn estimator or the blend - all expose predict
     features: list[str]
     name: str
     version: str

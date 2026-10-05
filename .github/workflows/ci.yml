@@ -31,6 +31,11 @@ jobs:
       - name: Lint
         run: ruff check src/ api/ streamlit_app/ tests/ scripts/   # config in pyproject.toml
 
+      # The serving surface only; the file set lives in pyproject.toml so CI and a local
+      # `make typecheck` cannot disagree about what is checked.
+      - name: Typecheck
+        run: mypy
+
       # The tests require NO live BigQuery and NO downloaded data: the ingest tests
       # generate a synthetic feather file and the API tests use a fake model artefact.
       # That is why CI needs no credentials.
