@@ -110,7 +110,7 @@ def spread_buckets(values: pd.Series, edges: np.ndarray | None = None):
     if edges is None:
         cats, edges = pd.qcut(values, 4, labels=labels, retbins=True)
         return cats, edges
-    return pd.cut(values, bins=edges, labels=labels, include_lowest=True), edges
+    return pd.cut(values, bins=edges.tolist(), labels=labels, include_lowest=True), edges
 
 
 def corrected_forecast(parts: pd.DataFrame, edges: np.ndarray) -> pd.DataFrame:
