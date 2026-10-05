@@ -15,6 +15,11 @@ import time
 from collections import defaultdict, deque
 
 
+def _label(value: str) -> str:
+    """Escape a Prometheus label value (backslash, quote, newline)."""
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
+
 class RateLimiter:
     """Sliding-window limit of `per_minute` requests per client key. 0 disables it."""
 
@@ -108,5 +113,7 @@ class Metrics:
                 "# TYPE mscapital_out_of_range_values_total counter",
             ]
             for feature, n in sorted(self._out_of_range.items()):
-                lines.append(f'mscapital_out_of_range_values_total{{feature="{feature}"}} {n}')
+                lines.append(
+                    f'mscapital_out_of_range_values_total{{feature="{_label(feature)}"}} {n}'
+                )
         return "\n".join(lines) + "\n"
