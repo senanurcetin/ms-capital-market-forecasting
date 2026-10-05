@@ -5,10 +5,11 @@ PY ?= python
 # MSCAPITAL_DATA_ROOT is the one variable every component (Python, API, compose) reads.
 DATA_ROOT ?= $(if $(MSCAPITAL_DATA_ROOT),$(MSCAPITAL_DATA_ROOT),C:/mscapital_data)
 
-.PHONY: help install test lint fmt typecheck audit check cov validate schema-check ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit align export-results site api streamlit mlflow \
+.PHONY: help pipeline install test lint fmt typecheck audit check cov validate schema-check ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit prune align export-results site api streamlit mlflow \
         docker-build up down logs clean
 
 help:
+	@echo "pipeline      the real thing, in order: ingest validate features train ship export-results"
 	@echo "demo          run the whole project end to end on synthetic data (~30 s)"
 	@echo "install       install dependencies (including dev)"
 	@echo "test          pytest"
@@ -35,6 +36,7 @@ help:
 	@echo "ship          build the shippable ensemble + write a submission"
 	@echo "shape         build sequence-shape features, then test whether they pay"
 	@echo "feature-audit how many of the 292 features are actually distinct?"
+	@echo "prune        does dropping the near-duplicate features cost anything? (non-inferiority)"
 	@echo "align         weight the loss the way cosine weights rows (it hurts)"
 	@echo "pred-geometry can the prediction vector be improved without retraining?"
 	@echo "api           run FastAPI locally (:8000)"
@@ -50,6 +52,13 @@ help:
 
 demo:
 	$(PY) -m src.demo
+
+# The whole pipeline on the real data, in dependency order. It needs the competition files, a
+# BigQuery project and hours of compute - `demo` is the 15-second version of the same shape.
+# Steps are strictly sequential: each reads what the previous one wrote, so make must never
+# run them in parallel (-j).
+.NOTPARALLEL:
+pipeline: ingest validate features train ship export-results
 
 install:
 	$(PY) -m pip install -r requirements-dev.txt
@@ -142,6 +151,9 @@ ship:
 
 feature-audit:
 	$(PY) -m src.evaluation.feature_audit
+
+prune:
+	$(PY) -m src.evaluation.feature_prune
 
 align:
 	$(PY) -m src.models.metric_alignment
