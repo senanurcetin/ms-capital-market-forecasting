@@ -79,7 +79,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - name: Build image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: api
@@ -104,7 +104,7 @@ jobs:
       # release.yml publishes this target too, so it must be known to build before a tag is the
       # first time anyone finds out it does not.
       - name: Build the dashboard image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: app
@@ -140,7 +140,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - name: Build the api image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: api
