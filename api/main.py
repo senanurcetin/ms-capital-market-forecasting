@@ -167,6 +167,21 @@ def model_info() -> dict:
     return _predictor().info()
 
 
+@router.get("/features")
+def features() -> dict:
+    """The exact feature names, in the order the model was fitted on.
+
+    Every one is required by /predict - gaps are not filled in - so a client needs this to
+    build a request. `ranges` is the band the model was trained on, when the artefact has it.
+    """
+    p = _predictor()
+    return {
+        "n_features": len(p.bundle.features),
+        "features": p.bundle.features,
+        "ranges": p.bundle.feature_ranges,
+    }
+
+
 @router.post("/predict", response_model=PredictResponse)
 def predict(req: PredictRequest) -> PredictResponse:
     p = _predictor()

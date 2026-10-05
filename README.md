@@ -701,6 +701,19 @@ The model endpoints (`/model-info`, `/predict`, `/batch-predict`, `/reload`) are
 `/v1`, which is the documented contract, and still answer at the root for existing clients
 such as the dashboard. `/health` and `/metrics` are operational and unversioned.
 
+Using it - `/v1/features` lists the inputs, and every one is required (gaps are not filled in):
+
+```bash
+curl -s localhost:8000/v1/features | python -c "import sys,json; print(json.load(sys.stdin)['n_features'])"
+python - <<'PY'
+import requests
+base = "http://localhost:8000/v1"
+names = requests.get(f"{base}/features").json()["features"]
+row = dict.fromkeys(names, 0.0)                      # replace with real feature values
+print(requests.post(f"{base}/predict", json={"features": row}).json())
+PY
+```
+
 When the artefact carries `feature_ranges.json` (written by `ship.py`, `finalize.py` and the
 demo from the 0.1%-99.9% band of the training features), the API counts values outside that
 band per feature in `/metrics` as `mscapital_out_of_range_values_total`. It is a drift signal
