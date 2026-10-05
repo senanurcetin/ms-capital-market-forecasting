@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+from typing import Any
 
 import pandas as pd
 from google.cloud import bigquery
@@ -50,7 +51,7 @@ def _feature_list(bq: bigquery.Client, table: str) -> list[str]:
 
 def _collect(bq: bigquery.Client, table: str, features: list[str]) -> pd.DataFrame:
     row = dict(next(iter(bq.query(_stats_sql(table, features)).result())))
-    records = {}
+    records: dict[str, dict[str, Any]] = {}
     for key, value in row.items():
         feature, stat = key.rsplit(STAT_SEP, 1)
         records.setdefault(feature, {})[stat] = value

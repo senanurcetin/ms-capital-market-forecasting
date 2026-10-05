@@ -40,6 +40,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -104,14 +105,14 @@ def run(
         for seed in seeds:
             booster = lgb.train({**PARAMS, "seed": seed}, lgb.Dataset(df.iloc[tr][cols],
                                 label=y[tr]), num_boost_round=rounds)
-            preds[(name, seed)] = booster.predict(df[cols])
+            preds[(name, seed)] = np.asarray(booster.predict(df[cols]))
             log.info("  trained %-6s seed %d", name, seed)
 
     rows = []
     for lo, hi in EVAL_BLOCKS:
         va = np.where((months >= lo) & (months <= hi))[0]
         gap = lo - TRAIN_MONTHS[1]
-        rec = {"block": f"{lo}-{hi}", "gap_months": gap, "n": len(va)}
+        rec: dict[str, Any] = {"block": f"{lo}-{hi}", "gap_months": gap, "n": len(va)}
         for name in sets:
             s = [cosine_similarity(y[va], preds[(name, seed)][va]) for seed in seeds]
             rec[name] = float(np.mean(s))
