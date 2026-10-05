@@ -615,11 +615,18 @@ features" counts columns, not information. `make feature-audit` reproduces it.
 | Prediction horizon | undocumented by the competition; it does not affect the modelling |
 | Official metric | confirmed only indirectly — 0.128 is consistent with cosine or Pearson, and inconsistent with RMSE, MAE or R² |
 
-**Written but not yet run:** `make prune` tests whether dropping the 28 near-duplicate
-features costs anything. It is a non-inferiority test with its margin (-0.0010) fixed in the
-module before any run, because the improvement it could plausibly show is below this
-problem's resolution; it needs the full training data, and nothing is claimed until it has
-produced `feature_prune_meta.json`.
+**Measured: dropping the 28 near-duplicate features is not provably free.** `make prune` ran on the
+full training data - LightGBM, 2 seeds x 3 walk-forward folds, identical rows and seeds with only the
+column list differing. Pruned minus full is **-0.00048** (se 0.00086), 95% CI
+**[-0.00218, +0.00121]**, and the pruned set was better in **4 of 6**
+comparisons. The rule was fixed in the module before the run: pruning counts as free
+only if the interval's lower bound is above -0.0010. It is -0.00218, so the verdict written to
+[`results/feature_prune_meta.json`](results/feature_prune_meta.json) is *"keep all features: pruning costs something or cannot be ruled out as costing it"*.
+
+That is a statement about what six comparisons can rule out, not evidence that pruning hurts: the
+point estimate is far below the fold-to-fold std of 0.0041, and the six differences run from -0.0035 to
++0.0019 with their sign depending on the seed (seed 0 averages +0.00046, seed 1 -0.00143). All 292
+columns stay. A tighter answer needs more seeds; nothing here promises a score.
 
 ### Three free corrections, and a sixth forecast that did not happen
 
