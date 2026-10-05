@@ -683,6 +683,13 @@ intermediate data is ~20 GB. Set `MSCAPITAL_DATA_ROOT` to relocate every data pa
 `POST /reload` swaps the served model, so it is **off by default**: it answers 403 until
 `MSCAPITAL_ADMIN_TOKEN` is set, and then needs a matching `X-Admin-Token` header.
 
+`MSCAPITAL_API_KEY` is the credential for everything else: **open when unset** (a local run
+and the compose stack stay zero-config), and once set `/model-info`, `/features`, `/predict` and
+`/batch-predict` need a matching `X-API-Key` header - the dashboard sends it from the same
+variable. `/health` and `/metrics` stay open so orchestrators and scrapers need no credential,
+and `/reload` keeps its own admin token so an operator does not need both. Unauthenticated
+requests still pass through the rate limiter, so guessing a key is throttled.
+
 The API also guards what one request may cost, all through environment variables:
 
 | Variable | Default | Effect |

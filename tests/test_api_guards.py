@@ -229,3 +229,71 @@ def test_label_values_are_escaped():
     from api.guards import _label
 
     assert _label('a"b\\c\nd') == 'a\\"b\\\\c\\nd'
+
+
+# --- API key -------------------------------------------------------------------------------
+
+KEY = {"X-API-Key": "k3y"}
+
+
+@pytest.mark.parametrize("prefix", ["", "/v1"])
+@pytest.mark.parametrize("path", ["/model-info", "/features"])
+def test_model_reads_need_the_key_when_one_is_set(monkeypatch, tmp_path, prefix, path):
+    with _client(monkeypatch, tmp_path, MSCAPITAL_API_KEY="k3y") as c:
+        assert c.get(f"{prefix}{path}").status_code == 401
+        assert c.get(f"{prefix}{path}", headers={"X-API-Key": "nope"}).status_code == 401
+        assert c.get(f"{prefix}{path}", headers=KEY).status_code == 200
+
+
+def test_scoring_needs_the_key_when_one_is_set(monkeypatch, tmp_path):
+    with _client(monkeypatch, tmp_path, MSCAPITAL_API_KEY="k3y") as c:
+        body = {"features": ROW}
+        assert c.post("/v1/predict", json=body).status_code == 401
+        assert c.post("/v1/batch-predict", json={"rows": [ROW]}).status_code == 401
+        assert c.post("/v1/predict", json=body, headers=KEY).status_code == 200
+        assert c.post("/v1/batch-predict", json={"rows": [ROW]}, headers=KEY).status_code == 200
+
+
+def test_operational_endpoints_stay_open_with_a_key_set(monkeypatch, tmp_path):
+    with _client(monkeypatch, tmp_path, MSCAPITAL_API_KEY="k3y") as c:
+        assert c.get("/health").status_code == 200
+        assert c.get("/metrics").status_code == 200
+
+
+def test_unauthenticated_requests_are_still_counted_and_rate_limited(monkeypatch, tmp_path):
+    with _client(monkeypatch, tmp_path, MSCAPITAL_API_KEY="k3y",
+                 MSCAPITAL_RATE_LIMIT_PER_MIN=2) as c:
+        assert c.post("/predict", json={"features": ROW}).status_code == 401
+        assert c.post("/predict", json={"features": ROW}).status_code == 401
+        assert c.post("/predict", json={"features": ROW}).status_code == 429   # guessing is throttled
+        assert 'status="401"} 2' in c.get("/metrics").text
+
+
+def test_reload_uses_the_admin_token_not_the_api_key(monkeypatch, tmp_path):
+    """An operator holding only the admin token can reload; the API key alone cannot."""
+    with _client(monkeypatch, tmp_path, MSCAPITAL_API_KEY="k3y",
+                 MSCAPITAL_ADMIN_TOKEN="adm") as c:
+        assert c.post("/reload", headers={"X-Admin-Token": "adm"}).status_code == 200
+        assert c.post("/reload", headers=KEY).status_code == 401
+
+
+def test_a_non_ascii_api_key_is_a_401_not_a_500(monkeypatch, tmp_path):
+    with _client(monkeypatch, tmp_path, MSCAPITAL_API_KEY="k3y") as c:
+        r = c.get("/model-info", headers={"X-API-Key": "café".encode("latin-1")})
+        assert r.status_code == 401
+
+
+def test_no_key_configured_means_open_as_before(monkeypatch, tmp_path):
+    monkeypatch.delenv("MSCAPITAL_API_KEY", raising=False)
+    with _client(monkeypatch, tmp_path) as c:
+        assert c.get("/model-info").status_code == 200
+
+
+def test_dashboard_sends_the_key_when_configured(monkeypatch):
+    import streamlit_app.lib as lib
+
+    monkeypatch.setattr(lib, "API_KEY", "k3y")
+    assert lib._api_headers({"Content-Type": "application/json"}) == {
+        "Content-Type": "application/json", "X-API-Key": "k3y"}
+    monkeypatch.setattr(lib, "API_KEY", "")
+    assert lib._api_headers() == {}

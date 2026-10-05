@@ -27,6 +27,15 @@ from src.inference.predictor import Predictor
 
 DATA_ROOT = Path(os.environ.get("MSCAPITAL_DATA_ROOT", "C:/mscapital_data"))
 API_URL = os.environ.get("MSCAPITAL_API_URL", "")
+API_KEY = os.environ.get("MSCAPITAL_API_KEY", "")
+
+
+def _api_headers(extra: dict | None = None) -> dict:
+    """Headers for a call to the API: the key when one is configured, plus any extras."""
+    headers = dict(extra or {})
+    if API_KEY:
+        headers["X-API-Key"] = API_KEY
+    return headers
 
 FEATURES_DIR = DATA_ROOT / "features"
 MODELS_DIR = DATA_ROOT / "models"
@@ -208,7 +217,8 @@ def api_get(path: str) -> dict | None:
     import urllib.request
 
     try:
-        with urllib.request.urlopen(f"{API_URL}{path}", timeout=5) as r:
+        req = urllib.request.Request(f"{API_URL}{path}", headers=_api_headers())
+        with urllib.request.urlopen(req, timeout=5) as r:
             return json.loads(r.read())
     except (urllib.error.URLError, TimeoutError, OSError):
         return None
@@ -224,7 +234,7 @@ def api_post(path: str, payload: dict) -> tuple[int, dict | None]:
     req = urllib.request.Request(
         f"{API_URL}{path}",
         data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"},
+        headers=_api_headers({"Content-Type": "application/json"}),
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as r:

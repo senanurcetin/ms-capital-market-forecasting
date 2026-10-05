@@ -18,6 +18,8 @@ services:
       # /reload is disabled unless this is set; pass it as X-Admin-Token.
       MSCAPITAL_ADMIN_TOKEN: ${MSCAPITAL_ADMIN_TOKEN:-}
       MSCAPITAL_RATE_LIMIT_PER_MIN: ${MSCAPITAL_RATE_LIMIT_PER_MIN:-0}
+      # Open when empty. Once set, the model endpoints need X-API-Key (the dashboard sends it).
+      MSCAPITAL_API_KEY: ${MSCAPITAL_API_KEY:-}
     volumes:
       - ${MSCAPITAL_DATA_ROOT:-C:/mscapital_data}:/data
     healthcheck:
@@ -45,6 +47,7 @@ services:
       - "8501:8501"
     environment:
       MSCAPITAL_API_URL: http://api:8000
+      MSCAPITAL_API_KEY: ${MSCAPITAL_API_KEY:-}
       MSCAPITAL_DATA_ROOT: /data
     volumes:
       - ${MSCAPITAL_DATA_ROOT:-C:/mscapital_data}:/data
