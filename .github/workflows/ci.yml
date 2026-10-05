@@ -100,3 +100,54 @@ jobs:
           # Even with no model the service must be up and report "degraded"
           grep -q '"model_loaded": *false' /tmp/h.json
           docker rm -f api
+
+  # The docker job above proves the slim image STARTS without a model. Nothing proved that a model
+  # the TRAINING stack writes can be served by the SERVING stack - the two have different
+  # dependency sets, and an artefact one can write and the other cannot read fails only on the
+  # first live request. This builds a real artefact (the synthetic demo), mounts it into the api
+  # image, and drives it over HTTP with the same script anyone can run against a local server.
+  serve-e2e:
+    name: Demo artefact served by the API image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install the training stack (the demo needs it)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Train the demo model
+        run: python -m src.demo --samples 2500 --root "$RUNNER_TEMP/demo"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the api image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: api
+          push: false
+          load: true
+          tags: mscapital:e2e
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Serve the artefact
+        run: |
+          docker run -d --name api -p 8000:8000 \
+            -e MSCAPITAL_API_KEY=ci-key \
+            -v "$RUNNER_TEMP/demo/models:/data/models:ro" mscapital:e2e
+
+      - name: Drive it over HTTP
+        run: python scripts/e2e_smoke.py http://localhost:8000 --api-key ci-key --wait 90
+
+      - name: API logs
+        if: failure()
+        run: docker logs api
