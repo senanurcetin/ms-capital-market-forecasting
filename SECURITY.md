@@ -34,6 +34,14 @@ Terminate TLS in front of the API: it does not do so itself, and the credentials
 headers. The container runs as a non-root user. `/health` and `/metrics` are unauthenticated by
 design and carry counts only, never request contents.
 
+## Published images
+
+The `api` and `app` images are public on GitHub Container Registry
+(`ghcr.io/senanurcetin/ms-capital-market-forecasting/api` and `.../app`), tagged `v1.2.3` and `1.2.3`.
+They are built by `.github/workflows/release.yml`, only from a commit on `main`, and hold **code and
+configuration only: no model, no data and no keys**. The API image starts without a model and reports
+`degraded` until you mount one, so you supply the artefact, and the credentials above, yourself.
+
 ## Not a security boundary
 
 The model is a regression on public-style market features with a planted-signal demo. Its outputs
