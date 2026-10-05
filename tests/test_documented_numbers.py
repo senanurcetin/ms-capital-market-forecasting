@@ -321,3 +321,17 @@ def test_the_spread_sentinel_figures_match_the_notebook_that_measured_them():
             f"this sentence does not quote the measured {cleaned}: {line[:90]}"
         )
     assert float(naive) < 0 < float(cleaned), "the sign flip itself has gone"
+
+
+def test_feature_pruning_verdict_matches_the_measurement():
+    """The README's pruning paragraph must quote what results/feature_prune_meta.json says."""
+    m = load_json("feature_prune_meta.json")
+    assert (m["n_full"], m["n_pruned"]) == (292, 264)
+    for figure in (f"{m['paired_gain']:+.5f}", f"{m['ci_low']:+.5f}", f"{m['ci_high']:+.5f}",
+                   f"{m['se']:.5f}"):
+        assert readme_has(figure), f"README does not quote {figure}"
+    assert readme_has(f"{m['improved']} of\n{m['n_comparisons']}") or readme_has(
+        f"{m['improved']} of {m['n_comparisons']}"
+    ), "README does not quote how many comparisons improved"
+    assert readme_has(m["verdict"]), "README does not quote the verdict as written"
+    assert m["pruning_is_free"] is False, "the paragraph says pruning was NOT shown to be free"

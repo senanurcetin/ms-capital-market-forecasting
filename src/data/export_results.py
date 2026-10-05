@@ -55,6 +55,7 @@ VERBATIM = [
     "metric_alignment.csv", "metric_alignment_meta.json",
     "recency.csv", "recency_meta.json",
     "feature_audit.json", "feature_redundancy.csv",
+    "feature_prune.csv", "feature_prune_meta.json",
     "prediction_geometry.csv", "prediction_geometry_meta.json",
 ]
 
