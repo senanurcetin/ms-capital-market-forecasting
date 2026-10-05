@@ -24,3 +24,24 @@ def test_default_root_is_unchanged_without_the_env(monkeypatch):
         assert load_config().paths.raw == "C:/mscapital_data/raw"
     finally:
         load_config.cache_clear()
+
+
+def test_bigquery_project_can_be_replaced_from_the_environment(monkeypatch):
+    """The committed project is the author's own; everyone else has to be able to point elsewhere."""
+    monkeypatch.setenv("MSCAPITAL_BQ_PROJECT", "someone-elses-project")
+    load_config.cache_clear()
+    try:
+        cfg = load_config()
+        assert cfg.bigquery.project == "someone-elses-project"
+        assert cfg.bigquery.datasets.features == "mscapital_features"   # only the project moves
+    finally:
+        load_config.cache_clear()
+
+
+def test_bigquery_project_is_unchanged_without_the_env(monkeypatch):
+    monkeypatch.delenv("MSCAPITAL_BQ_PROJECT", raising=False)
+    load_config.cache_clear()
+    try:
+        assert load_config().bigquery.project == "workintech-working"
+    finally:
+        load_config.cache_clear()
