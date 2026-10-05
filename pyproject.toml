@@ -57,11 +57,19 @@ exclude_lines = [
 ]
 
 [tool.mypy]
-# Typed where it matters most: the serving surface, which answers requests and so cannot
-# afford a type confusion that only shows up on the first live call. The pipeline and
-# dashboard are not checked yet (43 findings at the time of writing, mostly untyped
-# DataFrame and booster handling); widen `files` as they are cleaned up.
+# Typed where it is clean, and always on the serving surface, which answers requests and so
+# cannot afford a type confusion that only shows up on the first live call. The modules
+# listed in `exclude` still carry findings (34 at the time of writing, mostly untyped
+# DataFrame and booster handling); they are left out rather than silenced with ignores, so
+# fixing one and deleting its line from `exclude` is the whole procedure.
 python_version = "3.11"
-files = ["api", "src/inference", "src/config.py"]
+files = ["api", "src/inference", "src/config.py", "src/features", "src/evaluation"]
+exclude = [
+    "src/evaluation/drift\\.py",
+    "src/evaluation/drift_robustness\\.py",
+    "src/evaluation/cosine_decomposition\\.py",
+]
 explicit_package_bases = true
 ignore_missing_imports = true
+# A checked module that imports an unchecked one must not report the latter's findings.
+follow_imports = "silent"

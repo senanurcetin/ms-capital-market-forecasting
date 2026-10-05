@@ -31,7 +31,7 @@ jobs:
       - name: Lint
         run: ruff check src/ api/ streamlit_app/ tests/ scripts/   # config in pyproject.toml
 
-      # The serving surface only; the file set lives in pyproject.toml so CI and a local
+      # The modules that are clean today; the file set lives in pyproject.toml so CI and a local
       # `make typecheck` cannot disagree about what is checked.
       - name: Typecheck
         run: mypy

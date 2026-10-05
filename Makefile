@@ -15,7 +15,7 @@ help:
 	@echo "test          pytest"
 	@echo "cov           pytest with a coverage report"
 	@echo "lint          run ruff"
-	@echo "typecheck     mypy on the serving surface (api, src/inference, src/config)"
+	@echo "typecheck     mypy on the clean modules (see [tool.mypy] in pyproject.toml)"
 	@echo "audit         pip-audit the pinned runtime requirement sets"
 	@echo "check         lint + typecheck + tests"
 	@echo "deploy-check  render every page in a venv built from requirements.txt ALONE"

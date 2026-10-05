@@ -11,12 +11,12 @@ repos:
         types: [python]
         files: ^(src|api|streamlit_app|tests|scripts)/   # the directories CI lints
       - id: mypy
-        name: mypy (serving surface)
+        name: mypy
         entry: python -m mypy
         language: system
         types: [python]
         pass_filenames: false   # the file set is fixed in pyproject.toml
-        files: ^(api/|src/inference/|src/config\.py)
+        files: ^(api/|src/)
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
