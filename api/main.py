@@ -18,7 +18,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from api.guards import Metrics, RateLimiter
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from src.inference.predictor import ModelNotLoadedError, Predictor
@@ -39,7 +39,7 @@ MAX_BATCH_ROWS = int(os.environ.get("MSCAPITAL_MAX_BATCH_ROWS", "10000"))
 MAX_BODY_BYTES = int(os.environ.get("MSCAPITAL_MAX_BODY_BYTES", str(20 * 1024 * 1024)))
 RATE_LIMIT_PER_MIN = int(os.environ.get("MSCAPITAL_RATE_LIMIT_PER_MIN", "0"))
 # Only the endpoints that run the model are limited; /health must stay answerable.
-_LIMITED_PATHS = {"/predict", "/batch-predict"}
+_LIMITED_PATHS = {"/predict", "/batch-predict", "/v1/predict", "/v1/batch-predict"}
 
 limiter = RateLimiter(RATE_LIMIT_PER_MIN)
 metrics = Metrics()
@@ -77,6 +77,12 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+# The model endpoints are published twice: under /v1, which is the contract from here on,
+# and at the root, where existing clients (the dashboard among them) already call them.
+# /health and /metrics are operational and stay unversioned.
+router = APIRouter()
 
 
 @app.middleware("http")
@@ -156,12 +162,12 @@ def metrics_endpoint() -> str:
     return metrics.render()
 
 
-@app.get("/model-info")
+@router.get("/model-info")
 def model_info() -> dict:
     return _predictor().info()
 
 
-@app.post("/predict", response_model=PredictResponse)
+@router.post("/predict", response_model=PredictResponse)
 def predict(req: PredictRequest) -> PredictResponse:
     p = _predictor()
     try:
@@ -169,6 +175,7 @@ def predict(req: PredictRequest) -> PredictResponse:
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     metrics.add_rows(1)
+    metrics.add_out_of_range(p.out_of_range([req.features]))
     return PredictResponse(
         predicted_return=value,
         direction=Predictor.direction(value, DEADBAND),
@@ -177,7 +184,7 @@ def predict(req: PredictRequest) -> PredictResponse:
     )
 
 
-@app.post("/batch-predict")
+@router.post("/batch-predict")
 def batch_predict(req: BatchPredictRequest) -> dict:
     p = _predictor()
     try:
@@ -185,6 +192,7 @@ def batch_predict(req: BatchPredictRequest) -> dict:
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     metrics.add_rows(len(values))
+    metrics.add_out_of_range(p.out_of_range(req.rows))
     return {
         "n": len(values),
         "predictions": [
@@ -196,7 +204,7 @@ def batch_predict(req: BatchPredictRequest) -> dict:
     }
 
 
-@app.post("/reload")
+@router.post("/reload")
 def reload_model(x_admin_token: str | None = Header(default=None)) -> dict:
     """Pick up a newly saved model without restarting the service. Needs the admin token."""
     if not ADMIN_TOKEN:
@@ -208,3 +216,7 @@ def reload_model(x_admin_token: str | None = Header(default=None)) -> dict:
         raise HTTPException(status_code=401, detail="missing or invalid X-Admin-Token")
     _try_load()
     return health()
+
+
+app.include_router(router, prefix="/v1")
+app.include_router(router, include_in_schema=False)

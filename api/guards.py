@@ -58,6 +58,7 @@ class Metrics:
         self._latency_sum: dict[str, float] = defaultdict(float)
         self._latency_count: dict[str, int] = defaultdict(int)
         self.rows_scored = 0
+        self._out_of_range: dict[str, int] = defaultdict(int)
 
     def observe(self, method: str, path: str, status: int, seconds: float) -> None:
         with self._lock:
@@ -68,6 +69,11 @@ class Metrics:
     def add_rows(self, n: int) -> None:
         with self._lock:
             self.rows_scored += n
+
+    def add_out_of_range(self, counts: dict[str, int]) -> None:
+        with self._lock:
+            for feature, n in counts.items():
+                self._out_of_range[feature] += n
 
     def render(self) -> str:
         with self._lock:
@@ -97,5 +103,10 @@ class Metrics:
                 "# HELP mscapital_rows_scored_total Feature rows scored by the model.",
                 "# TYPE mscapital_rows_scored_total counter",
                 f"mscapital_rows_scored_total {self.rows_scored}",
+                "# HELP mscapital_out_of_range_values_total Values outside the band the model "
+                "was trained on, by feature.",
+                "# TYPE mscapital_out_of_range_values_total counter",
             ]
+            for feature, n in sorted(self._out_of_range.items()):
+                lines.append(f'mscapital_out_of_range_values_total{{feature="{feature}"}} {n}')
         return "\n".join(lines) + "\n"

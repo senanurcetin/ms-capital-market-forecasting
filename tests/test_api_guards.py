@@ -138,3 +138,74 @@ def test_failed_scoring_does_not_count_rows(monkeypatch, tmp_path, kind):
         else:
             c.post("/batch-predict", json={"rows": [{"mkt_mid_last": 1.0}]})
         assert "mscapital_rows_scored_total 0" in c.get("/metrics").text
+
+
+# --- input range check ---------------------------------------------------------------------
+
+def _model_dir_with_ranges(tmp_path, ranges):
+    import json
+
+    d = _make_model_dir(tmp_path)
+    (d / "feature_ranges.json").write_text(json.dumps(ranges), encoding="utf-8")
+    return d
+
+
+def test_out_of_range_inputs_are_counted_per_feature_and_still_scored(monkeypatch, tmp_path):
+    d = _model_dir_with_ranges(tmp_path, {"mkt_mid_last": [0.0, 10.0],
+                                          "ord_ofi_60s": [0.0, 10.0]})
+    monkeypatch.setenv("MSCAPITAL_MODEL_DIR", str(d))
+    import api.main as main
+
+    importlib.reload(main)
+    with TestClient(main.app) as c:
+        r = c.post("/predict", json={"features": {**ROW, "mkt_mid_last": 99.0}})
+        assert r.status_code == 200           # informational: the model still scores it
+        c.post("/batch-predict", json={"rows": [
+            {**ROW, "mkt_mid_last": -5.0}, {**ROW, "mkt_mid_last": 5.0}]})
+        text = c.get("/metrics").text
+    assert 'mscapital_out_of_range_values_total{feature="mkt_mid_last"} 2' in text
+    assert 'feature="ord_ofi_60s"' not in text
+
+
+def test_artefact_without_ranges_still_loads_and_reports_nothing(monkeypatch, tmp_path):
+    with _client(monkeypatch, tmp_path) as c:
+        assert c.post("/predict", json={"features": {**ROW, "mkt_mid_last": 1e9}}
+                      ).status_code == 200
+        assert "out_of_range_values_total{" not in c.get("/metrics").text
+
+
+def test_compute_feature_ranges_uses_quantiles_not_extremes():
+    import numpy as np
+    import pandas as pd
+    from src.inference.predictor import compute_feature_ranges
+
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=100_000)
+    x[0] = 1e9                              # one bad tick must not widen the band
+    ranges = compute_feature_ranges(pd.DataFrame({"a": x}))
+    lo, hi = ranges["a"]
+    assert hi < 10 and lo > -10
+
+
+def test_save_bundle_roundtrips_ranges_and_clears_them_on_overwrite(tmp_path):
+    import json
+
+    from src.inference.predictor import load_bundle, save_bundle
+
+    from tests.test_api import FEATURES, DummyModel
+
+    save_bundle(tmp_path / "m", model=DummyModel(), kind="sklearn", features=FEATURES,
+                name="x", version="v", feature_ranges={"mkt_mid_last": [0.0, 1.0]})
+    assert load_bundle(tmp_path / "m").feature_ranges == {"mkt_mid_last": (0.0, 1.0)}
+    json.loads((tmp_path / "m" / "feature_ranges.json").read_text())
+    # A rebuilt artefact without ranges must not inherit the previous model's.
+    save_bundle(tmp_path / "m", model=DummyModel(), kind="sklearn", features=FEATURES,
+                name="x", version="v2")
+    assert load_bundle(tmp_path / "m").feature_ranges is None
+
+
+def test_rate_limit_covers_the_v1_paths_too(monkeypatch, tmp_path):
+    with _client(monkeypatch, tmp_path, MSCAPITAL_RATE_LIMIT_PER_MIN=1) as c:
+        body = {"features": ROW}
+        assert c.post("/v1/predict", json=body).status_code == 200
+        assert c.post("/v1/predict", json=body).status_code == 429

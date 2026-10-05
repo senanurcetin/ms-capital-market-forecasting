@@ -689,6 +689,15 @@ proxy. `GET /metrics` serves Prometheus text - request counts by route template 
 latency sums, and rows scored. It carries counts only, never request contents, and unknown
 paths share one `unmatched` label so a scanner cannot inflate it.
 
+The model endpoints (`/model-info`, `/predict`, `/batch-predict`, `/reload`) are served under
+`/v1`, which is the documented contract, and still answer at the root for existing clients
+such as the dashboard. `/health` and `/metrics` are operational and unversioned.
+
+When the artefact carries `feature_ranges.json` (written by `ship.py`, `finalize.py` and the
+demo from the 0.1%-99.9% band of the training features), the API counts values outside that
+band per feature in `/metrics` as `mscapital_out_of_range_values_total`. It is a drift signal
+only: the row is still scored. Artefacts built before this simply skip the check.
+
 ```bash
 make ingest      # feather → parquet → BigQuery → staging
 make validate    # data contracts (Pandera) on raw + features

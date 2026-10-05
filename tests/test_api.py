@@ -294,3 +294,26 @@ def test_reload_swaps_a_single_model_for_the_ensemble(tmp_path, monkeypatch,
                     features=FEATURES, name="ensemble", version="v4")
         assert client.post("/reload", headers=ADMIN).status_code == 200
         assert client.get("/model-info").json()["model_name"] == "ensemble"
+
+
+@pytest.mark.parametrize("prefix", ["", "/v1"])
+def test_model_endpoints_answer_at_the_root_and_under_v1(client_with_model, prefix):
+    """Existing clients keep working at the root; /v1 is the contract going forward."""
+    assert client_with_model.get(f"{prefix}/model-info").status_code == 200
+    r = client_with_model.post(f"{prefix}/predict", json={"features": dict.fromkeys(FEATURES, 1.0)})
+    assert r.status_code == 200
+    assert client_with_model.post(
+        f"{prefix}/batch-predict", json={"rows": [dict.fromkeys(FEATURES, 1.0)]}
+    ).status_code == 200
+    assert client_with_model.post(f"{prefix}/reload").status_code == 401   # token-gated, both
+
+
+def test_operational_endpoints_are_not_versioned(client_with_model):
+    assert client_with_model.get("/health").status_code == 200
+    assert client_with_model.get("/metrics").status_code == 200
+    assert client_with_model.get("/v1/health").status_code == 404
+
+
+def test_openapi_documents_v1_only(client_with_model):
+    paths = client_with_model.get("/openapi.json").json()["paths"]
+    assert "/v1/predict" in paths and "/predict" not in paths
