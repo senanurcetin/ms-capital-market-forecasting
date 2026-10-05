@@ -328,3 +328,9 @@ def test_features_lists_the_required_inputs_in_model_order(client_with_model, pr
 
 def test_features_returns_503_without_a_model(client_without_model):
     assert client_without_model.get("/v1/features").status_code == 503
+
+
+def test_a_non_ascii_admin_token_is_rejected_not_a_server_error(client_with_model):
+    """hmac.compare_digest raises TypeError on a non-ASCII str; that used to surface as a 500."""
+    r = client_with_model.post("/reload", headers={"X-Admin-Token": "café".encode("latin-1")})
+    assert r.status_code == 401

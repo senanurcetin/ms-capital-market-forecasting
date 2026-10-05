@@ -209,3 +209,23 @@ def test_rate_limit_covers_the_v1_paths_too(monkeypatch, tmp_path):
         body = {"features": ROW}
         assert c.post("/v1/predict", json=body).status_code == 200
         assert c.post("/v1/predict", json=body).status_code == 429
+
+
+def test_missing_values_are_not_counted_as_out_of_range(monkeypatch, tmp_path):
+    """NaN is how the feature layer says "empty window"; counting it would bury real drift."""
+    d = _model_dir_with_ranges(tmp_path, {"mkt_mid_last": [0.0, 10.0]})
+    monkeypatch.setenv("MSCAPITAL_MODEL_DIR", str(d))
+    import api.main as main
+
+    importlib.reload(main)
+    with TestClient(main.app) as c:
+        # json.loads accepts the bare NaN literal, so a client can send one.
+        c.post("/predict", content='{"features": {"mkt_mid_last": NaN, "ord_ofi_60s": 1,'
+               ' "txn_intensity_60s": 1}}', headers={"Content-Type": "application/json"})
+        assert "out_of_range_values_total{" not in c.get("/metrics").text
+
+
+def test_label_values_are_escaped():
+    from api.guards import _label
+
+    assert _label('a"b\\c\nd') == 'a\\"b\\\\c\\nd'

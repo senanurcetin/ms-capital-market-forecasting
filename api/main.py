@@ -227,7 +227,11 @@ def reload_model(x_admin_token: str | None = Header(default=None)) -> dict:
             status_code=403,
             detail="/reload is disabled: set MSCAPITAL_ADMIN_TOKEN to enable it",
         )
-    if x_admin_token is None or not hmac.compare_digest(x_admin_token, ADMIN_TOKEN):
+    # Compared as bytes: compare_digest raises TypeError on a str with non-ASCII characters,
+    # and a header can carry them, so the str form turned a bad token into a 500.
+    if x_admin_token is None or not hmac.compare_digest(
+        x_admin_token.encode("utf-8"), ADMIN_TOKEN.encode("utf-8")
+    ):
         raise HTTPException(status_code=401, detail="missing or invalid X-Admin-Token")
     _try_load()
     return health()

@@ -207,14 +207,15 @@ class Predictor:
         """How many values per feature fall outside the band the model was trained on.
 
         Informational only - the model still scores such a row. Empty when the artefact
-        carries no ranges, or when nothing is outside them.
+        carries no ranges, or when nothing is outside them. A missing value (NaN) is not
+        out of range: the feature layer emits NaN by design for empty short windows.
         """
         ranges = self.bundle.feature_ranges
         if not ranges or not rows:
             return {}
         counts: dict[str, int] = {}
         for name, (lo, hi) in ranges.items():
-            n = sum(1 for r in rows if name in r and not (lo <= r[name] <= hi))
+            n = sum(1 for r in rows if name in r and r[name] == r[name] and not lo <= r[name] <= hi)
             if n:
                 counts[name] = n
         return counts
