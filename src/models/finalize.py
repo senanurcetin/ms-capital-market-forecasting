@@ -20,7 +20,7 @@ from src.config import load_config
 from src.evaluation.backtesting import backtest, cost_sensitivity, sweep_trade_fraction
 from src.evaluation.metrics import evaluate
 from src.evaluation.temporal_validation import holdout_months
-from src.inference.predictor import compute_feature_ranges, save_bundle
+from src.inference.predictor import compute_feature_ranges, make_provenance, save_bundle
 from src.models.base import feature_columns
 from src.models.train import load_dataset
 
@@ -134,6 +134,8 @@ def main(argv: list[str] | None = None) -> None:
         features=feature_columns(df), name=args.model, version=args.version,
         metrics=metrics,
         feature_ranges=compute_feature_ranges(df.iloc[tr][feature_columns(df)]),
+        provenance=make_provenance(features=feature_columns(df), n_train_rows=len(tr),
+                                   train_months=(0, int(months[tr].max()))),
     )
     (out_dir / "holdout_metrics.json").write_text(
         json.dumps({"model": args.model, "scores": scores, "backtest": bt}, indent=2,
