@@ -26,10 +26,33 @@ class Config(dict):
         return Config(value) if isinstance(value, dict) else value
 
 
+def _rebase_data_root(raw: dict[str, Any], new_root: str) -> None:
+    """Move every path under `paths.data_root` (and the key file beside it) to `new_root`.
+
+    config.yaml spells the default root out in each entry so it stays readable; this keeps
+    one environment variable enough to relocate all of them.
+    """
+    old_root = raw["paths"]["data_root"]
+    new_root = new_root.rstrip("/\\")
+
+    def move(value: str) -> str:
+        return new_root + value[len(old_root):] if value.startswith(old_root) else value
+
+    raw["paths"] = {k: move(v) if k != "data_root" else new_root for k, v in raw["paths"].items()}
+    creds = raw.get("credentials", {})
+    if "gcp_service_account" in creds:
+        creds["gcp_service_account"] = move(creds["gcp_service_account"])
+
+
 @lru_cache(maxsize=1)
 def load_config(path: str | os.PathLike[str] | None = None) -> Config:
+    """Read config.yaml. MSCAPITAL_DATA_ROOT, when set, relocates every data path."""
     with open(path or CONFIG_PATH, encoding="utf-8") as fh:
-        return Config(yaml.safe_load(fh))
+        raw = yaml.safe_load(fh)
+    override = os.environ.get("MSCAPITAL_DATA_ROOT")
+    if override:
+        _rebase_data_root(raw, override)
+    return Config(raw)
 
 
 def gcp_key_path() -> str:

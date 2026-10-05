@@ -667,7 +667,11 @@ environment.** Those are two different checks and both are needed.
 
 `paths.data_root` in `configs/config.yaml` decides where data is written. The default
 is `C:/mscapital_data`, deliberately **outside** any synced folder, because the
-intermediate data is ~20 GB.
+intermediate data is ~20 GB. Set `MSCAPITAL_DATA_ROOT` to relocate every data path at once
+- the pipeline, the API, the dashboard, the Makefile and docker compose all read it.
+
+`POST /reload` swaps the served model, so it is **off by default**: it answers 403 until
+`MSCAPITAL_ADMIN_TOKEN` is set, and then needs a matching `X-Admin-Token` header.
 
 ```bash
 make ingest      # feather → parquet → BigQuery → staging
@@ -769,7 +773,7 @@ src/
   evaluation/            metrics (cosine) · temporal_validation · backtesting · explain
   models/                baseline · lightgbm · xgboost · ensemble · train (CLI) · finalize
   inference/             predictor — used by the API, which never imports training code
-api/main.py              FastAPI: /health /model-info /predict /batch-predict /reload
+api/main.py              FastAPI: /health /model-info /predict /batch-predict /reload (token-gated)
 streamlit_app/           seven-page dashboard (st.navigation router + pages/)
 sql/                     BigQuery staging DDL
 tests/                   92 tests, none requiring live BigQuery or downloaded data
