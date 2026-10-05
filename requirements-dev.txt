@@ -2,6 +2,11 @@
 pytest==8.4.2
 pytest-cov==7.0.0
 ruff==0.14.4
+mypy==1.18.2
+pandas-stubs==2.2.3.250308
+types-PyYAML==6.0.12.20260906
+pip-audit==2.10.1
+pre-commit==4.6.2
 httpx
 # Hyperparameter search only - deliberately NOT in the runtime or pipeline sets, so
 # neither the serving image nor the training image carries it.

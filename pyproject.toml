@@ -55,3 +55,13 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     'def main\(',
 ]
+
+[tool.mypy]
+# Typed where it matters most: the serving surface, which answers requests and so cannot
+# afford a type confusion that only shows up on the first live call. The pipeline and
+# dashboard are not checked yet (43 findings at the time of writing, mostly untyped
+# DataFrame and booster handling); widen `files` as they are cleaned up.
+python_version = "3.11"
+files = ["api", "src/inference", "src/config.py"]
+explicit_package_bases = true
+ignore_missing_imports = true

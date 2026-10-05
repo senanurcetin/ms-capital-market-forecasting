@@ -1,0 +1,29 @@
+# Runs the same checks CI does, on the files you are about to commit.
+#   pip install -r requirements-dev.txt && pre-commit install
+# Tests are not a hook: they take over a minute, so `make check` stays the pre-push habit.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff
+        entry: python -m ruff check
+        language: system
+        types: [python]
+        files: ^(src|api|streamlit_app|tests|scripts)/   # the directories CI lints
+      - id: mypy
+        name: mypy (serving surface)
+        entry: python -m mypy
+        language: system
+        types: [python]
+        pass_filenames: false   # the file set is fixed in pyproject.toml
+        files: ^(api/|src/inference/|src/config\.py)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+        exclude: ^(results/|site/|notebooks/.*\.ipynb|docs/.*\.svg|\.claude/|\.devcontainer/)
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+        exclude: ^results/model\.txt$
+      - id: detect-private-key

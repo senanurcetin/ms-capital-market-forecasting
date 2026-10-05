@@ -651,7 +651,9 @@ optimistic, and only the measurement settles it.
 
 ```bash
 pip install -r requirements-dev.txt
-make check                 # lint + tests (needs NO live BigQuery and NO downloaded data)
+make check                 # lint + typecheck + tests (needs NO live BigQuery and NO downloaded data)
+make audit                 # pip-audit the pinned runtime requirement sets
+pre-commit install         # optional: ruff + mypy + file hygiene on every commit
 make deploy-check          # renders every dashboard page on the runtime deps ALONE
 ```
 

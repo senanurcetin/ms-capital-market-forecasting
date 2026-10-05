@@ -5,7 +5,7 @@ PY ?= python
 # MSCAPITAL_DATA_ROOT is the one variable every component (Python, API, compose) reads.
 DATA_ROOT ?= $(if $(MSCAPITAL_DATA_ROOT),$(MSCAPITAL_DATA_ROOT),C:/mscapital_data)
 
-.PHONY: help install test lint fmt check cov validate schema-check ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit align export-results site api streamlit mlflow \
+.PHONY: help install test lint fmt typecheck audit check cov validate schema-check ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit align export-results site api streamlit mlflow \
         docker-build up down logs clean
 
 help:
@@ -14,7 +14,9 @@ help:
 	@echo "test          pytest"
 	@echo "cov           pytest with a coverage report"
 	@echo "lint          run ruff"
-	@echo "check         lint + tests"
+	@echo "typecheck     mypy on the serving surface (api, src/inference, src/config)"
+	@echo "audit         pip-audit the pinned runtime requirement sets"
+	@echo "check         lint + typecheck + tests"
 	@echo "deploy-check  render every page in a venv built from requirements.txt ALONE"
 	@echo "fmt           ruff --fix"
 	@echo "train-quick   2 folds on a 25% sample, no MLflow - for smoke testing"
@@ -64,7 +66,13 @@ lint:
 fmt:
 	$(PY) -m ruff check src/ api/ streamlit_app/ tests/ scripts/ --fix
 
-check: lint test
+typecheck:
+	$(PY) -m mypy
+
+audit:
+	$(PY) -m pip_audit -r requirements.txt -r requirements-serve.txt -r requirements-app.txt
+
+check: lint typecheck test
 
 # The check that would have caught the matplotlib defect. `make test` runs in whatever
 # virtualenv you happen to be in, which on a development machine is always richer than
