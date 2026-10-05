@@ -18,7 +18,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from api.guards import Metrics, RateLimiter
-from fastapi import APIRouter, FastAPI, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from src.inference.predictor import ModelNotLoadedError, Predictor
@@ -32,6 +32,10 @@ DEADBAND = float(os.environ.get("MSCAPITAL_DIRECTION_DEADBAND", "0"))
 # /reload swaps the served model, so it is not open by default: with no token configured the
 # endpoint answers 403, and with one it needs a matching X-Admin-Token header.
 ADMIN_TOKEN = os.environ.get("MSCAPITAL_ADMIN_TOKEN", "")
+# The model endpoints are open unless this is set, which keeps a local run and the compose
+# stack zero-config; once set, they need a matching X-API-Key header. /health and /metrics
+# stay open so orchestrators and scrapers need no credential.
+API_KEY = os.environ.get("MSCAPITAL_API_KEY", "")
 # Limits on what one request may cost. The body cap is checked from Content-Length before
 # anything is parsed; the row cap is enforced by the request model. Rate limiting is off
 # (0) unless set, because behind a proxy every client shares one address.
@@ -82,7 +86,23 @@ app = FastAPI(
 # The model endpoints are published twice: under /v1, which is the contract from here on,
 # and at the root, where existing clients (the dashboard among them) already call them.
 # /health and /metrics are operational and stay unversioned.
-router = APIRouter()
+def _matches(supplied: str | None, expected: str) -> bool:
+    """Constant-time comparison, as bytes: compare_digest raises TypeError on a str with
+    non-ASCII characters, and a header can carry them, so the str form turned a bad
+    credential into a 500."""
+    return supplied is not None and hmac.compare_digest(
+        supplied.encode("utf-8"), expected.encode("utf-8")
+    )
+
+
+def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
+    if API_KEY and not _matches(x_api_key, API_KEY):
+        raise HTTPException(status_code=401, detail="missing or invalid X-API-Key")
+
+
+router = APIRouter(dependencies=[Depends(require_api_key)])
+# /reload is gated by the admin token instead, so an operator does not need both credentials.
+admin_router = APIRouter()
 
 
 @app.middleware("http")
@@ -219,7 +239,7 @@ def batch_predict(req: BatchPredictRequest) -> dict:
     }
 
 
-@router.post("/reload")
+@admin_router.post("/reload")
 def reload_model(x_admin_token: str | None = Header(default=None)) -> dict:
     """Pick up a newly saved model without restarting the service. Needs the admin token."""
     if not ADMIN_TOKEN:
@@ -227,15 +247,12 @@ def reload_model(x_admin_token: str | None = Header(default=None)) -> dict:
             status_code=403,
             detail="/reload is disabled: set MSCAPITAL_ADMIN_TOKEN to enable it",
         )
-    # Compared as bytes: compare_digest raises TypeError on a str with non-ASCII characters,
-    # and a header can carry them, so the str form turned a bad token into a 500.
-    if x_admin_token is None or not hmac.compare_digest(
-        x_admin_token.encode("utf-8"), ADMIN_TOKEN.encode("utf-8")
-    ):
+    if not _matches(x_admin_token, ADMIN_TOKEN):
         raise HTTPException(status_code=401, detail="missing or invalid X-Admin-Token")
     _try_load()
     return health()
 
 
-app.include_router(router, prefix="/v1")
-app.include_router(router, include_in_schema=False)
+for _r in (router, admin_router):
+    app.include_router(_r, prefix="/v1")
+    app.include_router(_r, include_in_schema=False)
