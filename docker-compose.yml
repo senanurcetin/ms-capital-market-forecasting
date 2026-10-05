@@ -17,6 +17,7 @@ services:
       MSCAPITAL_DIRECTION_DEADBAND: "0"
       # /reload is disabled unless this is set; pass it as X-Admin-Token.
       MSCAPITAL_ADMIN_TOKEN: ${MSCAPITAL_ADMIN_TOKEN:-}
+      MSCAPITAL_RATE_LIMIT_PER_MIN: ${MSCAPITAL_RATE_LIMIT_PER_MIN:-0}
     volumes:
       - ${MSCAPITAL_DATA_ROOT:-C:/mscapital_data}:/data
     healthcheck:

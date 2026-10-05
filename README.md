@@ -673,6 +673,20 @@ intermediate data is ~20 GB. Set `MSCAPITAL_DATA_ROOT` to relocate every data pa
 `POST /reload` swaps the served model, so it is **off by default**: it answers 403 until
 `MSCAPITAL_ADMIN_TOKEN` is set, and then needs a matching `X-Admin-Token` header.
 
+The API also guards what one request may cost, all through environment variables:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `MSCAPITAL_MAX_BATCH_ROWS` | 10000 | rows per `/batch-predict` (422 above it) |
+| `MSCAPITAL_MAX_BODY_BYTES` | 20 MiB | 413 before the body is parsed; chunked uploads without a length get 411 |
+| `MSCAPITAL_RATE_LIMIT_PER_MIN` | 0 (off) | per-client limit on `/predict` and `/batch-predict`, 429 with `Retry-After` |
+
+The rate limit is per process and keyed on the client address, so it is off by default:
+behind a reverse proxy every client shares one address, and a shared limit belongs in the
+proxy. `GET /metrics` serves Prometheus text - request counts by route template and status,
+latency sums, and rows scored. It carries counts only, never request contents, and unknown
+paths share one `unmatched` label so a scanner cannot inflate it.
+
 ```bash
 make ingest      # feather → parquet → BigQuery → staging
 make validate    # data contracts (Pandera) on raw + features
@@ -773,7 +787,8 @@ src/
   evaluation/            metrics (cosine) · temporal_validation · backtesting · explain
   models/                baseline · lightgbm · xgboost · ensemble · train (CLI) · finalize
   inference/             predictor — used by the API, which never imports training code
-api/main.py              FastAPI: /health /model-info /predict /batch-predict /reload (token-gated)
+api/main.py              FastAPI: /health /model-info /predict /batch-predict /metrics /reload (token-gated)
+api/guards.py            rate limiter + Prometheus metrics (standard library only)
 streamlit_app/           seven-page dashboard (st.navigation router + pages/)
 sql/                     BigQuery staging DDL
 tests/                   92 tests, none requiring live BigQuery or downloaded data
