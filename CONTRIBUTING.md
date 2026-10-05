@@ -41,6 +41,12 @@ scikit-learn, lightgbm, xgboost, pyarrow, joblib, shap, optuna - is excluded on 
 predictions or fail to load a saved booster. To move one, bump the pin yourself, re-run
 `make ship`, and compare the scores before and after.
 
+## Releasing
+
+Releases are cut from `main` after CI is green: push a `v1.2.3` tag, or run *Actions -> Release
+images -> Run workflow* with that version (it creates the tag on the head of `main`). The workflow
+publishes the `api` and `app` images to ghcr.io as `1.2.3` and `v1.2.3`. Update `CHANGELOG.md` first.
+
 ## Refreshing results
 
 `make export-results` rebuilds `results/` from a live pipeline run, and the leaderboard snapshot

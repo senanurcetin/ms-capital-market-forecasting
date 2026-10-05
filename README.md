@@ -836,8 +836,11 @@ subject to the
 
 [`CONTRIBUTING.md`](CONTRIBUTING.md) says what a change has to do, [`SECURITY.md`](SECURITY.md)
 how to report a vulnerability and what to harden before exposing the API, and
-[`CHANGELOG.md`](CHANGELOG.md) what has changed. Pushing a `v*` tag from `main` publishes the
-`api` and `app` images to GitHub Container Registry (`.github/workflows/release.yml`).
+[`CHANGELOG.md`](CHANGELOG.md) what has changed. Pushing a `v*` tag from `main` - or running
+*Actions -> Release images -> Run workflow* with a version such as `v1.0.0`, which creates the tag
+itself - publishes the `api` and `app` images to GitHub Container Registry
+(`.github/workflows/release.yml`). Either way only a commit on `main` is published, and a by-hand run
+must start from `main`.
 
 Nothing here is investment advice: the backtesting module measures a model's ranking power
 for research, and was never evaluated as a trading strategy.
