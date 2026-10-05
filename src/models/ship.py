@@ -44,7 +44,7 @@ import numpy as np
 
 from src.config import load_config
 from src.evaluation.metrics import cosine_similarity
-from src.inference.predictor import compute_feature_ranges, save_bundle
+from src.inference.predictor import compute_feature_ranges, make_provenance, save_bundle
 from src.models.base import feature_columns
 from src.models.ensemble import CosineOptimalEnsemble
 from src.models.train import load_dataset
@@ -115,7 +115,9 @@ def build(*, rounds: int = 2000, early_stopping: int = 100, version: str = "v4")
     save_bundle(
         model_dir, model={"models": models, "weights": weights}, kind="ensemble",
         features=feature_columns(df), name="ensemble", version=version,
-        feature_ranges=compute_feature_ranges(df[feature_columns(df)]),
+        feature_ranges=compute_feature_ranges(df.iloc[tr][feature_columns(df)]),
+        provenance=make_provenance(features=feature_columns(df), n_train_rows=len(tr),
+                                   train_months=(0, TRAIN_END)),
         metrics={"train_months": f"0-{TRAIN_END}", "stop_month": STOP_MONTH,
                  "blend_months": f"{BLEND_MONTHS[0]}-{BLEND_MONTHS[1]}",
                  "blend_in_sample_cosine": round(ens_score, 6),

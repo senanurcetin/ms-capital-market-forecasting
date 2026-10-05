@@ -8,8 +8,10 @@ Design rules:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -45,6 +47,9 @@ class ModelBundle:
     metrics: dict = field(default_factory=dict)
     trained_at: str | None = None
     feature_ranges: dict[str, tuple[float, float]] | None = None
+    # Where the artefact came from: code revision, feature-set hash, training window. Empty
+    # for artefacts written before this existed.
+    provenance: dict = field(default_factory=dict)
 
 
 def _load_booster(path: Path, kind: str):
@@ -86,6 +91,7 @@ def load_bundle(model_dir: str | Path) -> ModelBundle:
         ranges = {k: (float(v[0]), float(v[1])) for k, v in raw.items()}
     return ModelBundle(
         feature_ranges=ranges,
+        provenance=meta.get("provenance", {}),
         model=_load_booster(model_path, meta["kind"]),
         features=list(meta["features"]),
         name=meta["name"],
@@ -110,6 +116,31 @@ ARTEFACT_FILES = (
 )
 
 
+def make_provenance(*, features: list[str], n_train_rows: int,
+                    train_months: tuple[int, int]) -> dict:
+    """What an artefact was built from, so a served model can be traced to its inputs.
+
+    The feature hash is over the ORDERED names: two artefacts with the same list in a
+    different order are different models to a booster, which indexes by position. The git
+    revision is best-effort - a container or an export has no repository to ask.
+    """
+    try:
+        rev = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
+                             timeout=5, check=True).stdout.strip()
+        dirty = bool(subprocess.run(["git", "status", "--porcelain"], capture_output=True,
+                                    text=True, timeout=5, check=True).stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        rev, dirty = None, None
+    return {
+        "git_commit": rev,
+        "git_dirty": dirty,
+        "features_sha256": hashlib.sha256("\n".join(features).encode()).hexdigest(),
+        "n_features": len(features),
+        "n_train_rows": int(n_train_rows),
+        "train_months": [int(train_months[0]), int(train_months[1])],
+    }
+
+
 def compute_feature_ranges(X: pd.DataFrame, *, lower_q: float = 0.001, upper_q: float = 0.999,
                            max_rows: int = 200_000, seed: int = 0) -> dict[str, list[float]]:
     """The central band of each training feature, for flagging inputs far outside it.
@@ -131,7 +162,8 @@ def compute_feature_ranges(X: pd.DataFrame, *, lower_q: float = 0.001, upper_q: 
 
 def save_bundle(model_dir: str | Path, *, model, kind: str, features: list[str],
                 name: str, version: str, metrics: dict | None = None,
-                feature_ranges: dict[str, list[float]] | None = None) -> Path:
+                feature_ranges: dict[str, list[float]] | None = None,
+                provenance: dict | None = None) -> Path:
     """Called from the training side; writes the artefact in servable form."""
     import datetime as _dt
 
@@ -163,6 +195,8 @@ def save_bundle(model_dir: str | Path, *, model, kind: str, features: list[str],
         "features": list(features), "metrics": metrics or {},
         "trained_at": _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds"),
     }
+    if provenance:
+        meta["provenance"] = provenance
     (model_dir / METADATA_FILE).write_text(json.dumps(meta, indent=2), encoding="utf-8")
     if feature_ranges:
         (model_dir / RANGES_FILE).write_text(json.dumps(feature_ranges), encoding="utf-8")
@@ -256,5 +290,5 @@ class Predictor:
         return {
             "model_name": b.name, "model_version": b.version,
             "n_features": len(b.features), "trained_at": b.trained_at,
-            "metrics": b.metrics,
+            "metrics": b.metrics, "provenance": b.provenance,
         }

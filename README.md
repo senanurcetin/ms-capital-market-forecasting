@@ -655,6 +655,24 @@ optimistic, and only the measurement settles it.
 
 ---
 
+## Model releases
+
+A model used to be whatever sat in `models/current`, so replacing it overwrote the previous one.
+`src/inference/registry.py` keeps every promotion:
+
+```bash
+make promote DIR=<model dir>   # validate by loading it, store a copy as a release, serve it
+make releases                  # newest first, * marks the served one
+make rollback                  # serve the previous release; a release rolled away from is skipped
+python -m src.inference.registry activate <release>   # a deliberate jump to any release
+```
+
+then `POST /reload` on the API. Releases are copies, not symlinks (this is developed on Windows,
+where a symlink needs elevated rights); promotion refuses an artefact the API could not load; if
+the swap fails the previous `current` is restored. Each artefact also records its provenance in
+`model_meta.json` - git revision (and whether the tree was dirty), a hash of the *ordered*
+feature list, training rows and months - which `/model-info` reports.
+
 ## Setup and usage
 
 ```bash

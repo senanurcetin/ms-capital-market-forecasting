@@ -5,11 +5,14 @@ PY ?= python
 # MSCAPITAL_DATA_ROOT is the one variable every component (Python, API, compose) reads.
 DATA_ROOT ?= $(if $(MSCAPITAL_DATA_ROOT),$(MSCAPITAL_DATA_ROOT),C:/mscapital_data)
 
-.PHONY: help pipeline install test lint fmt typecheck audit check cov validate schema-check ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit prune align export-results site api streamlit mlflow \
+.PHONY: help pipeline promote rollback releases install test lint fmt typecheck audit check cov validate schema-check ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit prune align export-results site api streamlit mlflow \
         docker-build up down logs clean
 
 help:
 	@echo "pipeline      the real thing, in order: ingest validate features train ship export-results"
+	@echo "promote       store a model dir as a release and serve it:  make promote DIR=path"
+	@echo "rollback      serve the previous release again"
+	@echo "releases      list releases, newest first (* = served)"
 	@echo "demo          run the whole project end to end on synthetic data (~30 s)"
 	@echo "install       install dependencies (including dev)"
 	@echo "test          pytest"
@@ -52,6 +55,16 @@ help:
 
 demo:
 	$(PY) -m src.demo
+
+# Model releases (see src/inference/registry.py). After either, POST /reload on the API.
+promote:
+	$(PY) -m src.inference.registry promote $(DIR)
+
+rollback:
+	$(PY) -m src.inference.registry rollback
+
+releases:
+	$(PY) -m src.inference.registry list
 
 # The whole pipeline on the real data, in dependency order. It needs the competition files, a
 # BigQuery project and hours of compute - `demo` is the 15-second version of the same shape.
