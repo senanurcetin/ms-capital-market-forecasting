@@ -32,6 +32,15 @@ those to be tested, the change is probably testing the wrong thing.
 - **No secrets, no data.** `.gitignore` excludes keys and the competition data; do not add either.
   `results/` carries derived aggregates only.
 
+## Dependencies
+
+Every requirements file is pinned exactly. Dependabot proposes updates, grouped (dev tools,
+dashboard, serving, cloud clients), and CI decides. The numerics stack - numpy, pandas, scipy,
+scikit-learn, lightgbm, xgboost, pyarrow, joblib, shap, optuna - is excluded on purpose:
+`results/` and the shipped artefact were produced with those exact versions, and a bump can change
+predictions or fail to load a saved booster. To move one, bump the pin yourself, re-run
+`make ship`, and compare the scores before and after.
+
 ## Refreshing results
 
 `make export-results` rebuilds `results/` from a live pipeline run, and the leaderboard snapshot

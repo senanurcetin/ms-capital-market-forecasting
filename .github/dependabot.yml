@@ -5,14 +5,48 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    groups:
-      python-minor-and-patch:
-        update-types: [minor, patch]
     open-pull-requests-limit: 5
+
+    # The numerics stack is deliberately NOT auto-updated. results/ and the shipped model artefact
+    # were produced with these exact versions, and a bump can change predictions (a different
+    # default, a different float path) or fail to load a saved booster. Moving one is a measured
+    # act - bump the pin, re-run `make ship`, compare the scores - not a weekly chore. pandas-stubs
+    # is tied to the pandas pin. A security advisory still opens a PR: ignore only covers
+    # version updates.
+    ignore:
+      - dependency-name: numpy
+      - dependency-name: pandas
+      - dependency-name: pandas-stubs
+      - dependency-name: scipy
+      - dependency-name: scikit-learn
+      - dependency-name: lightgbm
+      - dependency-name: xgboost
+      - dependency-name: xgboost-cpu
+      - dependency-name: pyarrow
+      - dependency-name: joblib
+      - dependency-name: shap
+      - dependency-name: optuna
+
+    # Grouped by what breaks together, so one failing bump does not sink the rest (a single group
+    # of 22 updates failed as a whole and could be neither merged nor split).
+    groups:
+      dev-tools:
+        patterns: [pytest, pytest-cov, ruff, mypy, types-*, pip-audit, pre-commit, httpx]
+      dashboard:
+        patterns: [streamlit, plotly]
+      serving:
+        patterns: [fastapi, uvicorn, pydantic]
+      gcp:
+        patterns: ["google-cloud-*", db-dtypes]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+
   - package-ecosystem: docker
     directory: /
     schedule:
