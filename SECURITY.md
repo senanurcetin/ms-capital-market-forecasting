@@ -26,6 +26,10 @@ The defaults favour a zero-config local run; a deployment should change them:
 | `MSCAPITAL_RATE_LIMIT_PER_MIN` | 0 - off | a client address identifies one caller (not behind a shared proxy) |
 | `MSCAPITAL_MAX_BODY_BYTES` / `MSCAPITAL_MAX_BATCH_ROWS` | 20 MiB / 10,000 | you want a tighter cost bound per request |
 
+The MLflow server in `docker-compose.yml` has no authentication, so it is published on `127.0.0.1`
+only; set `MSCAPITAL_MLFLOW_BIND=0.0.0.0` to expose it on purpose, and put something in front of it
+if you do.
+
 Terminate TLS in front of the API: it does not do so itself, and the credentials are sent as
 headers. The container runs as a non-root user. `/health` and `/metrics` are unauthenticated by
 design and carry counts only, never request contents.

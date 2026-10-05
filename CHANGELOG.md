@@ -34,7 +34,16 @@ Notable changes to the code, the serving API and the published results. The form
   Each was proposed by Dependabot and passed CI on its own; they were applied together because the
   Actions bumps edit adjacent lines of the same workflow files and would conflict one by one.
 
+- `streamlit` 1.64.0, `fastapi` 0.142.2, `uvicorn` 0.54.0, `pydantic` 2.13.5,
+  `google-cloud-bigquery` 3.46.1 (+ storage 2.42.0), `db-dtypes` 1.7.2, `duckdb` 1.5.6, `ruff` 0.16.10,
+  `pytest-cov` 7.1.0, `docker/login-action` 4, `docker/metadata-action` 6.
+- **Security:** `mlflow` 3.15.2 -> 3.16.1 (PYSEC-2026-3865) and a pin of the transitive `cryptography`
+  to 50.0.2 (PYSEC-2026-3552). All four requirement sets now pass `pip-audit`; `make audit` covers
+  the pipeline set too. The weekly audit would have gone red on both.
+
 ### Fixed
+- The MLflow server in `docker-compose.yml` was published on every interface with no authentication;
+  it now binds to `127.0.0.1` unless `MSCAPITAL_MLFLOW_BIND` says otherwise.
 - Dependabot was opening a single 22-update group that failed as a whole, plus major bumps of the
   numerics stack (pandas 3). The numerics libraries are no longer auto-updated (a bump can change
   predictions or break loading a saved booster); the rest are grouped by what breaks together.
