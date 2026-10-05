@@ -317,3 +317,14 @@ def test_operational_endpoints_are_not_versioned(client_with_model):
 def test_openapi_documents_v1_only(client_with_model):
     paths = client_with_model.get("/openapi.json").json()["paths"]
     assert "/v1/predict" in paths and "/predict" not in paths
+
+
+@pytest.mark.parametrize("prefix", ["", "/v1"])
+def test_features_lists_the_required_inputs_in_model_order(client_with_model, prefix):
+    body = client_with_model.get(f"{prefix}/features").json()
+    assert body["features"] == FEATURES and body["n_features"] == len(FEATURES)
+    assert body["ranges"] is None            # this artefact carries none
+
+
+def test_features_returns_503_without_a_model(client_without_model):
+    assert client_without_model.get("/v1/features").status_code == 503
