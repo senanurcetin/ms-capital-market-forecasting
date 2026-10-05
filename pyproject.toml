@@ -58,15 +58,10 @@ exclude_lines = [
 ]
 
 [tool.mypy]
-# Typed where it is clean, and always on the serving surface, which answers requests and so
-# cannot afford a type confusion that only shows up on the first live call. The modules
-# left out of `files` (src/models, src/data, streamlit_app) still carry findings (30 at the time of
-# writing, mostly untyped DataFrame and booster handling). They are left out rather than silenced,
-# and changing training code without being able to run it, only to quiet a checker, was not worth
-# the risk. To bring one in: fix it, add its path to `files`.
+# The whole project except tests and the notebook builders: the serving API, the pipeline, the
+# models and the dashboard. No `ignore_errors` and no per-module exclusions - a finding is either
+# fixed or the line it sits on says why it is not.
 python_version = "3.11"
-files = ["api", "src/inference", "src/config.py", "src/features", "src/evaluation"]
+files = ["api", "src", "streamlit_app", "scripts"]
 explicit_package_bases = true
 ignore_missing_imports = true
-# A checked module that imports an unchecked one must not report the latter's findings.
-follow_imports = "silent"

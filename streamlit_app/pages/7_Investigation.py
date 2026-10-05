@@ -144,6 +144,7 @@ else:
         Read from the exported result rather than written into the prose, so the sentences
         below cannot drift from the experiment that produced them.
         """
+        assert geo is not None          # the enclosing else-branch only runs when it loaded
         return float(geo.loc[geo["variant"] == variant, "gain"].iloc[0])
 
     pooled = gm["best_pooled_gain"]

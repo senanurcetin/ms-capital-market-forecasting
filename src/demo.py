@@ -118,9 +118,9 @@ def run(samples: int = 4000, keep: bool = False,
         build_model_factories(models or ["zero", "mean", "ridge", "lightgbm"], quick=True),
         df=df, log_mlflow=False,
     )
-    table = results_frame(summary)
-    log.info("\n%s", table.to_string(index=False))
-    results["scores"] = table.set_index("model")["cosine_mean"].to_dict()
+    scores_table = results_frame(summary)
+    log.info("\n%s", scores_table.to_string(index=False))
+    results["scores"] = scores_table.set_index("model")["cosine_mean"].to_dict()
 
     _banner("5/5", "final model, hold-out measurement, servable artefact")
     import numpy as np

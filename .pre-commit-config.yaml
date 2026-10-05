@@ -16,7 +16,7 @@ repos:
         language: system
         types: [python]
         pass_filenames: false   # the file set is fixed in pyproject.toml
-        files: ^(api/|src/)
+        files: ^(api/|src/|streamlit_app/|scripts/)
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:

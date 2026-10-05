@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import logging
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 from src.config import load_config
@@ -118,7 +119,7 @@ def step_submission(model_version: str = "v1") -> Path:
     return path
 
 
-STEPS = {
+STEPS: dict[str, Callable[[], object]] = {
     "verify": step_verify_source,
     "convert": step_convert,
     "upload": step_upload,

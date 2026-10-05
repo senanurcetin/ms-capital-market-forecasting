@@ -81,6 +81,7 @@ if st.button("Predict", type="primary"):
     if health:
         status, body = api_post("/predict", {"features": features})
     else:
+        assert local is not None    # no API and no local artefact already ended in st.stop()
         value = float(local.predict([features])[0])
         status, body = 200, {
             "predicted_return": value,
