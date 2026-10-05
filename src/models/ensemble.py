@@ -49,6 +49,8 @@ class CosineOptimalEnsemble:
         return np.asarray(preds, dtype=np.float64) @ self.weights_
 
     def weight_map(self) -> dict[str, float]:
+        if self.weights_ is None:
+            raise RuntimeError("fit() must be called first")
         return dict(zip(self.model_names, map(float, self.weights_), strict=False))
 
 
@@ -65,7 +67,7 @@ def evaluate_ensemble_gain(
     singles = {n: cosine_similarity(y, preds[n]) for n in names}
     ens = CosineOptimalEnsemble(names, non_negative=non_negative).fit(P, y)
     ens_score = cosine_similarity(y, ens.predict(P))
-    best_name = max(singles, key=singles.get)
+    best_name = max(singles, key=lambda n: singles[n])
     return {
         "single_scores": singles,
         "best_single": best_name,

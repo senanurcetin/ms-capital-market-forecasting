@@ -19,7 +19,7 @@ help:
 	@echo "test          pytest"
 	@echo "cov           pytest with a coverage report"
 	@echo "lint          run ruff"
-	@echo "typecheck     mypy on the clean modules (see [tool.mypy] in pyproject.toml)"
+	@echo "typecheck     mypy on the whole project (api, src, streamlit_app, scripts)"
 	@echo "audit         pip-audit all four pinned requirement sets"
 	@echo "check         lint + typecheck + tests"
 	@echo "deploy-check  render every page in a venv built from requirements.txt ALONE"

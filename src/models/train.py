@@ -15,6 +15,7 @@ import logging
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -27,7 +28,7 @@ from src.evaluation.temporal_validation import (
     iter_folds,
     stability,
 )
-from src.models.base import feature_columns
+from src.models.base import Model, feature_columns
 from src.models.ensemble import evaluate_ensemble_gain
 
 log = logging.getLogger(__name__)
@@ -101,7 +102,7 @@ def assert_fold_integrity(months: np.ndarray, fold: Fold,
 
 
 def run_walk_forward(
-    model_factories: dict[str, Callable[[], object]],
+    model_factories: dict[str, Callable[[], Model]],
     df: pd.DataFrame | None = None,
     *,
     experiment: str | None = None,
@@ -184,7 +185,7 @@ def run_walk_forward(
         fold_preds.append(preds_this_fold)
         fold_truth.append(yva)
 
-    summary = {}
+    summary: dict[str, dict[str, Any]] = {}
     for name, rows in results.items():
         cos = [r["cosine"] for r in rows]
         summary[name] = {"per_fold": rows, "stability": stability(cos)}

@@ -41,6 +41,13 @@ Notable changes to the code, the serving API and the published results. The form
   to 50.0.2 (PYSEC-2026-3552). All four requirement sets now pass `pip-audit`; `make audit` covers
   the pipeline set too. The weekly audit would have gone red on both.
 
+### Changed (typing)
+- `mypy` now covers the whole project (67 files: `api`, `src`, `streamlit_app`, `scripts`) with no
+  exclusions and no ignores. The 30 findings in the training and dashboard code were fixed in place;
+  `make demo` was run before and after and its 36 score lines are identical. Almost all were typing
+  noise; the one worth a line is that `importance()` on an unfitted model failed with an opaque
+  `AttributeError` on `None` and is now a `RuntimeError` saying `fit()` must be called first.
+
 ### Fixed
 - The MLflow server in `docker-compose.yml` was published on every interface with no authentication;
   it now binds to `127.0.0.1` unless `MSCAPITAL_MLFLOW_BIND` says otherwise.

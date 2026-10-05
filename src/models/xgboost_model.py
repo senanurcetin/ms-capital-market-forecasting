@@ -88,5 +88,7 @@ class XGBoostModel:
         return self.booster_.predict(dm, iteration_range=rng)
 
     def importance(self, kind: str = "gain") -> pd.Series:
+        if self.booster_ is None:
+            raise RuntimeError("fit() must be called first")
         raw = self.booster_.get_score(importance_type=kind)
         return pd.Series(raw).reindex(self.features_).fillna(0.0).sort_values(ascending=False)

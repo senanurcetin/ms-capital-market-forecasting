@@ -1,6 +1,7 @@
 """Page 4 - Model comparison and temporal stability."""
 import sys
 from pathlib import Path
+from typing import Any
 
 # Put the repository root on sys.path before importing anything from it.
 #
@@ -26,7 +27,7 @@ if table is None or summary is None:
     st.stop()
 
 st.subheader("Model comparison")
-fmt = {c: "{:+.5f}" for c in table.columns if c.startswith("cosine")}
+fmt: dict[Any, Any] = {c: "{:+.5f}" for c in table.columns if c.startswith("cosine")}
 st.dataframe(table.style.format(fmt), width="stretch")
 st.caption(
     "Cosine is SCALE-invariant but NOT SHIFT-invariant: the constant-prediction 'mean' "

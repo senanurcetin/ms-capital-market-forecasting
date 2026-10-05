@@ -100,8 +100,8 @@ def run(*, seeds: tuple[int, ...] = (0, 1), rounds: int = ROUNDS) -> pd.DataFram
     log.info("fixed window : %+.6f cosine per month of staleness", fix_slope)
 
     # The submitted model stopped at 63; a shipped model would stop at 70.
-    freshest = float(cum.loc[cum.gap_to_eval.idxmin(), "cosine"])
-    stalest = float(cum.loc[cum.gap_to_eval.idxmax(), "cosine"])
+    freshest = float(cum.at[cum.gap_to_eval.idxmin(), "cosine"])
+    stalest = float(cum.at[cum.gap_to_eval.idxmax(), "cosine"])
     per_month = (freshest - stalest) / (cum.gap_to_eval.max() - cum.gap_to_eval.min())
     projected = per_month * 7          # months 64-70, discarded by the submitted model
     log.info("")

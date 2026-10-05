@@ -13,6 +13,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -60,6 +61,9 @@ def main(argv: list[str] | None = None) -> None:
     )
     assert months[tr].max() < ho_lo and months[va].max() < ho_lo, "hold-out leaked in"
 
+    # Three different wrappers; the lightgbm branch below needs its own booster_, so the
+    # common Model protocol is too narrow here.
+    model: Any
     if args.model == "lightgbm":
         from src.models.lightgbm_model import LightGBMModel
 
@@ -123,6 +127,7 @@ def main(argv: list[str] | None = None) -> None:
                "backtest_total_return": round(bt["total_return"], 6)}
     model_dir = Path(cfg.paths.data_root) / "models" / "current"
 
+    payload: Any
     if args.model == "lightgbm":
         payload, save_kind = model.booster_, "lightgbm"
     else:

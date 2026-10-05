@@ -45,7 +45,7 @@ import numpy as np
 from src.config import load_config
 from src.evaluation.metrics import cosine_similarity
 from src.inference.predictor import compute_feature_ranges, make_provenance, save_bundle
-from src.models.base import feature_columns
+from src.models.base import Model, feature_columns
 from src.models.ensemble import CosineOptimalEnsemble
 from src.models.train import load_dataset
 
@@ -76,7 +76,7 @@ def build(*, rounds: int = 2000, early_stopping: int = 100, version: str = "v4")
     log.info("that is %d of 71 months in training, against 64 for the submitted artefact",
              TRAIN_END + 1)
 
-    models = {
+    models: dict[str, Model] = {
         "lightgbm": LightGBMModel(num_boost_round=rounds,
                                   early_stopping_rounds=early_stopping),
         "xgboost": XGBoostModel(num_boost_round=rounds,

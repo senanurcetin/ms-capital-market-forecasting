@@ -10,6 +10,9 @@ being scale-invariant, it does not have to rank models the same way RMSE does.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
@@ -54,7 +57,8 @@ class LightGBMModel:
             eval_set: tuple[pd.DataFrame, np.ndarray] | None = None, **_) -> LightGBMModel:
         self.features_ = feature_columns(X)
         dtrain = lgb.Dataset(X[self.features_], label=y, free_raw_data=True)
-        valid_sets, callbacks = [], [lgb.log_evaluation(period=200)]
+        valid_sets: list[lgb.Dataset] = []
+        callbacks: list[Callable[..., Any]] = [lgb.log_evaluation(period=200)]
         if eval_set is not None:
             Xv, yv = eval_set
             valid_sets = [lgb.Dataset(Xv[self.features_], label=yv, reference=dtrain)]
@@ -74,9 +78,13 @@ class LightGBMModel:
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         if self.booster_ is None:
             raise RuntimeError("fit() must be called first")
-        return self.booster_.predict(X[self.features_], num_iteration=self.best_iteration_)
+        return np.asarray(
+            self.booster_.predict(X[self.features_], num_iteration=self.best_iteration_)
+        )
 
     def importance(self, kind: str = "gain") -> pd.Series:
+        if self.booster_ is None:
+            raise RuntimeError("fit() must be called first")
         return pd.Series(
             self.booster_.feature_importance(importance_type=kind),
             index=self.features_,
