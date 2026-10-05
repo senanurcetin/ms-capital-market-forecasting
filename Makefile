@@ -5,11 +5,12 @@ PY ?= python
 # MSCAPITAL_DATA_ROOT is the one variable every component (Python, API, compose) reads.
 DATA_ROOT ?= $(if $(MSCAPITAL_DATA_ROOT),$(MSCAPITAL_DATA_ROOT),C:/mscapital_data)
 
-.PHONY: help pipeline promote rollback releases install test lint fmt typecheck audit check cov validate schema-check ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit prune align export-results site api streamlit mlflow \
+.PHONY: help smoke pipeline promote rollback releases install test lint fmt typecheck audit check cov validate schema-check ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit prune align export-results site api streamlit mlflow \
         docker-build up down logs clean
 
 help:
 	@echo "pipeline      the real thing, in order: ingest validate features train ship export-results"
+	@echo "smoke         drive a running API over HTTP:  make smoke URL=http://localhost:8000 [KEY=...]"
 	@echo "promote       store a model dir as a release and serve it:  make promote DIR=path"
 	@echo "rollback      serve the previous release again"
 	@echo "releases      list releases, newest first (* = served)"
@@ -55,6 +56,10 @@ help:
 
 demo:
 	$(PY) -m src.demo
+
+# End-to-end check of a running API (see scripts/e2e_smoke.py); CI runs it against the image.
+smoke:
+	$(PY) scripts/e2e_smoke.py $(URL) $(if $(KEY),--api-key $(KEY))
 
 # Model releases (see src/inference/registry.py). After either, POST /reload on the API.
 promote:
