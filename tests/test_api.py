@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from src.inference.predictor import Predictor, save_bundle
 
 FEATURES = ["mkt_mid_last", "ord_ofi_60s", "txn_intensity_60s"]
+ADMIN = {"X-Admin-Token": "s3cret"}
 
 
 class DummyModel:
@@ -39,8 +40,9 @@ def _make_model_dir(tmp_path):
     return d
 
 
-def _client(monkeypatch, model_dir):
+def _client(monkeypatch, model_dir, admin_token="s3cret"):
     monkeypatch.setenv("MSCAPITAL_MODEL_DIR", str(model_dir))
+    monkeypatch.setenv("MSCAPITAL_ADMIN_TOKEN", admin_token)
     import api.main as main
 
     importlib.reload(main)
@@ -133,7 +135,29 @@ def test_reload_picks_up_model(tmp_path, monkeypatch):
     with _client(monkeypatch, model_dir) as c:
         assert c.get("/health").json()["status"] == "degraded"
         _make_model_dir(tmp_path)
-        assert c.post("/reload").json()["status"] == "ok"
+        assert c.post("/reload", headers=ADMIN).json()["status"] == "ok"
+
+
+def test_reload_is_disabled_without_a_configured_token(tmp_path, monkeypatch):
+    """Secure default: a deployment that never set a token cannot have its model swapped."""
+    with _client(monkeypatch, tmp_path / "missing", admin_token="") as c:
+        assert c.post("/reload").status_code == 403
+        assert c.post("/reload", headers=ADMIN).status_code == 403
+
+
+@pytest.mark.parametrize("headers", [{}, {"X-Admin-Token": "wrong"}])
+def test_reload_rejects_a_missing_or_wrong_token(client_with_model, headers):
+    assert client_with_model.post("/reload", headers=headers).status_code == 401
+
+
+def test_model_dir_follows_data_root(tmp_path, monkeypatch):
+    """One variable moves everything; MODEL_DIR only overrides when set explicitly."""
+    monkeypatch.delenv("MSCAPITAL_MODEL_DIR", raising=False)
+    monkeypatch.setenv("MSCAPITAL_DATA_ROOT", str(tmp_path))
+    import api.main as main
+
+    importlib.reload(main)
+    assert f"{tmp_path}/models/current" == main.MODEL_DIR
 
 
 def test_save_bundle_roundtrip(tmp_path):
@@ -268,5 +292,5 @@ def test_reload_swaps_a_single_model_for_the_ensemble(tmp_path, monkeypatch,
 
         save_bundle(d, model={"models": models, "weights": weights}, kind="ensemble",
                     features=FEATURES, name="ensemble", version="v4")
-        assert client.post("/reload").status_code == 200
+        assert client.post("/reload", headers=ADMIN).status_code == 200
         assert client.get("/model-info").json()["model_name"] == "ensemble"

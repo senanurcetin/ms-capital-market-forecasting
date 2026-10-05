@@ -2,7 +2,8 @@
 # If make is unavailable on Windows, the equivalent commands are in the README.
 
 PY ?= python
-DATA_ROOT ?= C:/mscapital_data
+# MSCAPITAL_DATA_ROOT is the one variable every component (Python, API, compose) reads.
+DATA_ROOT ?= $(if $(MSCAPITAL_DATA_ROOT),$(MSCAPITAL_DATA_ROOT),C:/mscapital_data)
 
 .PHONY: help install test lint fmt check cov validate schema-check ingest features train drift-test cosine-decomp adversarial period-diff tune recency ship shape feature-audit align export-results site api streamlit mlflow \
         docker-build up down logs clean
