@@ -46,12 +46,17 @@ def _rebase_data_root(raw: dict[str, Any], new_root: str) -> None:
 
 @lru_cache(maxsize=1)
 def load_config(path: str | os.PathLike[str] | None = None) -> Config:
-    """Read config.yaml. MSCAPITAL_DATA_ROOT, when set, relocates every data path."""
+    """Read config.yaml. MSCAPITAL_DATA_ROOT relocates every data path; MSCAPITAL_BQ_PROJECT
+    replaces the BigQuery project."""
     with open(path or CONFIG_PATH, encoding="utf-8") as fh:
         raw = yaml.safe_load(fh)
     override = os.environ.get("MSCAPITAL_DATA_ROOT")
     if override:
         _rebase_data_root(raw, override)
+    # The committed project is the author's own, which nobody else can bill or read.
+    bq_project = os.environ.get("MSCAPITAL_BQ_PROJECT")
+    if bq_project:
+        raw["bigquery"]["project"] = bq_project
     return Config(raw)
 
 

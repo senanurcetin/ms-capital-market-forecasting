@@ -698,6 +698,10 @@ is `C:/mscapital_data`, deliberately **outside** any synced folder, because the
 intermediate data is ~20 GB. Set `MSCAPITAL_DATA_ROOT` to relocate every data path at once
 - the pipeline, the API, the dashboard, the Makefile and docker compose all read it.
 
+The BigQuery project in `configs/config.yaml` is the author's own, which nobody else can bill or
+read: set `MSCAPITAL_BQ_PROJECT` to run the pipeline against yours (the datasets are created
+inside it by `make ingest`).
+
 `POST /reload` swaps the served model, so it is **off by default**: it answers 403 until
 `MSCAPITAL_ADMIN_TOKEN` is set, and then needs a matching `X-Admin-Token` header.
 
@@ -829,6 +833,11 @@ usage sits at roughly 13% of the 1 TiB monthly free allowance. Batch load jobs a
 [MIT](LICENSE) for the code. The competition data is **not** redistributed here and remains
 subject to the
 [Kaggle competition rules](https://www.kaggle.com/competitions/ms-capital-real-financial-market-forecasting).
+
+[`CONTRIBUTING.md`](CONTRIBUTING.md) says what a change has to do, [`SECURITY.md`](SECURITY.md)
+how to report a vulnerability and what to harden before exposing the API, and
+[`CHANGELOG.md`](CHANGELOG.md) what has changed. Pushing a `v*` tag from `main` publishes the
+`api` and `app` images to GitHub Container Registry (`.github/workflows/release.yml`).
 
 Nothing here is investment advice: the backtesting module measures a model's ranking power
 for research, and was never evaluated as a trading strategy.

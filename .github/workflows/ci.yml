@@ -101,6 +101,17 @@ jobs:
           grep -q '"model_loaded": *false' /tmp/h.json
           docker rm -f api
 
+      # release.yml publishes this target too, so it must be known to build before a tag is the
+      # first time anyone finds out it does not.
+      - name: Build the dashboard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: app
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   # The docker job above proves the slim image STARTS without a model. Nothing proved that a model
   # the TRAINING stack writes can be served by the SERVING stack - the two have different
   # dependency sets, and an artefact one can write and the other cannot read fails only on the
