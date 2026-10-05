@@ -47,9 +47,10 @@ omit = [
 ]
 
 [tool.coverage.report]
-# A floor, not a target: measured 63% on 2026-10-05, and much of the gap is orchestration
-# that drives live BigQuery jobs. It exists so coverage can only ratchet up.
-fail_under = 60
+# A floor, not a target, and it only moves up: 63% on 2026-10-05, 71% once the pure logic inside
+# the evaluation scripts was tested. What is left is mostly orchestration that drives live
+# BigQuery jobs and multi-hour training, so a further rise needs the real pipeline, not unit tests.
+fail_under = 68
 exclude_lines = [
     "pragma: no cover",
     "if __name__ == .__main__.:",
