@@ -256,7 +256,7 @@ def train(X_tr: np.ndarray, y_tr: np.ndarray, X_va: np.ndarray, y_va: np.ndarray
             loss.backward()
             opt.step()
             sched.step()
-            total += float(loss) * len(b)
+            total += float(loss.detach()) * len(b)
         val = cosine_similarity(y_va, predict(net, X_va))
         history.append({"epoch": epoch + 1, "train_loss": total / len(order), "val_cosine": val})
         log(f"epoch {epoch + 1:2d}  train loss {total / len(order):.4f}  val cosine {val:+.5f}")
