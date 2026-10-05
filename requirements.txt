@@ -5,18 +5,18 @@
 # published dashboard waits for on every rebuild. The heavy pipeline-only packages
 # (mlflow, shap, duckdb, polars, kaggle) live in requirements-pipeline.txt.
 pandas==2.2.3
-numpy==2.4.6
+numpy==2.5.3
 pyarrow==24.0.0
-scikit-learn==1.8.0
-lightgbm==4.6.0
+scikit-learn==1.9.1
+lightgbm==4.7.0
 # xgboost-cpu, NOT xgboost: the default wheel pulls the NVIDIA CUDA runtime,
 # measured at 454 MB, which nothing here uses - this project trains on CPU -
 # and which Streamlit Cloud would download on every rebuild.
-xgboost-cpu==3.2.0
-joblib==1.5.3
+xgboost-cpu==3.4.1
+joblib==1.6.0
 pyyaml==6.0.3
-fastapi==0.136.1
-uvicorn==0.30.6
-pydantic==2.13.4
-streamlit==1.57.0
+fastapi==0.142.2
+uvicorn==0.54.0
+pydantic==2.13.5
+streamlit==1.64.0
 plotly==6.7.0
