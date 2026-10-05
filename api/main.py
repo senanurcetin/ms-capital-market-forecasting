@@ -13,10 +13,13 @@ import hmac
 import logging
 import os
 import threading
+import time
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, Header, HTTPException
+from api.guards import Metrics, RateLimiter
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from src.inference.predictor import ModelNotLoadedError, Predictor
 
@@ -29,6 +32,17 @@ DEADBAND = float(os.environ.get("MSCAPITAL_DIRECTION_DEADBAND", "0"))
 # /reload swaps the served model, so it is not open by default: with no token configured the
 # endpoint answers 403, and with one it needs a matching X-Admin-Token header.
 ADMIN_TOKEN = os.environ.get("MSCAPITAL_ADMIN_TOKEN", "")
+# Limits on what one request may cost. The body cap is checked from Content-Length before
+# anything is parsed; the row cap is enforced by the request model. Rate limiting is off
+# (0) unless set, because behind a proxy every client shares one address.
+MAX_BATCH_ROWS = int(os.environ.get("MSCAPITAL_MAX_BATCH_ROWS", "10000"))
+MAX_BODY_BYTES = int(os.environ.get("MSCAPITAL_MAX_BODY_BYTES", str(20 * 1024 * 1024)))
+RATE_LIMIT_PER_MIN = int(os.environ.get("MSCAPITAL_RATE_LIMIT_PER_MIN", "0"))
+# Only the endpoints that run the model are limited; /health must stay answerable.
+_LIMITED_PATHS = {"/predict", "/batch-predict"}
+
+limiter = RateLimiter(RATE_LIMIT_PER_MIN)
+metrics = Metrics()
 
 state: dict[str, Any] = {"predictor": None, "error": None}
 # Both keys are written together; without the lock a request could see a predictor from one
@@ -65,12 +79,46 @@ app = FastAPI(
 )
 
 
+@app.middleware("http")
+async def guard_and_measure(request: Request, call_next):
+    """Reject oversized or over-rate requests, and time everything for /metrics."""
+    start = time.perf_counter()
+    response = await _guard(request)
+    if response is None:
+        response = await call_next(request)
+    route = request.scope.get("route")
+    path = getattr(route, "path", None) or "unmatched"
+    metrics.observe(request.method, path, response.status_code, time.perf_counter() - start)
+    return response
+
+
+async def _guard(request: Request) -> JSONResponse | None:
+    if request.method == "POST":
+        length = request.headers.get("content-length")
+        if length is None and "chunked" in request.headers.get("transfer-encoding", ""):
+            return JSONResponse({"detail": "Content-Length is required"}, status_code=411)
+        if length is not None and length.isdigit() and int(length) > MAX_BODY_BYTES:
+            return JSONResponse(
+                {"detail": f"request body over {MAX_BODY_BYTES} bytes"}, status_code=413
+            )
+    if request.url.path in _LIMITED_PATHS:
+        client = request.client.host if request.client else "unknown"
+        retry_after = limiter.check(client)
+        if retry_after is not None:
+            return JSONResponse(
+                {"detail": "rate limit exceeded"},
+                status_code=429,
+                headers={"Retry-After": str(int(retry_after) + 1)},
+            )
+    return None
+
+
 class PredictRequest(BaseModel):
     features: dict[str, float] = Field(..., description="Feature name -> value")
 
 
 class BatchPredictRequest(BaseModel):
-    rows: list[dict[str, float]] = Field(..., min_length=1, max_length=10_000)
+    rows: list[dict[str, float]] = Field(..., min_length=1, max_length=MAX_BATCH_ROWS)
 
 
 class PredictResponse(BaseModel):
@@ -102,6 +150,12 @@ def health() -> dict:
     }
 
 
+@app.get("/metrics", response_class=PlainTextResponse)
+def metrics_endpoint() -> str:
+    """Prometheus text exposition: counts and latencies only, never request contents."""
+    return metrics.render()
+
+
 @app.get("/model-info")
 def model_info() -> dict:
     return _predictor().info()
@@ -114,6 +168,7 @@ def predict(req: PredictRequest) -> PredictResponse:
         value = float(p.predict([req.features])[0])
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    metrics.add_rows(1)
     return PredictResponse(
         predicted_return=value,
         direction=Predictor.direction(value, DEADBAND),
@@ -129,6 +184,7 @@ def batch_predict(req: BatchPredictRequest) -> dict:
         values = p.predict(req.rows)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    metrics.add_rows(len(values))
     return {
         "n": len(values),
         "predictions": [
