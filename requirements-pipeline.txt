@@ -3,13 +3,15 @@
 # MLflow and CUDA wheels to draw a bar chart.
 -r requirements.txt
 scipy==1.17.0
-duckdb==1.5.2
+duckdb==1.5.6
 polars==1.44.1
 shap==0.51.0
-mlflow==3.15.2
+mlflow==3.16.1
 pandera==0.33.1
 tqdm==4.67.3
 kaggle==2.1.2
-google-cloud-bigquery==3.41.0
-google-cloud-bigquery-storage==2.41.0
-db-dtypes==1.6.0
+google-cloud-bigquery==3.46.1
+google-cloud-bigquery-storage==2.42.0
+db-dtypes==1.7.2
+# Transitive (google-auth, mlflow), pinned only to carry a security fix: 49.x has PYSEC-2026-3552.
+cryptography==50.0.2

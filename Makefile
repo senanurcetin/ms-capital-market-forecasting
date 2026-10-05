@@ -20,7 +20,7 @@ help:
 	@echo "cov           pytest with a coverage report"
 	@echo "lint          run ruff"
 	@echo "typecheck     mypy on the clean modules (see [tool.mypy] in pyproject.toml)"
-	@echo "audit         pip-audit the pinned runtime requirement sets"
+	@echo "audit         pip-audit all four pinned requirement sets"
 	@echo "check         lint + typecheck + tests"
 	@echo "deploy-check  render every page in a venv built from requirements.txt ALONE"
 	@echo "fmt           ruff --fix"
@@ -97,7 +97,7 @@ typecheck:
 	$(PY) -m mypy
 
 audit:
-	$(PY) -m pip_audit -r requirements.txt -r requirements-serve.txt -r requirements-app.txt
+	$(PY) -m pip_audit -r requirements.txt -r requirements-serve.txt -r requirements-app.txt -r requirements-pipeline.txt
 
 check: lint typecheck test
 

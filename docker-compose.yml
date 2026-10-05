@@ -69,7 +69,9 @@ services:
       - --backend-store-uri=sqlite:////data/mlruns/mlflow.db
       - --default-artifact-root=/data/mlruns/artifacts
     ports:
-      - "5000:5000"
+      # The MLflow server has no authentication of its own, so it is published on this machine
+      # only by default. Set MSCAPITAL_MLFLOW_BIND=0.0.0.0 to expose it deliberately.
+      - "${MSCAPITAL_MLFLOW_BIND:-127.0.0.1}:5000:5000"
     volumes:
       - ${MSCAPITAL_DATA_ROOT:-C:/mscapital_data}:/data
     restart: unless-stopped
