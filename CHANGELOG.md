@@ -41,6 +41,13 @@ Notable changes to the code, the serving API and the published results. The form
   to 50.0.2 (PYSEC-2026-3552). All four requirement sets now pass `pip-audit`; `make audit` covers
   the pipeline set too. The weekly audit would have gone red on both.
 
+### Changed (release)
+- `release.yml` can also be started by hand (`workflow_dispatch`) with a version; it then creates the
+  annotated tag on the head of `main` itself and publishes both images. It refuses to run from any
+  other branch, requires a `vX.Y.Z` version (optionally `-rc.1`), refuses an existing tag that points
+  at a different commit, and passes the version to the shell through `env`, not by interpolation.
+  Added because a sandboxed session could not push a tag.
+
 ### Changed (typing)
 - `mypy` now covers the whole project (67 files: `api`, `src`, `streamlit_app`, `scripts`) with no
   exclusions and no ignores. The 30 findings in the training and dashboard code were fixed in place;
