@@ -1,7 +1,7 @@
 -r requirements-pipeline.txt
 pytest==9.1.1
-pytest-cov==7.0.0
-ruff==0.14.4
+pytest-cov==7.1.0
+ruff==0.16.10
 mypy==2.4.0
 pandas-stubs==2.2.3.250308
 types-PyYAML==6.0.12.20260906
