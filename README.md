@@ -33,6 +33,8 @@ implied.
 | **20 minutes** | ↑ plus [What I found](#what-i-found) and [notebook 01](notebooks/01_data_discovery.ipynb) — the six data findings that drive everything |
 | **an hour** | ↑ plus [notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb) — six hypotheses — one confirmed, one real but smaller than forecast, four falsified — and two errors caught in my own analysis |
 
+**Model card:** [`MODEL_CARD.md`](MODEL_CARD.md) - what the model is, what it is for, the numbers, and the limits, every figure checked against `results/` by a test.
+
 > **For research only. Not investment advice.**
 > The backtesting module exists to measure the model's ranking power, not to propose a strategy.
 
@@ -613,6 +615,12 @@ features" counts columns, not information. `make feature-audit` reproduces it.
 | Prediction horizon | undocumented by the competition; it does not affect the modelling |
 | Official metric | confirmed only indirectly — 0.128 is consistent with cosine or Pearson, and inconsistent with RMSE, MAE or R² |
 
+**Written but not yet run:** `make prune` tests whether dropping the 28 near-duplicate
+features costs anything. It is a non-inferiority test with its margin (-0.0010) fixed in the
+module before any run, because the improvement it could plausibly show is below this
+problem's resolution; it needs the full training data, and nothing is claimed until it has
+produced `feature_prune_meta.json`.
+
 ### Three free corrections, and a sixth forecast that did not happen
 
 Cosine has structure the training loss cannot see, and each piece of it suggests a
@@ -699,6 +707,7 @@ band per feature in `/metrics` as `mscapital_out_of_range_values_total`. It is a
 only: the row is still scored. Artefacts built before this simply skip the check.
 
 ```bash
+make pipeline    # all of the steps below, in order (hours; needs the data and BigQuery)
 make ingest      # feather → parquet → BigQuery → staging
 make validate    # data contracts (Pandera) on raw + features
 make features    # BigQuery feature layer + local download

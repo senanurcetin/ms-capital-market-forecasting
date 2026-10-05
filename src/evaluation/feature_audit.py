@@ -75,12 +75,13 @@ def correlation_pairs(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     })
 
 
-def effective_count(pairs: pd.DataFrame, cols: list[str],
-                    threshold: float = NEAR_DUPLICATE) -> int:
-    """Distinct features left after collapsing each near-duplicate group to one.
+def duplicate_groups(pairs: pd.DataFrame, cols: list[str],
+                     threshold: float = NEAR_DUPLICATE) -> list[list[str]]:
+    """Groups of near-duplicate features, each in the order the columns were given.
 
     Union-find rather than a pairwise count: if a == b and b == c, that is one feature
-    surviving out of three, not two removals counted twice.
+    surviving out of three, not two removals counted twice. Features with no duplicate
+    come back as groups of one.
     """
     parent = {c: c for c in cols}
 
@@ -94,7 +95,16 @@ def effective_count(pairs: pd.DataFrame, cols: list[str],
         ra, rb = find(a), find(b)
         if ra != rb:
             parent[ra] = rb
-    return len({find(c) for c in cols})
+    groups: dict[str, list[str]] = {}
+    for c in cols:
+        groups.setdefault(find(c), []).append(c)
+    return list(groups.values())
+
+
+def effective_count(pairs: pd.DataFrame, cols: list[str],
+                    threshold: float = NEAR_DUPLICATE) -> int:
+    """Distinct features left after collapsing each near-duplicate group to one."""
+    return len(duplicate_groups(pairs, cols, threshold))
 
 
 def run(*, n_sample: int = 150_000, seed: int = 0) -> dict:
