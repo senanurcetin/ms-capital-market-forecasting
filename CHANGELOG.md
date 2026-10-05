@@ -28,6 +28,12 @@ Notable changes to the code, the serving API and the published results. The form
 - `MSCAPITAL_DATA_ROOT` relocates every data path, not only the API's.
 - The coverage floor rose from 60% to 68% (measured 71%).
 
+### Dependencies
+- GitHub Actions: `actions/checkout` 7, `actions/setup-python` 7, `docker/build-push-action` 7,
+  `docker/setup-buildx-action` 4. Dev tools: `pytest` 9.1.1, `mypy` 2.4.0. Dashboard: `plotly` 7.1.0.
+  Each was proposed by Dependabot and passed CI on its own; they were applied together because the
+  Actions bumps edit adjacent lines of the same workflow files and would conflict one by one.
+
 ### Fixed
 - Dependabot was opening a single 22-update group that failed as a whole, plus major bumps of the
   numerics stack (pandas 3). The numerics libraries are no longer auto-updated (a bump can change
