@@ -20,6 +20,9 @@ import pandas as pd
 log = logging.getLogger(__name__)
 
 METADATA_FILE = "model_meta.json"
+# Optional: per-feature [low, high] the model was trained on. Artefacts written before it
+# existed simply load without it and skip the range check.
+RANGES_FILE = "feature_ranges.json"
 
 
 class ModelNotLoadedError(RuntimeError):
@@ -41,6 +44,7 @@ class ModelBundle:
     version: str
     metrics: dict = field(default_factory=dict)
     trained_at: str | None = None
+    feature_ranges: dict[str, tuple[float, float]] | None = None
 
 
 def _load_booster(path: Path, kind: str):
@@ -75,7 +79,13 @@ def load_bundle(model_dir: str | Path) -> ModelBundle:
     model_path = model_dir / meta["model_file"]
     if not model_path.exists():
         raise ModelNotLoadedError(f"{model_path} does not exist")
+    ranges_path = model_dir / RANGES_FILE
+    ranges = None
+    if ranges_path.exists():
+        raw = json.loads(ranges_path.read_text(encoding="utf-8"))
+        ranges = {k: (float(v[0]), float(v[1])) for k, v in raw.items()}
     return ModelBundle(
+        feature_ranges=ranges,
         model=_load_booster(model_path, meta["kind"]),
         features=list(meta["features"]),
         name=meta["name"],
@@ -96,11 +106,32 @@ ARTEFACT_FILES = (
     "model.txt", "model.json", "model.joblib",
     "ensemble_meta.json", "ensemble.joblib",
     "model_lightgbm.txt", "model_xgboost.json", "model_ridge.joblib",
+    RANGES_FILE,
 )
 
 
+def compute_feature_ranges(X: pd.DataFrame, *, lower_q: float = 0.001, upper_q: float = 0.999,
+                           max_rows: int = 200_000, seed: int = 0) -> dict[str, list[float]]:
+    """The central band of each training feature, for flagging inputs far outside it.
+
+    Quantiles rather than min/max: one bad tick in 1.2M rows would otherwise widen a range
+    until nothing could fall outside it. Computed on a sample, since a quantile does not
+    need every row and the full frame is ~1.5 GB.
+    """
+    if len(X) > max_rows:
+        X = X.sample(n=max_rows, random_state=seed)
+    lo = X.quantile(lower_q)
+    hi = X.quantile(upper_q)
+    return {
+        str(c): [float(lo[c]), float(hi[c])]
+        for c in X.columns
+        if np.isfinite(lo[c]) and np.isfinite(hi[c])
+    }
+
+
 def save_bundle(model_dir: str | Path, *, model, kind: str, features: list[str],
-                name: str, version: str, metrics: dict | None = None) -> Path:
+                name: str, version: str, metrics: dict | None = None,
+                feature_ranges: dict[str, list[float]] | None = None) -> Path:
     """Called from the training side; writes the artefact in servable form."""
     import datetime as _dt
 
@@ -133,6 +164,8 @@ def save_bundle(model_dir: str | Path, *, model, kind: str, features: list[str],
         "trained_at": _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds"),
     }
     (model_dir / METADATA_FILE).write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    if feature_ranges:
+        (model_dir / RANGES_FILE).write_text(json.dumps(feature_ranges), encoding="utf-8")
     return model_dir
 
 
@@ -169,6 +202,22 @@ class Predictor:
         # as float64 versus 0.7 GB as float32. The float64 version ran out of memory
         # while generating the test submission on a 16 GB machine.
         return df[expected].astype("float32")
+
+    def out_of_range(self, rows: list[dict]) -> dict[str, int]:
+        """How many values per feature fall outside the band the model was trained on.
+
+        Informational only - the model still scores such a row. Empty when the artefact
+        carries no ranges, or when nothing is outside them.
+        """
+        ranges = self.bundle.feature_ranges
+        if not ranges or not rows:
+            return {}
+        counts: dict[str, int] = {}
+        for name, (lo, hi) in ranges.items():
+            n = sum(1 for r in rows if name in r and not (lo <= r[name] <= hi))
+            if n:
+                counts[name] = n
+        return counts
 
     def predict(self, rows: list[dict]) -> np.ndarray:
         """Score a batch of rows given as dicts.

@@ -127,7 +127,7 @@ def run(samples: int = 4000, keep: bool = False,
 
     from src.evaluation.metrics import evaluate
     from src.evaluation.temporal_validation import holdout_months
-    from src.inference.predictor import Predictor, save_bundle
+    from src.inference.predictor import Predictor, compute_feature_ranges, save_bundle
     from src.models.base import feature_columns
     from src.models.lightgbm_model import LightGBMModel
 
@@ -148,6 +148,7 @@ def run(samples: int = 4000, keep: bool = False,
     bundle_dir = models_dir / "current"
     save_bundle(bundle_dir, model=model.booster_, kind="lightgbm",
                 features=feature_columns(df), name="lightgbm", version="demo",
+                feature_ranges=compute_feature_ranges(df.iloc[tr][feature_columns(df)]),
                 metrics={k: round(v, 6) for k, v in scores.items()})
     served = Predictor.from_dir(bundle_dir)
     row = {c: (0.0 if df.iloc[0][c] != df.iloc[0][c] else float(df.iloc[0][c]))
