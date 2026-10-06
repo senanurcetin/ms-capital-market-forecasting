@@ -335,3 +335,18 @@ def test_feature_pruning_verdict_matches_the_measurement():
     ), "README does not quote how many comparisons improved"
     assert readme_has(m["verdict"]), "README does not quote the verdict as written"
     assert m["pruning_is_free"] is False, "the paragraph says pruning was NOT shown to be free"
+
+
+def test_sequence_probe_matches_the_measurement():
+    """The README's sequence-model paragraph must quote what results/sequence_probe.json says."""
+    m = load_json("sequence_probe.json")
+    p, t = m["paired"], m["test_cosine"]
+    for figure in (f"{t['tabular']:.5f}", f"{t['sequence']:.5f}", f"{t['blend']:.5f}",
+                   f"{p['mean_gain']:+.5f}", f"{p['ci_low']:+.5f}", f"{p['ci_high']:+.5f}",
+                   f"{p['se']:.5f}"):
+        assert readme_has(figure), f"README does not quote {figure}"
+    assert readme_has(p["verdict"]), "README does not quote the verdict as written"
+    assert (p["adds_signal"], p["worth_shipping"]) == (False, False), (
+        "the paragraph says no gain was shown; update it if the result changes")
+    # the decision rule is what was written down before the run
+    assert p["material_gain_threshold"] == 0.0041 and p["n_months"] == 8

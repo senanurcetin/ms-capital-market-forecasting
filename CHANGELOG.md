@@ -15,6 +15,12 @@ Notable changes to the code, the serving API and the published results. The form
 - **`MSCAPITAL_API_KEY`**: when set, the model endpoints need an `X-API-Key` header. Open when unset.
 - `scripts/e2e_smoke.py` / `make smoke`, and a CI job that serves the demo artefact from the API
   image and drives it over HTTP.
+- **Learned sequence model** (`src/models/sequence_cnn.py`, `src/models/sequence_experiment.py`,
+  `make sequence`): a 176 x 16 snapshot tensor per sample and a small dilated CNN, tested by blending
+  it into the tabular model on eight held-out months. Result: the CNN alone scores 0.077
+  against 0.123 for the tabular model, and the blend's paired gain is -0.0009 with a
+  95% CI of [-0.0104, +0.0086], so no gain was shown. PyTorch is not a dependency
+  of CI or the serving image. Results in `results/sequence_probe*`.
 - `MSCAPITAL_BQ_PROJECT` to point the pipeline at a BigQuery project other than the author's.
 - `MODEL_CARD.md`, checked against `results/` by a test; `make prune` (feature-pruning experiment,
   not yet run on the full data); `GET /v1/features`; `/v1` routes; `/metrics`; request-size and
