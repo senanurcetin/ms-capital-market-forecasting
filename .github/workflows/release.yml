@@ -124,3 +124,37 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # A job of its own, after the images: if this fails the images are already published.
+  release:
+    name: Create the GitHub release
+    needs: [prepare, images]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # to create the release; nothing else here writes
+    steps:
+      - uses: actions/checkout@v7
+
+      # The notes are this version's section of CHANGELOG.md. A version with no section (a release
+      # candidate, say) still gets a release, with a pointer instead of blank notes.
+      - name: Release notes from the changelog
+        env:
+          PLAIN: ${{ needs.prepare.outputs.plain }}
+        run: |
+          set -uo pipefail
+          python3 scripts/changelog_section.py "$PLAIN" > notes.md \
+            || echo "No changelog section for $PLAIN; see the commit history." > notes.md
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "$VERSION" > /dev/null 2>&1; then
+            echo "$VERSION already has a release; leaving it."
+            exit 0
+          fi
+          flag=""
+          case "$VERSION" in *-*) flag="--prerelease" ;; esac
+          gh release create "$VERSION" --title "$VERSION" --notes-file notes.md --verify-tag $flag
