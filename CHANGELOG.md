@@ -15,6 +15,10 @@ Notable changes to the code, the serving API and the published results. The form
 - **`MSCAPITAL_API_KEY`**: when set, the model endpoints need an `X-API-Key` header. Open when unset.
 - `scripts/e2e_smoke.py` / `make smoke`, and a CI job that serves the demo artefact from the API
   image and drives it over HTTP.
+- `make test-order` (`src/evaluation/split_order.py`): `sample_id` is chronological in train at the scale
+  of months (block-mean autocorrelation +0.93, -0.05 within a month) and carries no
+  order in the test set (+0.01), so features or corrections built from neighbouring samples,
+  the regime scaling among them, cannot be computed at scoring time. Results in `results/split_order*`.
 - **Learned sequence model** (`src/models/sequence_cnn.py`, `src/models/sequence_experiment.py`,
   `make sequence`): a 176 x 16 snapshot tensor per sample and a small dilated CNN, tested by blending
   it into the tabular model on eight held-out months. Result: the CNN alone scores 0.077
