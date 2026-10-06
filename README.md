@@ -663,6 +663,26 @@ and a test cosine that moves from 0.048 to 0.085 between seeds. This is "not sho
 not "falsified". Nothing here changes the shipped model, and the blend weights in the result file are
 on different prediction scales, so they are not shares.
 
+**Measured: a regime estimated from the feature space did not help.** Since `sample_id` carries no order in
+the test set, `make regime-clusters` builds the regime from a pool's own features alone: a k-means (8
+clusters) over six market-state signals, with each sample described by its cluster's centre in the signals'
+own units, the cluster's share of the pool and its own distance to the centre. Two variants: *static*, fitted
+on the training pool (so any gain is a nonlinear function of a sample's own features), and *transductive*,
+fitted on each pool's own features as the test pool would be. Train months 0-39, validation 40-47 (early
+stopping only), test months 48-70 scored as one mixed pool, since the real test pool is a mix with no month
+label. Pooled test cosine, two seeds: plain 292 features **0.14046**, static **0.13938**,
+transductive **0.13942**. The paired per-month gain of the transductive variant over plain is
+**-0.00101** (se 0.00056), 95% CI **[-0.00216, +0.00015]**, better in
+**9 of 23** months. The rule was fixed before the run: it counts only if that interval lies
+above zero and the mean reaches 0.0041. Neither holds, and the verdict written to
+[`results/regime_clusters.json`](results/regime_clusters.json) is *"not shown: the interval includes zero, so a gain of this size cannot be told from none"*.
+
+Unlike the sequence experiment, this interval is narrow (about +-0.0011), so it does rule out a gain larger than
+roughly +0.0002 on this split. The two variants differ by only +0.00005, which says that
+knowing how the pool is composed added nothing beyond what a sample's own features already tell the model.
+Limits: one split, one choice of signals and of k, no tuning, and the 23 months are scored by the same two models,
+so they are not 23 independent comparisons. Nothing here changes the shipped model.
+
 ### Three free corrections, and a sixth forecast that did not happen
 
 Cosine has structure the training loss cannot see, and each piece of it suggests a
@@ -686,7 +706,9 @@ The regime correction is the useful failure. It describes something real: across
 quartiles the target spans **1.69×** while the model spans **1.55×**, so the model does
 under-scale, and the one context its 292 features cannot see is what the market is doing
 around each sample - which is also the one context the test set does not let you rebuild, because
-its `sample_id`s carry no order (see the measurement under *Structure*). Fitted in place it is worth **+0.00220** — comparable to the
+its `sample_id`s carry no order (see the measurement under *Structure*). The version of it that
+the test set does allow, a regime estimated from the feature space, was tried and did not help (see
+*Measured: a regime estimated from the feature space did not help*). Fitted in place it is worth **+0.00220** — comparable to the
 ensemble, and it would have been a perfectly respectable sixth forecast. Choosing its single
 free parameter out of sample leaves **-0.00020**: not smaller, gone. The pooled number
 was measuring the freedom to pick alpha, and the protocol is the only thing that separated

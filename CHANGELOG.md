@@ -15,6 +15,10 @@ Notable changes to the code, the serving API and the published results. The form
 - **`MSCAPITAL_API_KEY`**: when set, the model endpoints need an `X-API-Key` header. Open when unset.
 - `scripts/e2e_smoke.py` / `make smoke`, and a CI job that serves the demo artefact from the API
   image and drives it over HTTP.
+- `make regime-clusters` (`src/evaluation/regime_clusters.py`): a regime estimated from the feature space (k-means
+  descriptors, static and transductive) as the order-free version of market context. Pooled test cosine 0.1405
+  plain, 0.1394 static, 0.1394 transductive; the transductive paired gain is -0.0010 with a 95% CI of
+  [-0.0022, +0.0001], so no gain was shown. Results in `results/regime_clusters*`.
 - `make test-order` (`src/evaluation/split_order.py`): `sample_id` is chronological in train at the scale
   of months (block-mean autocorrelation +0.93, -0.05 within a month) and carries no
   order in the test set (+0.01), so features or corrections built from neighbouring samples,
