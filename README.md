@@ -335,6 +335,18 @@ Row counts come from the Arrow footers; distributions come from the data itself.
 is **no symbol/instrument column**, so no cross-sample history can be constructed and
 the problem reduces to tabular regression over 1,257,637 rows.
 
+**`sample_id` is not a time axis you can lean on.** In train it is chronological, but only at the scale
+of months: the lag-1 autocorrelation of 1,000-sample block means of volatility, trade intensity and
+spread is **+0.93**, and it falls to **-0.05** once each month's mean is
+removed (**-0.06** is what a sequence with no order inside a month would give, because
+subtracting a group mean forces a negative value), so nothing is ordered *within* a month. In the test set it is
+**+0.01** (se about 0.04), and about zero at every block size from 10 to 10,000, although its
+647,896 samples are 37 months' worth. `make test-order` measures this
+([`results/split_order.json`](results/split_order.json)). The consequence is practical: any feature, correction or
+"market context" built from neighbouring samples can be computed in train and cannot be computed on the
+test set, so it can look like a gain in cross-validation and be unavailable at scoring time. I did not
+establish how the test ids were assigned; the measurement says only that they carry no order.
+
 **Window lengths differ per table** (measured, not assumed):
 
 | Table | Window | Rows per sample | Note |
@@ -673,7 +685,8 @@ ordering, or rank-transforming would be free.
 The regime correction is the useful failure. It describes something real: across volatility
 quartiles the target spans **1.69×** while the model spans **1.55×**, so the model does
 under-scale, and the one context its 292 features cannot see is what the market is doing
-around each sample. Fitted in place it is worth **+0.00220** — comparable to the
+around each sample - which is also the one context the test set does not let you rebuild, because
+its `sample_id`s carry no order (see the measurement under *Structure*). Fitted in place it is worth **+0.00220** — comparable to the
 ensemble, and it would have been a perfectly respectable sixth forecast. Choosing its single
 free parameter out of sample leaves **-0.00020**: not smaller, gone. The pooled number
 was measuring the freedom to pick alpha, and the protocol is the only thing that separated

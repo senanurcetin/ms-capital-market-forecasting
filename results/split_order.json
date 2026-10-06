@@ -1,0 +1,31 @@
+{
+  "signals": [
+    "mkt_mid_std_60s",
+    "txn_intensity_60s",
+    "mkt_rel_spread_mean_5s"
+  ],
+  "block_sizes": [
+    10,
+    100,
+    1000,
+    10000
+  ],
+  "train": {
+    "autocorr_at_1000": 0.9293382888833976,
+    "n_blocks_at_1000": 1258
+  },
+  "test": {
+    "autocorr_at_1000": 0.008976737984055435,
+    "n_blocks_at_1000": 648
+  },
+  "test_is_in_time_order": false,
+  "train_is_in_time_order": true,
+  "verdict": "neighbouring sample_ids are neighbours in time in train but not in test: a feature or correction built from neighbouring samples cannot be computed on the test set",
+  "train_within_month": {
+    "autocorr_at_1000": -0.046849391792278615,
+    "n_blocks_at_1000": 1258,
+    "expected_if_unordered": -0.05983295649806975
+  },
+  "samples_per_train_month": 17713.197183098593,
+  "test_samples": 647896
+}

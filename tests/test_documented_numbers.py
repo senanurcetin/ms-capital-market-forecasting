@@ -350,3 +350,14 @@ def test_sequence_probe_matches_the_measurement():
         "the paragraph says no gain was shown; update it if the result changes")
     # the decision rule is what was written down before the run
     assert p["material_gain_threshold"] == 0.0041 and p["n_months"] == 8
+
+
+def test_split_order_matches_the_measurement():
+    """The README's claim about sample_id order must quote results/split_order.json."""
+    m = load_json("split_order.json")
+    for figure in (f"{m['train']['autocorr_at_1000']:+.2f}", f"{m['test']['autocorr_at_1000']:+.2f}",
+                   f"{m['train_within_month']['autocorr_at_1000']:+.2f}",
+                   f"{m['train_within_month']['expected_if_unordered']:+.2f}"):
+        assert readme_has(figure), f"README does not quote {figure}"
+    assert m["train_is_in_time_order"] is True and m["test_is_in_time_order"] is False, (
+        "the README says train is in time order and test is not; update it if that changes")
