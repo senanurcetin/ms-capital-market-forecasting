@@ -174,15 +174,25 @@ def run(*, seeds: tuple[int, ...] = (0, 1), out_dir: Path | None = None) -> dict
                          with_descriptors(df.iloc[te], d_test)),
     }
     del df
+    # Each fit's test predictions are kept on disk, so a restart of the machine costs one fit,
+    # not all six (this run was once lost to exactly that).
+    cache = Path(cfg.paths.features) / "regime_cache"
+    cache.mkdir(parents=True, exist_ok=True)
     preds: dict[str, list[np.ndarray]] = {k: [] for k in sets}
     for name, (a, b, c) in sets.items():
         cols = base if name == "plain" else base + descriptor_names()
         for seed in seeds:
+            kept = cache / f"{name}_seed{seed}.npy"
+            if kept.exists():
+                preds[name].append(np.load(kept))
+                log.info("%-12s seed %d: reused from %s", name, seed, kept.name)
+                continue
             t0 = time.perf_counter()
             model = LightGBMModel(params={"seed": seed}, num_boost_round=2000,
                                   early_stopping_rounds=100)
             model.fit(a[cols], y[tr], eval_set=(b[cols], y[va]))
             preds[name].append(model.predict(c[cols]))
+            np.save(kept, preds[name][-1])
             log.info("%-12s seed %d: test cosine %+.5f  rounds %s (%.0fs)", name, seed,
                      cosine_similarity(y[te], preds[name][-1]), model.best_iteration_,
                      time.perf_counter() - t0)
