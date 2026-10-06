@@ -129,3 +129,92 @@ def test_the_members_named_in_the_probe_all_have_a_factory():
         if name == "mlp":
             pytest.importorskip("torch")
         assert ep.make_member(name).name == name
+
+
+# ------------------------------------------------------------------ MLP preprocessing, no torch
+def _fitted_preprocessing(chunk_rows: int):
+    X, _ = _data()
+    m = em.MLPModel(chunk_rows=chunk_rows)
+    m.features_ = em.feature_columns(X)
+    m.imputer.fit(X, columns=m.features_)
+    m._fit_scaler(X)
+    return X, m
+
+
+def test_mlp_standardises_with_the_training_mean_and_std_and_clips():
+    X, m = _fitted_preprocessing(chunk_rows=400)
+    A = m._array(X)
+    assert A.dtype == np.float32 and np.isfinite(A).all()  # NaN and inf were imputed away
+    assert np.abs(A).max() <= 6.0 + 1e-6
+    assert np.abs(A.mean(axis=0)).max() < 0.1  # imputed medians sit near the mean on symmetric data
+    assert np.allclose(A.std(axis=0), 1.0, atol=0.15)
+
+
+def test_mlp_preprocessing_does_not_depend_on_the_chunk_size():
+    X, small = _fitted_preprocessing(chunk_rows=97)
+    _, big = _fitted_preprocessing(chunk_rows=5000)
+    np.testing.assert_allclose(small.mu_, big.mu_, rtol=1e-9)
+    np.testing.assert_allclose(small.sd_, big.sd_, rtol=1e-9)
+    np.testing.assert_array_equal(small._array(X), big._array(X))
+
+
+def test_mlp_scales_a_constant_column_without_dividing_by_zero():
+    X, _ = _data()
+    X["const"] = np.float32(7.0)
+    m = em.MLPModel(chunk_rows=500)
+    m.features_ = em.feature_columns(X)
+    m.imputer.fit(X, columns=m.features_)
+    m._fit_scaler(X)
+    A = m._array(X)
+    assert np.isfinite(A).all() and np.all(A[:, m.features_.index("const")] == 0.0)
+
+
+# ------------------------------------------------------------------ CatBoost wiring, fake package
+class _FakePool:
+    def __init__(self, data, label=None):
+        self.data, self.label = data, label
+
+
+class _FakeRegressor:
+    last: _FakeRegressor | None = None
+
+    def __init__(self, **kw):
+        self.kw, self.fit_kw, self.fit_columns = kw, {}, None
+        _FakeRegressor.last = self
+
+    def fit(self, pool, **kw):
+        self.fit_columns, self.fit_kw = list(pool.data.columns), kw
+        return self
+
+    def predict(self, X):
+        return np.zeros(len(X))
+
+
+@pytest.fixture
+def fake_catboost(monkeypatch):
+    import sys
+    import types
+
+    mod = types.ModuleType("catboost")
+    mod.CatBoostRegressor, mod.Pool = _FakeRegressor, _FakePool  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "catboost", mod)
+
+
+def test_catboost_wrapper_trains_on_features_only_and_early_stops_on_the_eval_set(fake_catboost):
+    X, y = _data()
+    X["month"], X["target"] = 0, 0.0  # columns a model must never see
+    m = em.CatBoostModel(iterations=10, early_stopping_rounds=7, seed=3)
+    m.fit(X, y, eval_set=(X, y))
+    fake = _FakeRegressor.last
+    assert fake is not None
+    assert fake.fit_columns == list("abcde")  # month and target stay out
+    assert fake.kw["random_seed"] == 3 and fake.kw["allow_writing_files"] is False
+    assert fake.fit_kw["use_best_model"] is True and fake.fit_kw["early_stopping_rounds"] == 7
+    assert m.predict(X).shape == (len(X),)
+
+
+def test_catboost_wrapper_without_an_eval_set_does_not_ask_for_early_stopping(fake_catboost):
+    X, y = _data()
+    em.CatBoostModel().fit(X, y)
+    fake = _FakeRegressor.last
+    assert fake is not None and fake.fit_kw == {}
