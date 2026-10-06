@@ -42,6 +42,7 @@ help:
 	@echo "sequence      does a learned CNN over the 600 s window add signal? (needs PyTorch)"
 	@echo "test-order    is sample_id a time axis in train, and in test?"
 	@echo "regime-clusters does a regime estimated from the feature space help? (6 fits)"
+	@echo "ensemble-probe do four extra members improve the ensemble? (7 fits; needs CatBoost, PyTorch)"
 	@echo "feature-audit how many of the 292 features are actually distinct?"
 	@echo "prune        does dropping the near-duplicate features cost anything? (non-inferiority)"
 	@echo "align         weight the loss the way cosine weights rows (it hurts)"
@@ -185,6 +186,10 @@ test-order:
 
 regime-clusters:
 	$(PY) -m src.evaluation.regime_clusters
+
+# Needs CatBoost and PyTorch (in no requirements file); see ensemble_probe.py.
+ensemble-probe:
+	$(PY) -m src.models.ensemble_probe
 
 align:
 	$(PY) -m src.models.metric_alignment

@@ -15,6 +15,11 @@ Notable changes to the code, the serving API and the published results. The form
 - **`MSCAPITAL_API_KEY`**: when set, the model endpoints need an `X-API-Key` header. Open when unset.
 - `scripts/e2e_smoke.py` / `make smoke`, and a CI job that serves the demo artefact from the API
   image and drives it over HTTP.
+- `make ensemble-probe` (`src/models/extra_members.py`, `src/models/ensemble_probe.py`): four candidate ensemble
+  members (Huber and extra-trees LightGBM, CatBoost, an MLP), all predicting on the target's own scale. Seven-member
+  blend 0.1435 against 0.1438 for the base, pooled over the test months; the paired per-month gain is
+  +0.0017 with a 95% CI of [-0.0011, +0.0045], so no improvement was shown and the shipped
+  ensemble is unchanged. Results in `results/ensemble_probe*`. CatBoost and PyTorch are not CI or serving dependencies.
 - `make regime-clusters` (`src/evaluation/regime_clusters.py`): a regime estimated from the feature space (k-means
   descriptors, static and transductive) as the order-free version of market context. Pooled test cosine 0.1405
   plain, 0.1394 static, 0.1394 transductive; the transductive paired gain is -0.0010 with a 95% CI of
