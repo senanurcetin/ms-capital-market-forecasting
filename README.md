@@ -683,6 +683,33 @@ knowing how the pool is composed added nothing beyond what a sample's own featur
 Limits: one split, one choice of signals and of k, no tuning, and the 23 months are scored by the same two models,
 so they are not 23 independent comparisons. Nothing here changes the shipped model.
 
+**Measured: four extra ensemble members were not shown to improve the ensemble.** `make ensemble-probe` fits
+a Huber-loss LightGBM, an extra-randomised shallow LightGBM, CatBoost and a small MLP (all predicting on the
+target's own scale, so blend weights mean something) next to the LightGBM + XGBoost + Ridge base, on the same
+split as the regime experiment, with blend weights fitted on the validation months only. Test cosine of each
+member alone: LightGBM **0.14033**, XGBoost **0.14277**, Ridge 0.11633,
+Huber LightGBM 0.13679, extra-trees LightGBM 0.14128, CatBoost 0.13753,
+MLP 0.12984. The three-member base scores **0.14383** pooled over the 23 test months and the
+seven-member blend **0.14350**. The paired per-month gain of the seven over the three is
+**+0.00169** (se 0.00135), 95% CI **[-0.00110, +0.00448]**, better in **11 of 23**
+months. The rule was fixed before the run: the extra members count only if that interval lies above zero, and
+are worth shipping only if the mean gain also reaches 0.0010. The interval includes zero, so neither holds;
+the verdict written to [`results/ensemble_probe.json`](results/ensemble_probe.json) is *"not shown: the interval includes zero, so a gain of this size cannot be told from none"*.
+
+Two things sit awkwardly with the positive mean. The competition scores cosine over the whole test set, not
+month by month, and on that pooled number the seven-member blend is slightly *lower* than the base
+(0.14350 against 0.14383). And the fitted blend does not look like a stable one: it puts all its weight on
+Huber LightGBM (0.36), extra-trees LightGBM (0.41) and the MLP (0.23) and none on LightGBM,
+XGBoost or CatBoost, which follows how the members ranked on validation rather than on test, where Huber LightGBM
+is the weakest of the trees. Adding each member to the base on its own, an exploration of four comparisons
+that is not corrected for being four: the MLP, the one member that is not a tree and the least correlated with
+LightGBM, gives +0.00172 (better in 14 of 23 months), extra-trees LightGBM +0.00091,
+CatBoost +0.00048 (better in 18 of 23, the most consistent) and Huber LightGBM +0.00048.
+The interval above is about +-0.003 wide, so a real gain of this size could not be told from none, and a
+loss of 0.001 could not be ruled out either. Nothing here changes the shipped ensemble: it would have meant
+four more artefacts to load, two more libraries in the serving image and more memory per request, for a gain
+that was not shown.
+
 ### Three free corrections, and a sixth forecast that did not happen
 
 Cosine has structure the training loss cannot see, and each piece of it suggests a

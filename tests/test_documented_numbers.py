@@ -376,3 +376,19 @@ def test_regime_clusters_matches_the_measurement():
     assert (p["adds_signal"], p["worth_keeping"]) == (False, False), (
         "the paragraph says no gain was shown; update it if the result changes")
     assert p["material_gain_threshold"] == 0.0041 and p["n_months"] == 23
+
+
+def test_ensemble_probe_matches_the_measurement():
+    """The README's extra-members paragraph must quote results/ensemble_probe.json."""
+    m = load_json("ensemble_probe.json")
+    p, pc = m["paired_extended_vs_base"], m["pooled_test_cosine"]
+    for figure in (f"{pc['base']:.5f}", f"{pc['extended']:.5f}", f"{p['mean_gain']:+.5f}",
+                   f"{p['ci_low']:+.5f}", f"{p['ci_high']:+.5f}", f"{p['se']:.5f}",
+                   *(f"{m['alone'][k]['test']:.5f}" for k in m["alone"])):
+        assert readme_has(figure), f"README does not quote {figure}"
+    assert readme_has(p["verdict"]), "README does not quote the verdict as written"
+    assert (p["adds_signal"], p["worth_shipping"]) == (False, False), (
+        "the paragraph says the extra members were not shown to help; update it if that changes")
+    assert p["ship_gain_threshold"] == 0.0010 and p["n_months"] == 23
+    # the paragraph says the pooled number went DOWN while the monthly mean went up
+    assert pc["extended"] < pc["base"] and p["mean_gain"] > 0
