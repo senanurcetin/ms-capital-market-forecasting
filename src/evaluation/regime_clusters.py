@@ -39,6 +39,7 @@ overshoots, all optimistic.)
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import logging
 import time
@@ -164,23 +165,28 @@ def run(*, seeds: tuple[int, ...] = (0, 1), out_dir: Path | None = None) -> dict
     log.info("describers fitted (%.0fs); shares test %s", time.perf_counter() - t0,
              np.round(d_test.shares_descending(), 3).tolist())
 
-    # (frame for train, for val, for test) per variant. "plain" adds nothing.
-    sets = {
-        "plain": (df.iloc[tr], df.iloc[va], df.iloc[te]),
-        "static": (with_descriptors(df.iloc[tr], d_train), with_descriptors(df.iloc[va], d_train),
-                   with_descriptors(df.iloc[te], d_train)),
-        "transductive": (with_descriptors(df.iloc[tr], d_train),
-                         with_descriptors(df.iloc[va], d_val),
-                         with_descriptors(df.iloc[te], d_test)),
+    # The descriptors are small (8 float32 columns per row); the 292-feature frames are not, so a
+    # variant's frames are built only when a fit needs them and freed straight after. Holding all
+    # three variants at once needed about 14 GB and was killed by the memory limit of a 16 GB machine.
+    parts = (tr, va, te)
+    train_desc = d_train.describe(df.iloc[tr])
+    desc: dict[str, list[pd.DataFrame] | None] = {
+        "plain": None,
+        "static": [train_desc, d_train.describe(df.iloc[va]), d_train.describe(df.iloc[te])],
+        "transductive": [train_desc, d_val.describe(df.iloc[va]), d_test.describe(df.iloc[te])],
     }
-    del df
+
+    def frames(name: str) -> list[pd.DataFrame]:
+        out = [df.iloc[i][base] for i in parts]
+        extra = desc[name]
+        return out if extra is None else [pd.concat([f, e], axis=1) for f, e in zip(out, extra, strict=True)]
+
     # Each fit's test predictions are kept on disk, so a restart of the machine costs one fit,
     # not all six (this run was once lost to exactly that).
     cache = Path(cfg.paths.features) / "regime_cache"
     cache.mkdir(parents=True, exist_ok=True)
-    preds: dict[str, list[np.ndarray]] = {k: [] for k in sets}
-    for name, (a, b, c) in sets.items():
-        cols = base if name == "plain" else base + descriptor_names()
+    preds: dict[str, list[np.ndarray]] = {k: [] for k in desc}
+    for name in desc:
         for seed in seeds:
             kept = cache / f"{name}_seed{seed}.npy"
             if kept.exists():
@@ -188,14 +194,17 @@ def run(*, seeds: tuple[int, ...] = (0, 1), out_dir: Path | None = None) -> dict
                 log.info("%-12s seed %d: reused from %s", name, seed, kept.name)
                 continue
             t0 = time.perf_counter()
+            a, b, c = frames(name)
             model = LightGBMModel(params={"seed": seed}, num_boost_round=2000,
                                   early_stopping_rounds=100)
-            model.fit(a[cols], y[tr], eval_set=(b[cols], y[va]))
-            preds[name].append(model.predict(c[cols]))
+            model.fit(a, y[tr], eval_set=(b, y[va]))
+            preds[name].append(model.predict(c))
             np.save(kept, preds[name][-1])
             log.info("%-12s seed %d: test cosine %+.5f  rounds %s (%.0fs)", name, seed,
                      cosine_similarity(y[te], preds[name][-1]), model.best_iteration_,
                      time.perf_counter() - t0)
+            del a, b, c, model
+            gc.collect()
 
     m_te = months[te]
     per = {k: [monthly_cosine(y[te], p, m_te) for p in v] for k, v in preds.items()}
