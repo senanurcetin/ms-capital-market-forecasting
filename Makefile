@@ -41,6 +41,7 @@ help:
 	@echo "shape         build sequence-shape features, then test whether they pay"
 	@echo "sequence      does a learned CNN over the 600 s window add signal? (needs PyTorch)"
 	@echo "test-order    is sample_id a time axis in train, and in test?"
+	@echo "regime-clusters does a regime estimated from the feature space help? (6 fits)"
 	@echo "feature-audit how many of the 292 features are actually distinct?"
 	@echo "prune        does dropping the near-duplicate features cost anything? (non-inferiority)"
 	@echo "align         weight the loss the way cosine weights rows (it hurts)"
@@ -181,6 +182,9 @@ sequence:
 
 test-order:
 	$(PY) -m src.evaluation.split_order
+
+regime-clusters:
+	$(PY) -m src.evaluation.regime_clusters
 
 align:
 	$(PY) -m src.models.metric_alignment

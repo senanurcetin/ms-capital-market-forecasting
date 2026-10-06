@@ -361,3 +361,18 @@ def test_split_order_matches_the_measurement():
         assert readme_has(figure), f"README does not quote {figure}"
     assert m["train_is_in_time_order"] is True and m["test_is_in_time_order"] is False, (
         "the README says train is in time order and test is not; update it if that changes")
+
+
+def test_regime_clusters_matches_the_measurement():
+    """The README's regime-from-features paragraph must quote results/regime_clusters.json."""
+    m = load_json("regime_clusters.json")
+    pooled = {k: sum(v) / len(v) for k, v in m["pooled_test_cosine"].items()}
+    p = m["paired_transductive"]
+    for figure in (*(f"{pooled[k]:.5f}" for k in ("plain", "static", "transductive")),
+                   f"{p['mean_gain']:+.5f}", f"{p['ci_low']:+.5f}", f"{p['ci_high']:+.5f}",
+                   f"{p['se']:.5f}"):
+        assert readme_has(figure), f"README does not quote {figure}"
+    assert readme_has(p["verdict"]), "README does not quote the verdict as written"
+    assert (p["adds_signal"], p["worth_keeping"]) == (False, False), (
+        "the paragraph says no gain was shown; update it if the result changes")
+    assert p["material_gain_threshold"] == 0.0041 and p["n_months"] == 23
