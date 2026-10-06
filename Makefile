@@ -39,6 +39,7 @@ help:
 	@echo "recency       what do the months held back for the hold-out cost?"
 	@echo "ship          build the shippable ensemble + write a submission"
 	@echo "shape         build sequence-shape features, then test whether they pay"
+	@echo "sequence      does a learned CNN over the 600 s window add signal? (needs PyTorch)"
 	@echo "feature-audit how many of the 292 features are actually distinct?"
 	@echo "prune        does dropping the near-duplicate features cost anything? (non-inferiority)"
 	@echo "align         weight the loss the way cosine weights rows (it hurts)"
@@ -172,6 +173,10 @@ feature-audit:
 
 prune:
 	$(PY) -m src.evaluation.feature_prune
+
+# Needs PyTorch (not in any requirements file) and the raw-market subsample; see sequence_experiment.py.
+sequence:
+	$(PY) -m src.models.sequence_experiment
 
 align:
 	$(PY) -m src.models.metric_alignment

@@ -167,7 +167,8 @@ constant-mean predictor sits (0.0059), so the summary carries essentially nothin
 experiment cannot separate "the path holds no signal" from "eighteen numbers were the wrong
 way to look at it". Distinguishing them needs a learned representation over the ~176
 snapshots rather than a hand-picked digest of them — the [DeepLOB](https://arxiv.org/abs/1808.03668)
-line of work is exactly that, and it is not done here. See [where this stands](#where-this-stands).
+line of work is exactly that. It has since been done once, small; the result is
+[below](#where-this-stands) under *Measured: a learned sequence model*.
 
 Each is worked through in
 [notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb), along with two errors the
@@ -610,7 +611,7 @@ features" counts columns, not information. `make feature-audit` reproduces it.
 
 | | |
 |---|---|
-| ~54% of the leaderboard gap | unexplained. Six hypotheses tested; period difficulty covers 46% and the spread-regime mix ~14%, four were falsified. The one candidate left is a learned sequence representation, and the reason it is a candidate is that the experiment which "falsified" sequence order tested eighteen hand-built statistics rather than the hypothesis. |
+| ~54% of the leaderboard gap | unexplained. Six hypotheses tested; period difficulty covers 46% and the spread-regime mix ~14%, four were falsified. The learned sequence representation, the one candidate left, has now been tried once and small: it finds real signal on its own (0.077) but was not shown to add to the tabular model (see below). |
 | Leaderboard 0.129 vs median 0.137 | below typical. Tuning, ensembling, more data, sequence order and metric alignment are all measured at roughly zero or worse, so what is missing is signal this pipeline does not extract. |
 | Prediction horizon | undocumented by the competition; it does not affect the modelling |
 | Official metric | confirmed only indirectly — 0.128 is consistent with cosine or Pearson, and inconsistent with RMSE, MAE or R² |
@@ -627,6 +628,28 @@ That is a statement about what six comparisons can rule out, not evidence that p
 point estimate is far below the fold-to-fold std of 0.0041, and the six differences run from -0.0035 to
 +0.0019 with their sign depending on the seed (seed 0 averages +0.00046, seed 1 -0.00143). All 292
 columns stay. A tighter answer needs more seeds; nothing here promises a score.
+
+**Measured: a learned sequence model finds signal of its own, but was not shown to add to the tabular
+one.** `make sequence` builds a 176 x 16 tensor per sample from the raw market snapshots and trains a
+small dilated CNN on it (3 seeds, averaged). Train months 40-59, validation 60-62 (early stopping and
+blend weights only), test 63-70, on a one-in-three subsample of the samples. On the test months the
+tabular LightGBM scores **0.12307**, the CNN alone **0.07657**, and a blend
+fitted on validation **0.11767**. The paired gain of the blend over the tabular model is
+**-0.00091** (se 0.00402), 95% CI **[-0.01042, +0.00859]**,
+and the blend was better in **4 of 8** months. The rule was fixed before the run: the
+sequence model "adds signal" only if that interval lies above zero, and counts as worth shipping only
+if the mean gain also reaches 0.0041. Neither holds, and the verdict written to
+[`results/sequence_probe.json`](results/sequence_probe.json) is *"not shown: the interval includes zero, so a gain of this size cannot be told from none at eight months"*.
+
+Two things are true at once. The CNN alone is far above the 0.0057 that the eighteen hand-built
+statistics scored on their own, and its predictions correlate only 0.54 with the tabular
+model's, so the learned representation does carry signal the digest missed. But eight test months
+leave an interval about +-0.0095 wide, so a gain of 0.004 would not have been detected, and the
+experiment is small in ways that probably handicap the CNN more than the gradient-boosted model (an
+expectation, not something measured): a third of the samples, 20 training months, one architecture,
+and a test cosine that moves from 0.048 to 0.085 between seeds. This is "not shown",
+not "falsified". Nothing here changes the shipped model, and the blend weights in the result file are
+on different prediction scales, so they are not shares.
 
 ### Three free corrections, and a sixth forecast that did not happen
 
