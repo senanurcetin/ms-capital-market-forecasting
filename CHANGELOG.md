@@ -6,15 +6,9 @@ Notable changes to the code, the serving API and the published results. The form
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-06
+
 ### Added
-- **Model registry** (`src/inference/registry.py`, `make promote / rollback / releases`): every
-  promotion is kept as an immutable release, `current` is swapped for the new one, and a release
-  that has been rolled away from is not returned to by a later rollback.
-- **Provenance** in `model_meta.json`: git revision and dirty flag, a hash of the ordered feature
-  list, training rows and months. Reported by `/v1/model-info`.
-- **`MSCAPITAL_API_KEY`**: when set, the model endpoints need an `X-API-Key` header. Open when unset.
-- `scripts/e2e_smoke.py` / `make smoke`, and a CI job that serves the demo artefact from the API
-  image and drives it over HTTP.
 - `make ensemble-probe` (`src/models/extra_members.py`, `src/models/ensemble_probe.py`): four candidate ensemble
   members (Huber and extra-trees LightGBM, CatBoost, an MLP), all predicting on the target's own scale. Seven-member
   blend 0.1435 against 0.1438 for the base, pooled over the test months; the paired per-month gain is
@@ -34,6 +28,35 @@ Notable changes to the code, the serving API and the published results. The form
   against 0.123 for the tabular model, and the blend's paired gain is -0.0009 with a
   95% CI of [-0.0104, +0.0086], so no gain was shown. PyTorch is not a dependency
   of CI or the serving image. Results in `results/sequence_probe*`.
+
+### Changed
+- **`RidgeModel` fits in chunks.** The full-data `make ship` was killed by the memory limit of a
+  16 GB machine inside the Ridge step: `MedianImputer.fit` made a ~4 GB temporary copy, and
+  `StandardScaler` plus sklearn's `Ridge` made further float64 copies of the 1.2M x 292 frame.
+  Medians are now computed a block of columns at a time, and the scaler and the normal equations
+  are accumulated chunk by chunk in float64. On real data (460k training rows) the predictions
+  differ from the old pipeline by at most 2.5e-14 and the cosine score is identical, so no
+  published number moves; `tests/test_baseline_chunked.py` pins the equivalence. Ridge's peak on
+  the full training set fell from 11.7 GB (and then OOM) to 7.2 GB, most of which is the data.
+- `release.yml` can also be started by hand (`workflow_dispatch`) with a version; it then creates the
+  annotated tag on the head of `main` itself and publishes both images. It refuses to run from any
+  other branch, requires a `vX.Y.Z` version (optionally `-rc.1`), refuses an existing tag that points
+  at a different commit, and passes the version to the shell through `env`, not by interpolation.
+  Added because a sandboxed session could not push a tag. It now also creates the GitHub release,
+  with the version's section of this changelog as its notes (`scripts/changelog_section.py`), in a
+  job of its own so that a failure there cannot affect the images.
+
+## [1.0.0] - 2026-10-05
+
+### Added
+- **Model registry** (`src/inference/registry.py`, `make promote / rollback / releases`): every
+  promotion is kept as an immutable release, `current` is swapped for the new one, and a release
+  that has been rolled away from is not returned to by a later rollback.
+- **Provenance** in `model_meta.json`: git revision and dirty flag, a hash of the ordered feature
+  list, training rows and months. Reported by `/v1/model-info`.
+- **`MSCAPITAL_API_KEY`**: when set, the model endpoints need an `X-API-Key` header. Open when unset.
+- `scripts/e2e_smoke.py` / `make smoke`, and a CI job that serves the demo artefact from the API
+  image and drives it over HTTP.
 - `MSCAPITAL_BQ_PROJECT` to point the pipeline at a BigQuery project other than the author's.
 - `MODEL_CARD.md`, checked against `results/` by a test; `make prune` (feature-pruning experiment,
   not yet run on the full data); `GET /v1/features`; `/v1` routes; `/metrics`; request-size and
@@ -46,14 +69,6 @@ Notable changes to the code, the serving API and the published results. The form
   matching `X-Admin-Token` (401 otherwise). Deployments that call it must set the token.
 - `MSCAPITAL_DATA_ROOT` relocates every data path, not only the API's.
 - The coverage floor rose from 60% to 68% (measured 71%).
-- **`RidgeModel` fits in chunks.** The full-data `make ship` was killed by the memory limit of a
-  16 GB machine inside the Ridge step: `MedianImputer.fit` made a ~4 GB temporary copy, and
-  `StandardScaler` plus sklearn's `Ridge` made further float64 copies of the 1.2M x 292 frame.
-  Medians are now computed a block of columns at a time, and the scaler and the normal equations
-  are accumulated chunk by chunk in float64. On real data (460k training rows) the predictions
-  differ from the old pipeline by at most 2.5e-14 and the cosine score is identical, so no
-  published number moves; `tests/test_baseline_chunked.py` pins the equivalence. Ridge's peak on
-  the full training set fell from 11.7 GB (and then OOM) to 7.2 GB, most of which is the data.
 
 ### Dependencies
 - GitHub Actions: `actions/checkout` 7, `actions/setup-python` 7, `docker/build-push-action` 7,
@@ -67,13 +82,6 @@ Notable changes to the code, the serving API and the published results. The form
 - **Security:** `mlflow` 3.15.2 -> 3.16.1 (PYSEC-2026-3865) and a pin of the transitive `cryptography`
   to 50.0.2 (PYSEC-2026-3552). All four requirement sets now pass `pip-audit`; `make audit` covers
   the pipeline set too. The weekly audit would have gone red on both.
-
-### Changed (release)
-- `release.yml` can also be started by hand (`workflow_dispatch`) with a version; it then creates the
-  annotated tag on the head of `main` itself and publishes both images. It refuses to run from any
-  other branch, requires a `vX.Y.Z` version (optionally `-rc.1`), refuses an existing tag that points
-  at a different commit, and passes the version to the shell through `env`, not by interpolation.
-  Added because a sandboxed session could not push a tag.
 
 ### Changed (typing)
 - `mypy` now covers the whole project (67 files: `api`, `src`, `streamlit_app`, `scripts`) with no
@@ -91,3 +99,7 @@ Notable changes to the code, the serving API and the published results. The form
 - A non-ASCII `X-Admin-Token` crashed `/reload` with a 500 (`hmac.compare_digest` rejects non-ASCII
   `str`); credentials are now compared as bytes.
 - Missing values (NaN) were counted as out-of-range inputs.
+
+[Unreleased]: https://github.com/senanurcetin/ms-capital-market-forecasting/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/senanurcetin/ms-capital-market-forecasting/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/senanurcetin/ms-capital-market-forecasting/releases/tag/v1.0.0
