@@ -15,6 +15,12 @@ competition dataset.
 **▶ [Open the live dashboard](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)** — seven pages over the results, no install required.
 
 **Kaggle notebook:** [MS Capital: My Hold-out Was a Lucky Stretch](https://www.kaggle.com/code/senanuretin/ms-capital-my-hold-out-was-a-lucky-stretch) — the period-difficulty and walk-forward analysis behind the headline result, runnable on Kaggle.
+
+**Model on Hugging Face:** [senanurcetin/ms-capital-market-forecasting](https://huggingface.co/senanurcetin/ms-capital-market-forecasting) —
+the v4 ensemble, the model card and every result file. **Latest release:**
+[v1.1.0](https://github.com/senanurcetin/ms-capital-market-forecasting/releases/tag/v1.1.0).
+**Kaggle notebook (what the later experiments found):**
+[MS Capital: Four Experiments That Did Not Help](https://www.kaggle.com/code/senanuretin/ms-capital-four-experiments-that-did-not-help).
 The page worth opening first is *Why the leaderboard disagreed*.
 
 `BigQuery` · `LightGBM` · `XGBoost` · `scikit-learn` · `SHAP` · `Optuna` · `Pandera` ·

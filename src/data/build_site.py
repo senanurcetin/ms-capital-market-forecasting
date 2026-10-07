@@ -36,6 +36,9 @@ ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / "results"
 SITE = ROOT / "site"
 REPO = "https://github.com/senanurcetin/ms-capital-market-forecasting"
+RELEASE = f"{REPO}/releases/tag/v1.1.0"
+HF = "https://huggingface.co/senanurcetin/ms-capital-market-forecasting"
+KAGGLE = "https://www.kaggle.com/code/senanuretin/ms-capital-four-experiments-that-did-not-help"
 # The interactive version. This page is the static summary; someone who wants to
 # click through the folds, the SHAP values or the prediction endpoint needs the app.
 APP = "https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/"
@@ -227,6 +230,8 @@ def build() -> Path:
   <p class="sub">Short-horizon return prediction from market microstructure.
      804.5M raw rows reduced to a scored model on a 16 GB laptop.</p>
   <p class="links"><a href="{REPO}">Source on GitHub</a> ·
+     <a href="{RELEASE}">Release v1.1.0</a> ·
+     <a href="{HF}">Model on Hugging Face</a> ·
      <a href="{REPO}/blob/main/notebooks/05_why_the_leaderboard_disagreed.ipynb">The investigation</a></p>
 </header>""")
 
@@ -340,7 +345,9 @@ def build() -> Path:
   live prediction, microstructure explorer, drift analysis — is a Streamlit app in the
   repository: <code>make streamlit</code>.</p>
   <p class="links"><a href="{REPO}">github.com/senanurcetin/ms-capital-market-forecasting</a>
-  &nbsp;·&nbsp; <a href="{APP}">interactive dashboard</a></p>
+  &nbsp;·&nbsp; <a href="{APP}">interactive dashboard</a>
+  &nbsp;·&nbsp; <a href="{HF}">Hugging Face</a>
+  &nbsp;·&nbsp; <a href="{KAGGLE}">Kaggle notebook</a></p>
 </section>
 <footer>For research and model evaluation. Not investment advice.
 MIT licensed; competition data is not redistributed.</footer>""")
