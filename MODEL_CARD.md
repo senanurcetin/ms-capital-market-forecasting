@@ -64,9 +64,14 @@ the rest is unexplained — see [notebook 05](notebooks/05_why_the_leaderboard_d
   prefer, never as a number that will reach a leaderboard.
 - **Weakest where the test set lives.** Error is highest in the tightest-spread regime, which
   holds 35.7% of the test samples against 25% of training.
-- **Hand-built sequence statistics add nothing** (+0.0006, CI spanning zero). That rules out
-  those 18 statistics, not the idea that order carries signal; a learned sequence
-  representation has not been tried.
+- **Hand-built sequence statistics add nothing** (+0.0006, CI spanning zero). That ruled out
+  those 18 statistics, not the idea that order carries signal. A learned sequence model (a small
+  CNN over the 600 s market window) was tried afterwards: it scores **0.077** on its own, but
+  blending it into the tabular model was not shown to help (paired gain **-0.0009**, 95% CI
+  **[-0.0104, +0.0086]** over eight held-out months), so the idea is neither confirmed nor
+  ruled out at that width. Neither a regime estimated from the feature space nor four further
+  ensemble members helped either; the shipped model is unchanged (`results/sequence_probe.json`,
+  `regime_clusters.json`, `ensemble_probe.json`).
 - **Metric confirmed only indirectly.** A score of 0.128 is consistent with cosine or Pearson
   and inconsistent with RMSE, MAE or R².
 - **Static.** Trained once on a fixed period. No retraining schedule or live drift response
@@ -77,3 +82,12 @@ the rest is unexplained — see [notebook 05](notebooks/05_why_the_leaderboard_d
 
 `make demo` runs the whole pipeline on synthetic data in about 15 seconds. `make check`
 runs lint, type checks and the tests, none of which need credentials or the competition data.
+
+## Links
+
+- Code, tests and the full write-up: [GitHub](https://github.com/senanurcetin/ms-capital-market-forecasting),
+  release [v1.1.0](https://github.com/senanurcetin/ms-capital-market-forecasting/releases/tag/v1.1.0)
+- Model files and this card on [Hugging Face](https://huggingface.co/senanurcetin/ms-capital-market-forecasting)
+- [Live dashboard](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)
+- Kaggle notebooks: [My Hold-out Was a Lucky Stretch](https://www.kaggle.com/code/senanuretin/ms-capital-my-hold-out-was-a-lucky-stretch)
+  and [Four Experiments That Did Not Help](https://www.kaggle.com/code/senanuretin/ms-capital-four-experiments-that-did-not-help)

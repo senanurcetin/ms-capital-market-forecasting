@@ -54,3 +54,13 @@ def test_served_model_version_matches_the_artefact():
     meta = load("model_meta.json")
     assert has(f"version `{meta['version']}`")
     assert has(meta["name"].replace("lightgbm", "LightGBM"))
+
+
+def test_sequence_model_result_matches_the_export():
+    """The limitation about the learned sequence model must quote results/sequence_probe.json."""
+    m = load("sequence_probe.json")
+    p, t = m["paired"], m["test_cosine"]
+    for figure in (f"{t['sequence']:.3f}", f"{p['mean_gain']:+.4f}", f"{p['ci_low']:+.4f}",
+                   f"{p['ci_high']:+.4f}"):
+        assert has(figure), figure
+    assert "has not been tried" not in CARD, "the card still says the sequence model is untried"
