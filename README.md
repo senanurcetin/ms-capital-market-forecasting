@@ -953,12 +953,15 @@ src/
   config.py              single source of paths and constants
   data/                  ingestion (column groups) · bq_loader · staging · mart · test_pipeline
   features/              market (159) · order (81) · transaction (52) · assemble
-  evaluation/            metrics (cosine) · temporal_validation · backtesting · explain
-  models/                baseline · lightgbm · xgboost · ensemble · train (CLI) · finalize
+  evaluation/            metrics (cosine) · temporal_validation · backtesting · explain · the diagnostics and
+                         experiments behind the findings (period_difficulty, feature_prune, split_order,
+                         regime_clusters, ...)
+  models/                baseline · lightgbm · xgboost · ensemble · train (CLI) · finalize · ship, plus the
+                         experiments: sequence_cnn · extra_members · ensemble_probe
   inference/             predictor — used by the API, which never imports training code
 api/main.py              FastAPI: /health /model-info /predict /batch-predict /metrics /reload (token-gated)
 api/guards.py            rate limiter + Prometheus metrics (standard library only)
 streamlit_app/           seven-page dashboard (st.navigation router + pages/)
 sql/                     BigQuery staging DDL
-tests/                   92 tests, none requiring live BigQuery or downloaded data
+tests/                   533 tests, none requiring live BigQuery or downloaded data (CatBoost and PyTorch tests skip when the package is absent)
 ```
