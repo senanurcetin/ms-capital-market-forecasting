@@ -4,7 +4,7 @@
 
 ![MSCapital research dashboard — captured source-rendered Streamlit overview](docs/assets/mscapital-research-dashboard.png)
 
-> **Authentic interface capture, 12 October 2026.** This image was captured from the project's rendered Streamlit source for portfolio documentation, rather than generated as a concept illustration. Figures shown are a historical example and are not live market quotes.
+> **Source-rendered Streamlit capture (12 October 2026), not a live-market feed.** This screenshot documents the research UI from source; it is not independent proof that the currently deployed app matches the image or that all seven pages render. [Dashboard evidence, model-version boundaries and recapture checks](docs/DASHBOARD_EVIDENCE.md).
 
 [![Live dashboard](https://img.shields.io/badge/dashboard-live-3FBFA8.svg)](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)
 [![CI](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/workflows/ci.yml/badge.svg)](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/workflows/ci.yml)
@@ -18,7 +18,7 @@ Built on the Kaggle
 [MSCapital](https://www.kaggle.com/competitions/ms-capital-real-financial-market-forecasting)
 competition dataset.
 
-**▶ [Open the live dashboard](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)** — seven pages over the results, no install required.
+**▶ [Open the published Streamlit dashboard](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)** — seven documented research pages. [Portfolio case study](https://senanur-cetin.vercel.app/projects/mscapital-market-forecasting) · [Dashboard screenshot review status](docs/DASHBOARD_EVIDENCE.md).
 
 **Kaggle notebook:** [MS Capital: My Hold-out Was a Lucky Stretch](https://www.kaggle.com/code/senanuretin/ms-capital-my-hold-out-was-a-lucky-stretch) — the period-difficulty and walk-forward analysis behind the headline result, runnable on Kaggle.
 
@@ -32,10 +32,10 @@ The page worth opening first is *Why the leaderboard disagreed*.
 `BigQuery` · `LightGBM` · `XGBoost` · `scikit-learn` · `SHAP` · `Optuna` · `Pandera` ·
 `MLflow` · `FastAPI` · `Streamlit` · `Docker` · `GitHub Actions`
 
-**Status: complete and handed over.** Five executed notebooks, two scored submissions, and
-a test suite that injects the failures it claims to prevent. Nothing is in progress; what
-remains open is stated plainly in [Where this stands](#where-this-stands) rather than left
-implied.
+**Research milestone: completed and handed over.** Five executed notebooks, two scored submissions, and
+a test suite that injects the failures it claims to prevent. Follow-up maintenance and test
+corrections can still occur; the documented historical scores do not change without new
+evaluation evidence. Research limitations remain explicit in [Where this stands](#where-this-stands).
 
 **Where to start**, depending on how long you have:
 
@@ -44,6 +44,8 @@ implied.
 | **2 minutes** | [Headline result](#headline-result) — the scores, and the forecast that was wrong |
 | **20 minutes** | ↑ plus [What I found](#what-i-found) and [notebook 01](notebooks/01_data_discovery.ipynb) — the six data findings that drive everything |
 | **an hour** | ↑ plus [notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb) — six hypotheses — one confirmed, one real but smaller than forecast, four falsified — and two errors caught in my own analysis |
+
+**Model-version boundary:** the [model card](MODEL_CARD.md) identifies the **default served inference model as LightGBM v3**; the separately submitted **v4 ensemble** earned the external +0.129 leaderboard score. Do not treat the dashboard prediction UI as a deployed v4 ensemble. [Full interface evidence guide](docs/DASHBOARD_EVIDENCE.md).
 
 **Model card:** [`MODEL_CARD.md`](MODEL_CARD.md) - what the model is, what it is for, the numbers, and the limits, every figure checked against `results/` by a test.
 
