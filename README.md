@@ -1,5 +1,7 @@
 # MSCapital — Real Financial Market Forecasting
 
+**Technical reviewer brief:** [Problem, quantitative evidence and limitations](docs/hiring-summary.md).
+
 ![MSCapital research dashboard — captured source-rendered Streamlit overview](docs/assets/mscapital-research-dashboard.png)
 
 > **Authentic interface capture, 12 October 2026.** This image was captured from the project's rendered Streamlit source for portfolio documentation, rather than generated as a concept illustration. Figures shown are a historical example and are not live market quotes.
