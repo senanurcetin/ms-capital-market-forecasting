@@ -77,3 +77,59 @@ def test_sweep_returns_row_per_fraction():
 def test_shape_mismatch_raises():
     with pytest.raises(ValueError):
         backtest(np.zeros(10), np.zeros(11))
+
+
+def test_quantile_backtest_trades_tied_magnitudes_with_stable_index_order():
+    """Ties must not make a 50% trade budget silently select zero trades."""
+    pred = np.array([1.0, -1.0, 1.0, -1.0])
+    actual = np.array([1.0, 2.0, 3.0, 4.0])
+
+    half = backtest(pred, actual, trade_fraction=0.5)
+    full = backtest(pred, actual, trade_fraction=1.0)
+
+    assert half["threshold"] == 1.0
+    assert half["n_trades"] == 2
+    assert half["turnover"] == pytest.approx(0.5)
+    # Stable tie-breaking picks positions 0 (long) and 1 (short).
+    assert half["total_return"] == pytest.approx(-1.0)
+    assert full["n_trades"] == 4
+    assert full["turnover"] == 1.0
+    assert full["total_return"] == pytest.approx(-2.0)
+
+
+def test_quantile_backtest_does_not_trade_zero_predictions_to_fill_budget():
+    pred = np.array([0.0, 0.0, 2.0, -2.0])
+    actual = np.array([3.0, -3.0, 0.01, -0.02])
+
+    result = backtest(pred, actual, trade_fraction=1.0)
+    assert result["n_trades"] == 2
+    assert result["turnover"] == 0.5
+    assert result["total_return"] == pytest.approx(0.03)
+    assert backtest(np.zeros(4), actual, trade_fraction=1.0)["n_trades"] == 0
+
+
+def test_quantile_ties_do_not_look_ahead_at_realised_returns():
+    pred = np.array([1.0, -1.0, 1.0, -1.0])
+    first = backtest(pred, np.array([1.0, 2.0, 100.0, 100.0]), trade_fraction=0.5)
+    second = backtest(pred, np.array([1.0, 2.0, -100.0, -100.0]), trade_fraction=0.5)
+
+    assert first["n_trades"] == second["n_trades"] == 2
+    assert first["total_return"] == second["total_return"] == pytest.approx(-1.0)
+
+
+def test_tied_trades_pay_exact_per_trade_cost():
+    pred = np.array([-1.0, -1.0, 1.0, 1.0])
+    actual = np.array([0.01, -0.02, 0.03, -0.04])
+
+    free = backtest(pred, actual, trade_fraction=0.5, cost_bps=0)
+    charged = backtest(pred, actual, trade_fraction=0.5, cost_bps=5)
+
+    assert charged["n_trades"] == free["n_trades"] == 2
+    assert free["total_return"] - charged["total_return"] == pytest.approx(2 * 5 / 10_000)
+
+
+def test_explicit_threshold_keeps_strict_inequality_at_ties():
+    pred = np.array([1.0, -1.0, 1.0, -1.0])
+    actual = np.array([1.0, 1.0, 1.0, 1.0])
+    assert backtest(pred, actual, threshold=1.0)["n_trades"] == 0
+    assert backtest(pred, actual, threshold=0.99)["n_trades"] == 4
