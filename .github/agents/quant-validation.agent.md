@@ -3,6 +3,8 @@ name: Quant Validation
 description: Design synthetic-data tests for quantitative financial metrics, walk-forward validation, leakage protection and backtest integrity.
 user-invocable: true
 disable-model-invocation: true
+include-custom-instructions: true
+tools: ["read", "search", "edit", "execute"]
 ---
 
 # Mission
