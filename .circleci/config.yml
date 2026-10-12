@@ -13,14 +13,15 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - ms-capital-dev-pip-v1-{{ checksum "requirements-dev.txt" }}
-            - ms-capital-dev-pip-v1-
+            # Invalidate when any nested pinned requirements set changes.
+            - ms-capital-dev-pip-v2-{{ checksum "requirements-dev.txt" }}-{{ checksum "requirements-pipeline.txt" }}-{{ checksum "requirements.txt" }}
+            - ms-capital-dev-pip-v2-
       - run:
           name: Install dev and test dependencies
           command: python -m pip install -r requirements-dev.txt
           no_output_timeout: 15m
       - save_cache:
-          key: ms-capital-dev-pip-v1-{{ checksum "requirements-dev.txt" }}
+          key: ms-capital-dev-pip-v2-{{ checksum "requirements-dev.txt" }}-{{ checksum "requirements-pipeline.txt" }}-{{ checksum "requirements.txt" }}
           paths:
             - ~/.cache/pip
       - run:
@@ -30,9 +31,19 @@ jobs:
           name: Full project mypy
           command: mypy
       - run:
-          name: Offline tests with coverage floor
-          command: pytest tests/ -q --maxfail=1 --cov --cov-report=term
+          name: Offline tests with coverage floor and timing evidence
+          command: |
+            mkdir -p test-results artifacts
+            python -m pytest tests/ -q --maxfail=1 --cov --cov-report=term --cov-report=xml:artifacts/coverage.xml --junitxml=test-results/pytest.xml --durations=10
           no_output_timeout: 15m
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: test-results
+          destination: junit
+      - store_artifacts:
+          path: artifacts/coverage.xml
+          destination: coverage/coverage.xml
 
   dashboard-runtime:
     docker:
