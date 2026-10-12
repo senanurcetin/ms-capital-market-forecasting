@@ -1,5 +1,9 @@
 # MSCapital — Real Financial Market Forecasting
 
+![MSCapital research dashboard — captured source-rendered Streamlit overview](docs/assets/mscapital-research-dashboard.png)
+
+> **Authentic interface capture, 12 October 2026.** This image was captured from the project's rendered Streamlit source for portfolio documentation, rather than generated as a concept illustration. Figures shown are a historical example and are not live market quotes.
+
 [![Live dashboard](https://img.shields.io/badge/dashboard-live-3FBFA8.svg)](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)
 [![CI](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/workflows/ci.yml/badge.svg)](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/workflows/ci.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
