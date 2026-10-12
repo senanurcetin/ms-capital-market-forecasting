@@ -36,6 +36,22 @@ def threshold_from_quantile(pred: np.ndarray, trade_fraction: float) -> float:
     return float(np.quantile(np.abs(pred), 1.0 - trade_fraction))
 
 
+def _ranked_signals(pred: np.ndarray, trade_fraction: float) -> np.ndarray:
+    """Select the strongest nonzero predictions, breaking equal magnitudes by input order.
+
+    Quantile thresholds alone cannot enforce a trade budget on tied values:
+    strict inequalities can select zero trades, and inclusive ones can select all
+    ties. A stable ranking selects at most ceil(fraction * n) independent bets.
+    Actual returns are never used for signal selection.
+    """
+    n = int(np.ceil(trade_fraction * pred.size))
+    ranked = np.argsort(-np.abs(pred), kind="stable")
+    selected = ranked[np.abs(pred[ranked]) > 0][:n]
+    signals = np.zeros(pred.shape, dtype=np.int8)
+    signals[selected] = np.sign(pred[selected]).astype(np.int8)
+    return signals
+
+
 def backtest(
     pred: np.ndarray,
     actual: np.ndarray,
@@ -44,14 +60,22 @@ def backtest(
     trade_fraction: float = 0.2,
     cost_bps: float = 0.0,
 ) -> dict:
-    """Per-signal return = direction * realised return - transaction cost."""
+    """Per-signal return = direction * realised return - transaction cost.
+
+    Quantile selection trades the strongest nonzero signals (ties broken by
+    original index). An explicit threshold retains strict inequality behavior.
+    """
     p = np.asarray(pred, dtype=np.float64)
     a = np.asarray(actual, dtype=np.float64)
     if p.shape != a.shape:
         raise ValueError(f"shape mismatch: {p.shape} vs {a.shape}")
 
-    t = threshold_from_quantile(p, trade_fraction) if threshold is None else threshold
-    sig = make_signals(p, t)
+    if threshold is None:
+        t = threshold_from_quantile(p, trade_fraction)
+        sig = _ranked_signals(p, trade_fraction)
+    else:
+        t = threshold
+        sig = make_signals(p, t)
     traded = sig != 0
     n_trades = int(traded.sum())
 
