@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from src.evaluation.metrics import (
     cosine_similarity,
     directional_accuracy,
