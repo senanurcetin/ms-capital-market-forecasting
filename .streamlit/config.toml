@@ -34,12 +34,12 @@ chartCategoricalColors = [
 
 [theme.dark]
 primaryColor = "#3FBFA8"
-backgroundColor = "#0B0E14"
-secondaryBackgroundColor = "#141A24"
-textColor = "#D8DEE9"
-linkColor = "#6FD3C0"
-borderColor = "#242C3A"
-dataframeHeaderBackgroundColor = "#141A24"
+backgroundColor = "#0B1627"
+secondaryBackgroundColor = "#17283D"
+textColor = "#E3F2F0"
+linkColor = "#8CE6CA"
+borderColor = "#345163"
+dataframeHeaderBackgroundColor = "#17283D"
 
 [theme.light]
 primaryColor = "#0F8C7A"

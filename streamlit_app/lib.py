@@ -61,7 +61,119 @@ DISCLAIMER = (
 )
 
 
+def inject_dashboard_theme() -> None:
+    """Apply report-only styling; no model results or metrics are modified.
+
+    The UI retains its original live source data. The rules use Streamlit's
+    data-testid hooks and are progressive enhancement: if a selector changes,
+    native Streamlit remains fully functional.
+    """
+    st.markdown(
+        """
+        <style>
+        :root {
+          --ms-ink: #0e1c30;
+          --ms-card: #17283d;
+          --ms-border: #345163;
+          --ms-teal: #8ce6ca;
+        }
+        [data-testid="stApp"] {
+          background:
+            radial-gradient(circle at 92% 5%,rgba(40,179,162,.10),transparent 36%),
+            radial-gradient(circle at 7% 12%,rgba(43,111,159,.10),transparent 31%),
+            #0b1627;
+          color: #e3f2f0;
+        }
+        [data-testid="stSidebar"] {
+          background: linear-gradient(180deg,#0c1a2c,#10293a);
+          border-right: 1px solid #284657;
+        }
+        [data-testid="stSidebarNav"] { padding-top: 1rem; }
+        [data-testid="stSidebarNav"] a {
+          border-radius: 10px;
+          margin: 2px 8px;
+          transition: background .12s ease;
+        }
+        [data-testid="stSidebarNav"] a:hover { background: #1a4650; }
+        .block-container {
+          max-width: 1480px;
+          padding-top: clamp(1.5rem,3vw,2.6rem);
+          padding-bottom: 3.3rem;
+        }
+        [data-testid="stMetric"] {
+          background: linear-gradient(150deg,#172e3e,#132738);
+          border: 1px solid #325866;
+          border-radius: 16px;
+          padding: clamp(1rem,1.4vw,1.45rem);
+          box-shadow: 0 15px 30px rgba(2,12,24,.17);
+          min-height: 126px;
+        }
+        [data-testid="stMetricLabel"] {
+          color: #a7c4c9;
+          text-transform: uppercase;
+          letter-spacing: .055em;
+          font-weight: 700;
+          font-size: .76rem;
+        }
+        [data-testid="stMetricValue"] {
+          color: #edfffb;
+          font-variant-numeric: tabular-nums;
+          letter-spacing: -.03em;
+        }
+        [data-testid="stMetricDelta"] { font-variant-numeric: tabular-nums; }
+        [data-testid="stDataFrame"],
+        [data-testid="stTable"],
+        [data-testid="stVegaLiteChart"],
+        [data-testid="stPlotlyChart"] {
+          border: 1px solid #294657;
+          border-radius: 15px;
+          overflow: hidden;
+        }
+        [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"] {
+          min-width: 0;
+        }
+        [data-testid="stAlert"] { border-radius: 13px; }
+        [data-testid="stExpander"] { border: 1px solid #305162; border-radius: 14px; }
+        [data-testid="stMarkdownContainer"] h1 {
+          color: #f3fffb;
+          letter-spacing: -.036em;
+          font-size: clamp(2rem,3.3vw,3.15rem);
+          line-height: 1.13;
+        }
+        [data-testid="stMarkdownContainer"] h2,
+        [data-testid="stMarkdownContainer"] h3 { color: #c3f4e2; letter-spacing: -.015em; }
+        hr { border-color: #2a4958; }
+        .ms-report-eyebrow {
+          display: inline-flex;
+          gap: .5rem;
+          align-items: center;
+          padding: .44rem .9rem;
+          background: #17453f;
+          border: 1px solid #387a6d;
+          border-radius: 999px;
+          color: #b4f5db;
+          font-size: .72rem;
+          font-weight: 800;
+          letter-spacing: .11em;
+          margin-bottom: .65rem;
+        }
+        .ms-report-footnote { color: #aec8cb; font-size: .84rem; margin-top: .5rem; }
+        @media (max-width: 780px) {
+          [data-testid="stMetric"] { min-height: 108px; }
+          .block-container { padding-inline: 1rem; }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def page_header(title: str, subtitle: str = "") -> None:
+    inject_dashboard_theme()
+    st.markdown(
+        '<span class="ms-report-eyebrow">MSCAPITAL · QUANTITATIVE RESEARCH</span>',
+        unsafe_allow_html=True,
+    )
     st.title(title)
     if subtitle:
         st.caption(subtitle)
