@@ -1,0 +1,65 @@
+version: 2.1
+
+# The project remains canonical on GitHub. Tests use synthetic fixtures and
+# fake model artifacts; no BigQuery credentials, production API keys, or deploy.
+# Docker release/image compatibility jobs remain in the existing GitHub CI.
+jobs:
+  python-quality:
+    docker:
+      - image: cimg/python:3.11
+    resource_class: medium
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - ms-capital-dev-pip-v1-{{ checksum "requirements-dev.txt" }}
+            - ms-capital-dev-pip-v1-
+      - run:
+          name: Install dev and test dependencies
+          command: python -m pip install -r requirements-dev.txt
+          no_output_timeout: 15m
+      - save_cache:
+          key: ms-capital-dev-pip-v1-{{ checksum "requirements-dev.txt" }}
+          paths:
+            - ~/.cache/pip
+      - run:
+          name: Ruff lint
+          command: ruff check src/ api/ streamlit_app/ tests/ scripts/
+      - run:
+          name: Full project mypy
+          command: mypy
+      - run:
+          name: Offline tests with coverage floor
+          command: pytest tests/ -q --maxfail=1 --cov --cov-report=term
+          no_output_timeout: 15m
+
+  dashboard-runtime:
+    docker:
+      - image: cimg/python:3.11
+    resource_class: medium
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - ms-capital-runtime-pip-v1-{{ checksum "requirements.txt" }}
+            - ms-capital-runtime-pip-v1-
+      - run:
+          name: Install only production dashboard dependencies
+          command: python -m pip install -r requirements.txt
+          no_output_timeout: 15m
+      - save_cache:
+          key: ms-capital-runtime-pip-v1-{{ checksum "requirements.txt" }}
+          paths:
+            - ~/.cache/pip
+      - run:
+          name: Render every Streamlit page against runtime dependencies only
+          command: python scripts/check_deploy.py
+          no_output_timeout: 15m
+
+workflows:
+  verify:
+    jobs:
+      - python-quality
+      - dashboard-runtime
