@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this research software, please cite this repository."
+type: software
+title: "MS Capital — Real Financial Market Forecasting"
+authors:
+  - family-names: "Çetin"
+    given-names: "Senanur"
+repository-code: "https://github.com/senanurcetin/ms-capital-market-forecasting"
+url: "https://github.com/senanurcetin/ms-capital-market-forecasting"
+license: MIT
