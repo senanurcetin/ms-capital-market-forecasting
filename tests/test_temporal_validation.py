@@ -76,3 +76,25 @@ def test_stability_reports_worst_fold():
     assert s["worst_fold"] == 2
     assert s["min"] == pytest.approx(0.05)
     assert s["std"] > 0
+
+def test_assert_no_overlap_checks_the_supplied_month_vector():
+    for invalid in (
+        np.array([]),
+        np.array([64.0, np.nan, 66.0]),
+        np.array([-1, 0, 65]),
+        np.array([63.0, 63.5, 65.0]),
+    ):
+        with pytest.raises(ValueError):
+            assert_no_overlap(invalid)
+
+
+def test_holdout_only_rejects_pre_holdout_and_unordered_months():
+    from src.evaluation.temporal_validation import assert_holdout_only
+
+    assert_holdout_only(np.array([65, 65, 66, 70]))
+    with pytest.raises(ValueError, match="outside hold-out"):
+        assert_holdout_only(np.array([64, 65, 70]))
+    with pytest.raises(ValueError, match="chronological"):
+        assert_holdout_only(np.array([66, 65, 70]))
+    with pytest.raises(ValueError, match="nonempty"):
+        assert_holdout_only(np.array([]))
