@@ -18,9 +18,21 @@ import numpy as np
 import pandas as pd
 
 
+def _finite_vector(values: np.ndarray, name: str) -> np.ndarray:
+    """Reject invalid inputs before they can affect signal ranking or P&L."""
+    arr = np.asarray(values, dtype=np.float64)
+    if arr.ndim != 1 or not arr.size:
+        raise ValueError(f"{name} must be a nonempty 1-D vector")
+    if not np.isfinite(arr).all():
+        raise ValueError(f"{name} must contain only finite values")
+    return arr
+
+
 def make_signals(pred: np.ndarray, threshold: float) -> np.ndarray:
     """pred > +t -> +1 (BUY), pred < -t -> -1 (SELL), otherwise 0 (HOLD)."""
-    p = np.asarray(pred, dtype=np.float64)
+    p = _finite_vector(pred, "pred")
+    if not np.isfinite(threshold) or threshold < 0:
+        raise ValueError("threshold must be finite and nonnegative")
     return np.where(p > threshold, 1, np.where(p < -threshold, -1, 0)).astype(np.int8)
 
 
@@ -31,9 +43,10 @@ def threshold_from_quantile(pred: np.ndarray, trade_fraction: float) -> float:
     scale-invariant, so prediction MAGNITUDE is not calibrated - an absolute cut
     would be meaningless.
     """
-    if not 0 < trade_fraction <= 1:
+    if not np.isfinite(trade_fraction) or not 0 < trade_fraction <= 1:
         raise ValueError("trade_fraction must be in (0, 1]")
-    return float(np.quantile(np.abs(pred), 1.0 - trade_fraction))
+    values = _finite_vector(pred, "pred")
+    return float(np.quantile(np.abs(values), 1.0 - trade_fraction))
 
 
 def _ranked_signals(pred: np.ndarray, trade_fraction: float) -> np.ndarray:
@@ -69,6 +82,14 @@ def backtest(
     a = np.asarray(actual, dtype=np.float64)
     if p.shape != a.shape:
         raise ValueError(f"shape mismatch: {p.shape} vs {a.shape}")
+    p = _finite_vector(p, "pred")
+    a = _finite_vector(a, "actual")
+    if not np.isfinite(cost_bps) or cost_bps < 0:
+        raise ValueError("cost_bps must be finite and nonnegative")
+    if threshold is not None and (not np.isfinite(threshold) or threshold < 0):
+        raise ValueError("threshold must be finite and nonnegative")
+    if not np.isfinite(trade_fraction) or not 0 < trade_fraction <= 1:
+        raise ValueError("trade_fraction must be in (0, 1]")
 
     if threshold is None:
         t = threshold_from_quantile(p, trade_fraction)
