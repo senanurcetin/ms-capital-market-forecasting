@@ -133,3 +133,22 @@ def test_explicit_threshold_keeps_strict_inequality_at_ties():
     actual = np.array([1.0, 1.0, 1.0, 1.0])
     assert backtest(pred, actual, threshold=1.0)["n_trades"] == 0
     assert backtest(pred, actual, threshold=0.99)["n_trades"] == 4
+
+def test_backtest_rejects_nonfinite_predictions_and_returns():
+    for value in (np.nan, np.inf, -np.inf):
+        with pytest.raises(ValueError, match="pred must contain only finite"):
+            backtest(np.array([1.0, value]), np.array([0.1, 0.2]))
+        with pytest.raises(ValueError, match="actual must contain only finite"):
+            backtest(np.array([1.0, 0.0]), np.array([0.1, value]))
+
+
+def test_backtest_rejects_nonfinite_costs_thresholds_and_empty_inputs():
+    with pytest.raises(ValueError, match="nonempty 1-D"):
+        backtest(np.array([]), np.array([]))
+    for bad in (-1.0, np.nan, np.inf):
+        with pytest.raises(ValueError, match="cost_bps"):
+            backtest(np.array([0.0]), np.array([0.0]), cost_bps=bad)
+        with pytest.raises(ValueError, match="threshold"):
+            backtest(np.array([0.0]), np.array([0.0]), threshold=bad)
+    with pytest.raises(ValueError, match="pred must contain only finite"):
+        threshold_from_quantile(np.array([1.0, np.nan]), 0.5)

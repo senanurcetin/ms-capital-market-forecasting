@@ -106,10 +106,32 @@ def holdout_indices(months: np.ndarray) -> np.ndarray:
     return np.flatnonzero((months >= lo) & (months <= hi))
 
 
-def assert_no_overlap(months: np.ndarray) -> None:
-    """Safety net: no fold may overlap train with validation, and hold-out months
-    must never appear in any fold."""
+def _validated_months(months: np.ndarray) -> np.ndarray:
+    observed = np.asarray(months)
+    if observed.ndim != 1 or observed.size == 0:
+        raise ValueError("months must be a nonempty 1-D vector")
+    if not np.issubdtype(observed.dtype, np.number) or not np.isfinite(observed).all():
+        raise ValueError("months must contain only finite numeric month labels")
+    if (observed < 0).any() or (observed != np.floor(observed)).any():
+        raise ValueError("months must be nonnegative whole-number labels")
+    return observed
+
+
+def assert_holdout_only(months: np.ndarray) -> None:
+    """Validate ordered hold-out observations; repeated rows per month are valid."""
+    observed = _validated_months(months)
     lo, hi = holdout_months()
+    if ((observed < lo) | (observed > hi)).any():
+        raise ValueError(f"evaluation includes data outside hold-out months {lo}-{hi}")
+    if (np.diff(observed) < 0).any():
+        raise ValueError("hold-out month labels must be chronological")
+
+
+def assert_no_overlap(months: np.ndarray) -> None:
+    """Verify configured ranges and the supplied month-vector partitions."""
+    observed = _validated_months(months)
+    lo, hi = holdout_months()
+    holdout = set(holdout_indices(observed))
     for fold in build_folds():
         tr_lo, tr_hi = fold.train_months
         va_lo, va_hi = fold.val_months
@@ -119,6 +141,11 @@ def assert_no_overlap(months: np.ndarray) -> None:
             raise AssertionError(f"{fold.describe()}: train reaches into hold-out ({lo}-{hi})")
         if va_hi >= lo:
             raise AssertionError(f"{fold.describe()}: validation reaches into hold-out ({lo}-{hi})")
+        train_idx, validation_idx = split_indices(observed, fold)
+        if set(train_idx) & set(validation_idx):
+            raise AssertionError(f"{fold.describe()}: sample index overlaps train/validation")
+        if (set(train_idx) | set(validation_idx)) & holdout:
+            raise AssertionError(f"{fold.describe()}: hold-out sample included in fold")
 
 
 def stability(scores: list[float]) -> dict[str, float]:
