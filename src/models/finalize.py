@@ -20,7 +20,11 @@ import numpy as np
 from src.config import load_config
 from src.evaluation.backtesting import backtest, cost_sensitivity, sweep_trade_fraction
 from src.evaluation.metrics import evaluate
-from src.evaluation.temporal_validation import holdout_months
+from src.evaluation.temporal_validation import (
+    assert_holdout_only,
+    assert_no_overlap,
+    holdout_months,
+)
 from src.inference.predictor import compute_feature_ranges, make_provenance, save_bundle
 from src.models.base import feature_columns
 from src.models.train import load_dataset
@@ -48,6 +52,7 @@ def main(argv: list[str] | None = None) -> None:
     ho_lo, ho_hi = holdout_months()
     months = df["month"].to_numpy()
     y = df["target"].to_numpy()
+    assert_no_overlap(months)
 
     # Early stopping uses the last month BEFORE the hold-out.
     valid_month = ho_lo - 1
@@ -81,19 +86,24 @@ def main(argv: list[str] | None = None) -> None:
 
     model.fit(df.iloc[tr], y[tr], eval_set=(df.iloc[va], y[va]))
 
-    pred_ho = model.predict(df.iloc[ho])
-    scores = evaluate(y[ho], pred_ho)
+    # Stable chronological order matters for the cumulative P&L and drawdown.
+    holdout_order = np.argsort(months[ho], kind="stable")
+    holdout_month_labels = months[ho][holdout_order]
+    assert_holdout_only(holdout_month_labels)
+    holdout_actual = y[ho][holdout_order]
+    pred_ho = model.predict(df.iloc[ho])[holdout_order]
+    scores = evaluate(holdout_actual, pred_ho)
     log.info("HOLD-OUT (months %d-%d): %s", ho_lo, ho_hi,
              {k: round(v, 5) for k, v in scores.items()})
 
     # Backtest - HOLD-OUT ONLY.
     out_dir = Path(cfg.paths.features)
     out_dir.mkdir(parents=True, exist_ok=True)
-    cost_sensitivity(pred_ho, y[ho]).to_csv(
+    cost_sensitivity(pred_ho, holdout_actual).to_csv(
         out_dir / "backtest_cost_sensitivity.csv", index=False)
-    sweep_trade_fraction(pred_ho, y[ho]).to_csv(
+    sweep_trade_fraction(pred_ho, holdout_actual).to_csv(
         out_dir / "backtest_trade_fraction.csv", index=False)
-    bt = backtest(pred_ho, y[ho], trade_fraction=0.2, cost_bps=1.0)
+    bt = backtest(pred_ho, holdout_actual, trade_fraction=0.2, cost_bps=1.0)
     equity = bt.pop("equity_curve")
     import pandas as pd
 
