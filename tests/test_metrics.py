@@ -156,3 +156,17 @@ def test_loss_metrics_avoid_square_and_sum_overflow_on_finite_values(metric):
 def test_loss_metrics_refuse_nonrepresentable_residual_overflow(metric):
     with pytest.raises(ValueError, match="residual overflowed"):
         metric([1e308], [-1e308])
+
+
+@pytest.mark.parametrize("scale", [1e-200, 1e200, 1e308])
+def test_pearson_stays_finite_for_tiny_or_huge_nonconstant_vectors(scale):
+    base = np.array([0.25, -0.5, 0.0, 0.75])
+    y = base * scale
+    assert pearson(y, y) == pytest.approx(1.0, abs=1e-12)
+    assert pearson(y, -y) == pytest.approx(-1.0, abs=1e-12)
+
+
+def test_pearson_constant_and_zero_predictions_have_zero_correlation():
+    truth = np.array([-3.0, 1.0, 4.0, 2.0])
+    assert pearson(truth, np.ones(4) * 1e300) == 0.0
+    assert pearson(truth, np.zeros(4)) == 0.0
