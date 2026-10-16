@@ -152,6 +152,10 @@ def stability(scores: list[float]) -> dict[str, float]:
     """Across-fold stability. Monthly target volatility swings by 2.69x, which makes
     this as important a selection criterion as the mean."""
     arr = np.asarray(scores, dtype=float)
+    # An empty or nonfinite fold set would otherwise select a model using
+    # NaN summary metrics or crash while determining the worst fold.
+    if arr.ndim != 1 or arr.size == 0 or not np.isfinite(arr).all():
+        raise ValueError("fold scores must be a nonempty 1-D finite sequence")
     return {
         "mean": float(arr.mean()),
         "std": float(arr.std(ddof=1)) if arr.size > 1 else 0.0,
