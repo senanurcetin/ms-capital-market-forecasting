@@ -52,10 +52,26 @@ def build_folds() -> list[Fold]:
     """Turn the expanding-window fold definitions in config.yaml into Fold objects."""
     cfg = load_config()
     embargo = cfg.validation.embargo_months
+    if type(embargo) is not int or embargo < 1:
+        raise ValueError("Walk-forward embargo must be a positive integer")
+    holdout_start, _ = holdout_months()
+    if not cfg.validation.folds:
+        raise ValueError("Walk-forward configuration requires at least one fold")
     folds: list[Fold] = []
+    previous_train_end = -1
+    previous_val_end = -1
     for i, f in enumerate(cfg.validation.folds, start=1):
         train_end = f["train_end"]
         val_start = f["val_start"]
+        val_end = f["val_end"]
+        if any(type(n) is not int or n < 0 for n in (train_end, val_start, val_end)):
+            raise ValueError(f"Fold {i}: month boundaries must be nonnegative integers")
+        if val_start > val_end:
+            raise ValueError(f"Fold {i}: validation end must not precede its start")
+        if val_end >= holdout_start:
+            raise ValueError(f"Fold {i}: validation overlaps hold-out")
+        if train_end <= previous_train_end or val_start <= previous_val_end:
+            raise ValueError(f"Fold {i}: folds must advance chronologically")
         gap = (train_end + 1, val_start - 1)
         if val_start - train_end - 1 < embargo:
             raise ValueError(
@@ -66,10 +82,12 @@ def build_folds() -> list[Fold]:
             Fold(
                 index=i,
                 train_months=(0, train_end),
-                val_months=(val_start, f["val_end"]),
+                val_months=(val_start, val_end),
                 embargo_months=gap,
             )
         )
+        previous_train_end = train_end
+        previous_val_end = val_end
     return folds
 
 
@@ -81,7 +99,10 @@ def holdout_months() -> tuple[int, int]:
     honest estimate of what a fresh period will yield.
     """
     h = load_config().validation.holdout
-    return h["start"], h["end"]
+    start, end = h["start"], h["end"]
+    if type(start) is not int or type(end) is not int or start < 0 or end < start:
+        raise ValueError("Hold-out months must be an ordered nonnegative integer range")
+    return start, end
 
 
 def split_indices(months: np.ndarray, fold: Fold) -> tuple[np.ndarray, np.ndarray]:
