@@ -164,6 +164,7 @@ def test_invalid_walkforward_configuration_fails_before_partitioning(
     monkeypatch, folds, embargo, holdout, message
 ):
     from types import SimpleNamespace
+
     import src.evaluation.temporal_validation as temporal
     monkeypatch.setattr(temporal, "load_config", lambda: SimpleNamespace(
         validation=SimpleNamespace(
@@ -181,6 +182,7 @@ def test_invalid_walkforward_configuration_fails_before_partitioning(
 ])
 def test_invalid_holdout_bounds_are_rejected(monkeypatch, holdout):
     from types import SimpleNamespace
+
     import src.evaluation.temporal_validation as temporal
     monkeypatch.setattr(temporal, "load_config", lambda: SimpleNamespace(
         validation=SimpleNamespace(holdout=holdout)
