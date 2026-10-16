@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-
 from streamlit_app.metric_evidence import optional_score, score_text
 
 
