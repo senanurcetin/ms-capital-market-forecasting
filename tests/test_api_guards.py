@@ -64,6 +64,24 @@ def test_limiter_memory_is_bounded(monkeypatch):
     assert len(lim._hits) <= 10
 
 
+def test_limiter_rejects_new_keys_at_capacity_without_growing_memory(monkeypatch):
+    clock = FakeClock()
+    lim = RateLimiter(1, clock=clock)
+    monkeypatch.setattr(RateLimiter, "MAX_KEYS", 2)
+
+    assert lim.check("a") is None
+    assert lim.check("b") is None
+    # Attackers cannot evade the bound by rotating their client identifier.
+    assert lim.check("c") == pytest.approx(60.0)
+    assert lim.check("d") == pytest.approx(60.0)
+    assert set(lim._hits) == {"a", "b"}
+    assert lim.check("a") == pytest.approx(60.0)
+
+    clock.t = 61.0
+    assert lim.check("c") is None
+    assert set(lim._hits) == {"c"}
+
+
 # --- over HTTP -----------------------------------------------------------------------------
 
 def test_rate_limit_returns_429_with_retry_after(monkeypatch, tmp_path):
