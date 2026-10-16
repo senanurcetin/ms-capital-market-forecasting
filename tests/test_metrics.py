@@ -127,3 +127,17 @@ def test_metrics_accept_single_column_outputs_without_changing_values():
     y = np.array([0.1, -0.2, 0.3, -0.4])
     predicted = (y * 0.8).reshape(-1, 1)
     assert evaluate(y, predicted) == pytest.approx(evaluate(y, predicted[:, 0]))
+
+
+def test_cosine_stays_finite_for_extremely_large_finite_vectors():
+    y = np.array([1e200, -2e200, 3e200])
+    p = -y
+    assert cosine_similarity(y, p) == pytest.approx(-1.0, abs=1e-12)
+    assert cosine_similarity(y, y) == pytest.approx(1.0, abs=1e-12)
+
+
+def test_cosine_does_not_turn_tiny_nonzero_vectors_into_zero():
+    y = np.array([1e-200, -2e-200, 3e-200])
+    assert cosine_similarity(y, y) == pytest.approx(1.0, abs=1e-12)
+    assert cosine_similarity(y, -y) == pytest.approx(-1.0, abs=1e-12)
+    assert cosine_similarity(y, np.zeros_like(y)) == 0.0
