@@ -29,6 +29,10 @@ def _paired(y_true, y_pred) -> tuple[np.ndarray, np.ndarray]:
     y, p = _as_1d(y_true), _as_1d(y_pred)
     if y.shape != p.shape:
         raise ValueError(f"shape mismatch: {y.shape} vs {p.shape}")
+    # Missing labels and nonfinite predictions cannot support reported
+    # model performance. Never turn an empty cosine evaluation into zero.
+    if y.size == 0 or not np.isfinite(y).all() or not np.isfinite(p).all():
+        raise ValueError("evaluation vectors must be nonempty and finite")
     return y, p
 
 

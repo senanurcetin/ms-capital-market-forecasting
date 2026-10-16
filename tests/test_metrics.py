@@ -90,3 +90,19 @@ def test_all_metrics_reject_mismatched_lengths_without_numpy_broadcasting(metric
     with pytest.raises(ValueError, match="shape mismatch"):
         metric(np.array([1.0]), np.array([1.0, -1.0, 2.0]))
 
+
+@pytest.mark.parametrize(
+    "metric",
+    [cosine_similarity, mae, rmse, pearson, directional_accuracy, evaluate],
+)
+@pytest.mark.parametrize("truth,pred", [
+    ([], []),
+    ([1.0, float("nan")], [1.0, 0.0]),
+    ([1.0, 0.0], [1.0, float("inf")]),
+    ([float("-inf"), 1.0], [0.0, 1.0]),
+])
+def test_all_metrics_refuse_empty_or_nonfinite_evaluation_vectors(metric, truth, pred):
+    with pytest.raises(ValueError, match="nonempty and finite"):
+        metric(truth, pred)
+
+
