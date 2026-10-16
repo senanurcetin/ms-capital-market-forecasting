@@ -160,7 +160,7 @@ def test_loss_metrics_refuse_nonrepresentable_residual_overflow(metric):
 
 @pytest.mark.parametrize("scale", [1e-200, 1e200, 1e308])
 def test_pearson_stays_finite_for_tiny_or_huge_nonconstant_vectors(scale):
-    base = np.array([1.0, -2.0, 0.0, 3.0])
+    base = np.array([0.25, -0.5, 0.0, 0.75])
     y = base * scale
     assert pearson(y, y) == pytest.approx(1.0, abs=1e-12)
     assert pearson(y, -y) == pytest.approx(-1.0, abs=1e-12)
