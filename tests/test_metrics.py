@@ -78,3 +78,15 @@ def test_evaluate_returns_all_keys():
     out = evaluate(y, y * 3)
     assert set(out) == {"cosine", "mae", "rmse", "pearson", "directional_accuracy"}
     assert out["cosine"] == pytest.approx(1.0, abs=1e-12)
+
+@pytest.mark.parametrize(
+    "metric",
+    [cosine_similarity, mae, rmse, pearson, directional_accuracy, evaluate],
+)
+def test_all_metrics_reject_mismatched_lengths_without_numpy_broadcasting(metric):
+    # A singleton prediction must never be copied implicitly across the target vector.
+    with pytest.raises(ValueError, match="shape mismatch"):
+        metric(np.array([1.0, -1.0, 2.0]), np.array([1.0]))
+    with pytest.raises(ValueError, match="shape mismatch"):
+        metric(np.array([1.0]), np.array([1.0, -1.0, 2.0]))
+
