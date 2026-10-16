@@ -98,3 +98,23 @@ def test_holdout_only_rejects_pre_holdout_and_unordered_months():
         assert_holdout_only(np.array([66, 65, 70]))
     with pytest.raises(ValueError, match="nonempty"):
         assert_holdout_only(np.array([]))
+
+
+@pytest.mark.parametrize("scores", [
+    [],
+    [float("nan")],
+    [0.1, float("inf")],
+    [float("-inf"), 0.1],
+])
+def test_stability_rejects_empty_or_nonfinite_fold_evidence(scores):
+    with pytest.raises(ValueError, match="nonempty 1-D finite"):
+        stability(scores)
+
+
+def test_stability_accepts_one_finite_fold_without_spurious_sample_std():
+    report = stability([-0.02])
+    assert report["mean"] == pytest.approx(-0.02)
+    assert report["std"] == 0.0
+    assert report["worst_fold"] == 1
+
+
