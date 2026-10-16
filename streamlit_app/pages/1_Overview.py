@@ -20,7 +20,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import streamlit as st
 
-from streamlit_app.metric_evidence import optional_score, score_text
 from streamlit_app.lib import (
     feature_columns,
     histogram,
@@ -31,6 +30,7 @@ from streamlit_app.lib import (
     missing,
     page_header,
 )
+from streamlit_app.metric_evidence import optional_score, score_text
 
 st.set_page_config(page_title="MSCapital · Overview", page_icon="📈", layout="wide")
 page_header(
