@@ -52,10 +52,15 @@ def main() -> int:
             failures.append((name, detail))
             print(f"FAIL  {name}\n      {detail}")
         else:
-            # An error banner is not an exception but still means the page is not working.
-            errors = [e.value for e in at.error]
-            flag = f"  ({len(errors)} st.error)" if errors else ""
-            print(f"ok    {name}{flag}")
+            # Streamlit displays st.error() without raising a Python exception.
+            # Treat visible error banners as a failed deployment, not a green CI run.
+            errors = [str(e.value) for e in at.error]
+            if errors:
+                detail = "; ".join(errors)
+                failures.append((name, detail))
+                print(f"FAIL  {name}\n      st.error: {detail}")
+            else:
+                print(f"ok    {name}")
 
     print(f"\n{len(pages) - len(failures)}/{len(pages)} pages rendered.")
     if failures:
