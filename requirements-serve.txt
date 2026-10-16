@@ -10,9 +10,9 @@
 # src/inference/ensemble.py rebuilds it from a LightGBM booster, an XGBoost booster and the
 # fitted sklearn Ridge with its imputation medians. Dropping either would load a bundle
 # that raises on the first request rather than one that is merely worse.
-fastapi==0.142.2
+fastapi==0.143.0
 uvicorn==0.54.0
-pydantic==2.13.5
+pydantic==2.14.1
 lightgbm==4.6.0
 xgboost-cpu==3.2.0
 scikit-learn==1.8.0
