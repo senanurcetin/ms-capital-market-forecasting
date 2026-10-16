@@ -115,7 +115,7 @@ def split_indices(months: np.ndarray, fold: Fold) -> tuple[np.ndarray, np.ndarra
 
 def iter_folds(months: np.ndarray) -> Iterator[tuple[Fold, np.ndarray, np.ndarray]]:
     """Yield (fold, train_idx, val_idx) for each split, in chronological order."""
-    validated = _validated_months(months)
+    validated = _validated_chronological_months(months)
     for fold in build_folds():
         tr, va = split_indices(validated, fold)
         yield fold, tr, va
@@ -139,6 +139,17 @@ def _validated_months(months: np.ndarray) -> np.ndarray:
     return observed
 
 
+def _validated_chronological_months(months: np.ndarray) -> np.ndarray:
+    """Fail before CV if source row order is not chronological or out of scope."""
+    observed = _validated_months(months)
+    if (np.diff(observed) < 0).any():
+        raise ValueError("walk-forward months must be chronological")
+    _, holdout_end = holdout_months()
+    if (observed > holdout_end).any():
+        raise ValueError("walk-forward months exceed the configured hold-out end")
+    return observed
+
+
 def assert_holdout_only(months: np.ndarray) -> None:
     """Validate ordered hold-out observations; repeated rows per month are valid."""
     observed = _validated_months(months)
@@ -151,7 +162,7 @@ def assert_holdout_only(months: np.ndarray) -> None:
 
 def assert_no_overlap(months: np.ndarray) -> None:
     """Verify configured ranges and the supplied month-vector partitions."""
-    observed = _validated_months(months)
+    observed = _validated_chronological_months(months)
     lo, hi = holdout_months()
     holdout = set(holdout_indices(observed))
     for fold in build_folds():

@@ -189,3 +189,30 @@ def test_invalid_holdout_bounds_are_rejected(monkeypatch, holdout):
     ))
     with pytest.raises(ValueError, match="ordered nonnegative"):
         temporal.holdout_months()
+
+
+@pytest.mark.parametrize("run", [
+    lambda months: list(iter_folds(months)),
+    assert_no_overlap,
+])
+def test_walkforward_rejects_out_of_order_month_rows(run, months):
+    scrambled = months.copy()
+    scrambled[200:300] = 4
+    with pytest.raises(ValueError, match="chronological"):
+        run(scrambled)
+
+
+@pytest.mark.parametrize("run", [
+    lambda months: list(iter_folds(months)),
+    assert_no_overlap,
+])
+def test_walkforward_rejects_months_beyond_configured_holdout_end(run, months):
+    future = np.r_[months, [71]]
+    with pytest.raises(ValueError, match="configured hold-out end"):
+        run(future)
+
+
+def test_walkforward_still_accepts_train_only_chronological_rows(months):
+    for fold, train, val in iter_folds(months[months <= 64]):
+        assert (months[months <= 64][train] < fold.val_months[0]).all()
+        assert len(val) > 0
