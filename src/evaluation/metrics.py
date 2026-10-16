@@ -24,11 +24,17 @@ def _as_1d(a) -> np.ndarray:
     return np.asarray(a, dtype=np.float64).ravel()
 
 
-def cosine_similarity(y_true, y_pred) -> float:
-    """The competition's primary metric. Returns 0.0 if either vector is all zeros."""
+def _paired(y_true, y_pred) -> tuple[np.ndarray, np.ndarray]:
+    """Reject unequal vector lengths before NumPy can silently broadcast."""
     y, p = _as_1d(y_true), _as_1d(y_pred)
     if y.shape != p.shape:
         raise ValueError(f"shape mismatch: {y.shape} vs {p.shape}")
+    return y, p
+
+
+def cosine_similarity(y_true, y_pred) -> float:
+    """The competition's primary metric. Returns 0.0 if either vector is all zeros."""
+    y, p = _paired(y_true, y_pred)
     denom = np.linalg.norm(y) * np.linalg.norm(p)
     if denom < _EPS:
         return 0.0
@@ -36,15 +42,17 @@ def cosine_similarity(y_true, y_pred) -> float:
 
 
 def mae(y_true, y_pred) -> float:
-    return float(np.mean(np.abs(_as_1d(y_true) - _as_1d(y_pred))))
+    y, p = _paired(y_true, y_pred)
+    return float(np.mean(np.abs(y - p)))
 
 
 def rmse(y_true, y_pred) -> float:
-    return float(np.sqrt(np.mean((_as_1d(y_true) - _as_1d(y_pred)) ** 2)))
+    y, p = _paired(y_true, y_pred)
+    return float(np.sqrt(np.mean((y - p) ** 2)))
 
 
 def pearson(y_true, y_pred) -> float:
-    y, p = _as_1d(y_true), _as_1d(y_pred)
+    y, p = _paired(y_true, y_pred)
     if np.std(y) < _EPS or np.std(p) < _EPS:
         return 0.0
     return float(np.corrcoef(y, p)[0, 1])
@@ -53,7 +61,7 @@ def pearson(y_true, y_pred) -> float:
 def directional_accuracy(y_true, y_pred, *, ignore_zeros: bool = True) -> float:
     """Sign accuracy. 5.54% of targets are EXACTLY zero (a tick-size artefact), so
     those rows are excluded by default - including them makes the metric misleading."""
-    y, p = _as_1d(y_true), _as_1d(y_pred)
+    y, p = _paired(y_true, y_pred)
     mask = y != 0 if ignore_zeros else np.ones_like(y, dtype=bool)
     if not mask.any():
         return 0.0
