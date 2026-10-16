@@ -80,10 +80,25 @@ def rmse(y_true, y_pred) -> float:
 
 
 def pearson(y_true, y_pred) -> float:
+    """Compute Pearson correlation without overflow/underflow of raw moments."""
     y, p = _paired(y_true, y_pred)
-    if np.std(y) < _EPS or np.std(p) < _EPS:
+    y_scale = float(np.max(np.abs(y)))
+    p_scale = float(np.max(np.abs(p)))
+    if y_scale == 0.0 or p_scale == 0.0:
         return 0.0
-    return float(np.corrcoef(y, p)[0, 1])
+    # Correlation is invariant to independent positive scaling. Work with
+    # bounded values before centering, then divide each centered vector by
+    # its norm instead of multiplying potentially enormous raw variances.
+    y_normalized = y / y_scale
+    p_normalized = p / p_scale
+    y_centered = y_normalized - np.mean(y_normalized)
+    p_centered = p_normalized - np.mean(p_normalized)
+    y_norm = np.linalg.norm(y_centered)
+    p_norm = np.linalg.norm(p_centered)
+    if y_norm < _EPS or p_norm < _EPS:
+        return 0.0
+    result = float(np.dot(y_centered / y_norm, p_centered / p_norm))
+    return float(np.clip(result, -1.0, 1.0))
 
 
 def directional_accuracy(y_true, y_pred, *, ignore_zeros: bool = True) -> float:
