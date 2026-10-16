@@ -106,3 +106,24 @@ def test_all_metrics_refuse_empty_or_nonfinite_evaluation_vectors(metric, truth,
         metric(truth, pred)
 
 
+
+
+@pytest.mark.parametrize(
+    "metric",
+    [cosine_similarity, mae, rmse, pearson, directional_accuracy, evaluate],
+)
+def test_metrics_refuse_multitarget_matrices_instead_of_flattening(metric):
+    # A 2x2 multi-output prediction used to be compared to a length-4 vector
+    # because ravel() silently discarded its target axes.
+    with pytest.raises(ValueError, match="one-dimensional"):
+        metric(np.array([1.0, 2.0, 3.0, 4.0]), np.array([[1.0, 2.0], [3.0, 4.0]]))
+    with pytest.raises(ValueError, match="one-dimensional"):
+        metric(np.array([[1.0, 2.0], [3.0, 4.0]]), np.array([1.0, 2.0, 3.0, 4.0]))
+    with pytest.raises(ValueError, match="one-dimensional"):
+        metric(1.0, np.array([1.0]))
+
+
+def test_metrics_accept_single_column_outputs_without_changing_values():
+    y = np.array([0.1, -0.2, 0.3, -0.4])
+    predicted = (y * 0.8).reshape(-1, 1)
+    assert evaluate(y, predicted) == pytest.approx(evaluate(y, predicted[:, 0]))
