@@ -144,3 +144,46 @@ def test_public_temporal_helpers_keep_valid_repeated_month_rows(months):
     assert len(tr) > 0 and len(val) > 0
     assert set(tr).isdisjoint(val)
     assert np.array_equal(months[holdout_indices(months)], np.repeat(np.arange(65, 71), 100))
+
+
+@pytest.mark.parametrize(("folds", "embargo", "holdout", "message"), [
+    ([{"train_end": 34, "val_start": 36, "val_end": 35}], 1,
+     {"start": 65, "end": 70}, "validation end"),
+    ([{"train_end": 34, "val_start": 36, "val_end": 65}], 1,
+     {"start": 65, "end": 70}, "overlaps hold-out"),
+    ([{"train_end": 34.5, "val_start": 36, "val_end": 40}], 1,
+     {"start": 65, "end": 70}, "nonnegative integers"),
+    ([{"train_end": 34, "val_start": 36, "val_end": 40},
+      {"train_end": 35, "val_start": 39, "val_end": 45}], 1,
+     {"start": 65, "end": 70}, "chronologically"),
+    ([{"train_end": 34, "val_start": 36, "val_end": 40}], 0,
+     {"start": 65, "end": 70}, "positive integer"),
+    ([], 1, {"start": 65, "end": 70}, "at least one fold"),
+])
+def test_invalid_walkforward_configuration_fails_before_partitioning(
+    monkeypatch, folds, embargo, holdout, message
+):
+    from types import SimpleNamespace
+    import src.evaluation.temporal_validation as temporal
+    monkeypatch.setattr(temporal, "load_config", lambda: SimpleNamespace(
+        validation=SimpleNamespace(
+            embargo_months=embargo, folds=folds, holdout=holdout
+        )
+    ))
+    with pytest.raises(ValueError, match=message):
+        temporal.build_folds()
+
+
+@pytest.mark.parametrize("holdout", [
+    {"start": 70, "end": 65},
+    {"start": -1, "end": 70},
+    {"start": 65.5, "end": 70},
+])
+def test_invalid_holdout_bounds_are_rejected(monkeypatch, holdout):
+    from types import SimpleNamespace
+    import src.evaluation.temporal_validation as temporal
+    monkeypatch.setattr(temporal, "load_config", lambda: SimpleNamespace(
+        validation=SimpleNamespace(holdout=holdout)
+    ))
+    with pytest.raises(ValueError, match="ordered nonnegative"):
+        temporal.holdout_months()
