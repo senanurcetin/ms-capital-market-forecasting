@@ -6,7 +6,7 @@ mypy==2.4.0
 pandas-stubs==2.2.3.250308
 types-PyYAML==6.0.12.20260906
 pip-audit==2.10.1
-pre-commit==4.6.2
+pre-commit==4.7.0
 httpx
 # Hyperparameter search only - deliberately NOT in the runtime or pipeline sets, so
 # neither the serving image nor the training image carries it.
