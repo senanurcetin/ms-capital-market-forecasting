@@ -86,7 +86,7 @@ def holdout_months() -> tuple[int, int]:
 
 def split_indices(months: np.ndarray, fold: Fold) -> tuple[np.ndarray, np.ndarray]:
     """Derive train/validation indices from a (n_samples,) month vector."""
-    months = np.asarray(months)
+    months = _validated_months(months)
     tr = np.flatnonzero((months >= fold.train_months[0]) & (months <= fold.train_months[1]))
     va = np.flatnonzero((months >= fold.val_months[0]) & (months <= fold.val_months[1]))
     return tr, va
@@ -94,15 +94,16 @@ def split_indices(months: np.ndarray, fold: Fold) -> tuple[np.ndarray, np.ndarra
 
 def iter_folds(months: np.ndarray) -> Iterator[tuple[Fold, np.ndarray, np.ndarray]]:
     """Yield (fold, train_idx, val_idx) for each split, in chronological order."""
+    validated = _validated_months(months)
     for fold in build_folds():
-        tr, va = split_indices(months, fold)
+        tr, va = split_indices(validated, fold)
         yield fold, tr, va
 
 
 def holdout_indices(months: np.ndarray) -> np.ndarray:
     """Row positions falling inside the hold-out months."""
     lo, hi = holdout_months()
-    months = np.asarray(months)
+    months = _validated_months(months)
     return np.flatnonzero((months >= lo) & (months <= hi))
 
 
