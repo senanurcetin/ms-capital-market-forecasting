@@ -58,14 +58,25 @@ def cosine_similarity(y_true, y_pred) -> float:
     return float(np.dot(y_unit, p_unit) / denom)
 
 
-def mae(y_true, y_pred) -> float:
+def _scaled_residual(y_true, y_pred) -> tuple[np.ndarray, float]:
+    """Return bounded normalized residuals for stable error metrics."""
     y, p = _paired(y_true, y_pred)
-    return float(np.mean(np.abs(y - p)))
+    with np.errstate(over="ignore", invalid="ignore"):
+        residual = y - p
+    if not np.isfinite(residual).all():
+        raise ValueError("metric residual overflowed")
+    scale = float(np.max(np.abs(residual)))
+    return residual / scale if scale else residual, scale
+
+
+def mae(y_true, y_pred) -> float:
+    scaled, scale = _scaled_residual(y_true, y_pred)
+    return float(scale * np.mean(np.abs(scaled)))
 
 
 def rmse(y_true, y_pred) -> float:
-    y, p = _paired(y_true, y_pred)
-    return float(np.sqrt(np.mean((y - p) ** 2)))
+    scaled, scale = _scaled_residual(y_true, y_pred)
+    return float(scale * np.sqrt(np.mean(scaled ** 2)))
 
 
 def pearson(y_true, y_pred) -> float:
