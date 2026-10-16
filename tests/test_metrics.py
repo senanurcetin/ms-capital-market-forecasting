@@ -141,3 +141,18 @@ def test_cosine_does_not_turn_tiny_nonzero_vectors_into_zero():
     assert cosine_similarity(y, y) == pytest.approx(1.0, abs=1e-12)
     assert cosine_similarity(y, -y) == pytest.approx(-1.0, abs=1e-12)
     assert cosine_similarity(y, np.zeros_like(y)) == 0.0
+
+
+@pytest.mark.parametrize("metric", [mae, rmse])
+def test_loss_metrics_avoid_square_and_sum_overflow_on_finite_values(metric):
+    large = np.array([1e200, -1e200, 1e200])
+    assert metric(large, np.zeros_like(large)) == pytest.approx(1e200)
+    near_limit = np.array([1e308, 1e308])
+    assert metric(near_limit, np.zeros_like(near_limit)) == pytest.approx(1e308)
+    assert metric(near_limit, near_limit) == 0.0
+
+
+@pytest.mark.parametrize("metric", [mae, rmse])
+def test_loss_metrics_refuse_nonrepresentable_residual_overflow(metric):
+    with pytest.raises(ValueError, match="residual overflowed"):
+        metric([1e308], [-1e308])
