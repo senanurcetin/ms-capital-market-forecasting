@@ -7,6 +7,7 @@ from src.evaluation.temporal_validation import (
     holdout_indices,
     holdout_months,
     iter_folds,
+    split_indices,
     stability,
 )
 
@@ -118,3 +119,28 @@ def test_stability_accepts_one_finite_fold_without_spurious_sample_std():
     assert report["worst_fold"] == 1
 
 
+
+@pytest.mark.parametrize("invalid", [
+    np.array([]),
+    np.array([64, np.nan]),
+    np.array([-1, 65]),
+    np.array([64.5, 65.0]),
+    np.array([[64, 65]]),
+    np.array([True, False]),
+])
+def test_public_temporal_split_helpers_reject_invalid_month_labels(invalid):
+    fold = build_folds()[0]
+    with pytest.raises(ValueError, match="months must"):
+        split_indices(invalid, fold)
+    with pytest.raises(ValueError, match="months must"):
+        holdout_indices(invalid)
+    with pytest.raises(ValueError, match="months must"):
+        list(iter_folds(invalid))
+
+
+def test_public_temporal_helpers_keep_valid_repeated_month_rows(months):
+    fold = build_folds()[0]
+    tr, val = split_indices(months, fold)
+    assert len(tr) > 0 and len(val) > 0
+    assert set(tr).isdisjoint(val)
+    assert np.array_equal(months[holdout_indices(months)], np.repeat(np.arange(65, 71), 100))
