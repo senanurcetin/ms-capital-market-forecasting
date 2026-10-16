@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import streamlit as st
 
+from streamlit_app.metric_evidence import optional_score, score_text
 from streamlit_app.lib import (
     feature_columns,
     histogram,
@@ -42,32 +43,46 @@ res = load_results_table()
 hold = load_json("holdout_metrics.json")
 period = load_json("period_difficulty_meta.json")
 
-cv = float(res.loc[res.model == "ensemble", "cosine_mean"].iloc[0]) if res is not None else None
-ho = (hold or {}).get("scores", {}).get("cosine")
+cv = optional_score(
+    res.loc[res.model == "ensemble", "cosine_mean"].iloc[0]
+) if res is not None else None
+ho = optional_score((hold or {}).get("scores", {}).get("cosine"))
 
-# Two models stand behind these three numbers, and the page says so rather than letting
-# them read as one. The hold-out can only be measured on a model that did not train on
-# months 65-70, which the single LightGBM did not; the ensemble deliberately trains
-# through month 67, buying four more months and forfeiting any hold-out score. Both were
-# submitted - 0.128 and 0.129 - so the comparison is external and settled.
+# The hold-out belongs to the untouched LightGBM; the leaderboard to the v4
+# ensemble. A source file not present is *not* permission to invent a score.
 c1, c2, c3 = st.columns(3)
-c1.metric("Walk-forward CV", f"{cv:+.5f}" if cv else "-",
-          help="Ensemble, averaged over 5 periods with an embargo between them. "
-               "The honest internal estimate.")
-c2.metric("Hold-out (months 65-70)", f"{ho:+.5f}" if ho else "-",
-          delta=f"{ho - cv:+.5f} vs CV" if (ho and cv) else None,
-          help="Single LightGBM, months 0-63 - the only model with these six months "
-               "untouched, which is what makes the number measurable. Read once. It is "
-               "also an unusually favourable period.")
+c1.metric(
+    "Walk-forward CV", score_text(cv),
+    help="Ensemble, averaged over 5 periods with an embargo. Internal validation estimate.",
+)
+c2.metric(
+    "Hold-out (months 65-70)", score_text(ho),
+    delta=f"{ho - cv:+.5f} vs CV" if ho is not None and cv is not None else None,
+    help="Single LightGBM, trained through month 63. This unusually favourable period was untouched.",
+)
 lb = load_json("leaderboard.json") or {}
-lb_score = lb.get("our_score", 0.129)
-c3.metric("Leaderboard", f"+{lb_score:.5f}",
-          delta=f"{lb_score - cv:+.5f} vs CV" if cv else None, delta_color="inverse",
-          help=(f"Ensemble on months 0-67 - the externally graded number. Rank "
-                f"{lb.get('our_rank', '-')} of {lb.get('n_teams', '-')}, median "
-                f"{lb.get('median', 0):.3f}, captured {lb.get('captured', '-')}. The "
-                "LightGBM above scored 0.128 on the same test set, so the four extra "
-                "months and the blend are worth +0.001."))
+lb_score = optional_score(lb.get("our_score"))
+lb_median = optional_score(lb.get("median"))
+if lb_score is None:
+    leaderboard_help = (
+        "Leaderboard score is unavailable because results/leaderboard.json "
+        "is missing or does not contain a finite numeric measured score."
+    )
+else:
+    median_text = f"{lb_median:.3f}" if lb_median is not None else "unavailable"
+    leaderboard_help = (
+        f"Historical competition ensemble, months 0-67. Rank "
+        f"{lb.get('our_rank', '-')}/{lb.get('n_teams', '-')}, "
+        f"median {median_text}, captured {lb.get('captured', '-')}. "
+        "This is not the default v3 inference model, a live trading result, "
+        "or a calibrated profit estimate."
+    )
+c3.metric(
+    "Leaderboard", score_text(lb_score),
+    delta=f"{lb_score - cv:+.5f} vs CV"
+    if lb_score is not None and cv is not None else None,
+    delta_color="inverse", help=leaderboard_help,
+)
 
 def _ordinal(n: int) -> str:
     """83rd, not 83th. 11-13 are the exceptions that catch a naive suffix rule."""
