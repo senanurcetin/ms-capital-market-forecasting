@@ -1,5 +1,7 @@
 # MSCapital — Real Financial Market Forecasting
 
+<p align="right"><img src="docs/assets/nexus-official-midnight.svg" alt="NEXUS Official Midnight brand" width="220"></p>
+
 **Technical reviewer brief:** [Problem, quantitative evidence and limitations](docs/hiring-summary.md).
 
 ![MSCapital research dashboard — captured source-rendered Streamlit overview](docs/assets/mscapital-research-dashboard.png)
