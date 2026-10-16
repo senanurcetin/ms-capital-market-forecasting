@@ -45,10 +45,17 @@ def _paired(y_true, y_pred) -> tuple[np.ndarray, np.ndarray]:
 def cosine_similarity(y_true, y_pred) -> float:
     """The competition's primary metric. Returns 0.0 if either vector is all zeros."""
     y, p = _paired(y_true, y_pred)
-    denom = np.linalg.norm(y) * np.linalg.norm(p)
-    if denom < _EPS:
+    # Scale each vector independently before taking norms/dot products.
+    # Finite but large values can overflow the raw dot product; tiny valid
+    # returns can underflow the raw norm product to zero.
+    y_scale = float(np.max(np.abs(y)))
+    p_scale = float(np.max(np.abs(p)))
+    if y_scale == 0.0 or p_scale == 0.0:
         return 0.0
-    return float(np.dot(y, p) / denom)
+    y_unit = y / y_scale
+    p_unit = p / p_scale
+    denom = np.linalg.norm(y_unit) * np.linalg.norm(p_unit)
+    return float(np.dot(y_unit, p_unit) / denom)
 
 
 def mae(y_true, y_pred) -> float:
