@@ -41,6 +41,10 @@ class RateLimiter:
         with self._lock:
             if len(self._hits) >= self.MAX_KEYS and key not in self._hits:
                 self._evict(now)
+                # All tracked clients are still active: fail closed for unknown
+                # keys instead of growing the per-process map without bound.
+                if len(self._hits) >= self.MAX_KEYS:
+                    return self.window
             hits = self._hits.setdefault(key, deque())
             while hits and now - hits[0] >= self.window:
                 hits.popleft()
