@@ -21,7 +21,13 @@ _EPS = 1e-12
 
 
 def _as_1d(a) -> np.ndarray:
-    return np.asarray(a, dtype=np.float64).ravel()
+    """Accept a vector or a single-column prediction, never flatten a matrix."""
+    values = np.asarray(a, dtype=np.float64)
+    if values.ndim == 2 and values.shape[1] == 1:
+        values = values[:, 0]
+    if values.ndim != 1:
+        raise ValueError("evaluation inputs must be one-dimensional vectors")
+    return values
 
 
 def _paired(y_true, y_pred) -> tuple[np.ndarray, np.ndarray]:
