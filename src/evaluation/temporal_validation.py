@@ -113,11 +113,20 @@ def split_indices(months: np.ndarray, fold: Fold) -> tuple[np.ndarray, np.ndarra
     return tr, va
 
 
+def _require_populated_fold(fold: Fold, train: np.ndarray, val: np.ndarray) -> None:
+    """Never report a fold whose training or validation population is absent."""
+    if train.size == 0:
+        raise ValueError(f"{fold.describe()}: no training samples")
+    if val.size == 0:
+        raise ValueError(f"{fold.describe()}: no validation samples")
+
+
 def iter_folds(months: np.ndarray) -> Iterator[tuple[Fold, np.ndarray, np.ndarray]]:
     """Yield (fold, train_idx, val_idx) for each split, in chronological order."""
     validated = _validated_chronological_months(months)
     for fold in build_folds():
         tr, va = split_indices(validated, fold)
+        _require_populated_fold(fold, tr, va)
         yield fold, tr, va
 
 
@@ -142,7 +151,7 @@ def _validated_months(months: np.ndarray) -> np.ndarray:
 def _validated_chronological_months(months: np.ndarray) -> np.ndarray:
     """Fail before CV if source row order is not chronological or out of scope."""
     observed = _validated_months(months)
-    if (np.diff(observed) < 0).any():
+    if (observed[1:] < observed[:-1]).any():
         raise ValueError("walk-forward months must be chronological")
     _, holdout_end = holdout_months()
     if (observed > holdout_end).any():
@@ -156,7 +165,7 @@ def assert_holdout_only(months: np.ndarray) -> None:
     lo, hi = holdout_months()
     if ((observed < lo) | (observed > hi)).any():
         raise ValueError(f"evaluation includes data outside hold-out months {lo}-{hi}")
-    if (np.diff(observed) < 0).any():
+    if (observed[1:] < observed[:-1]).any():
         raise ValueError("hold-out month labels must be chronological")
 
 
@@ -175,6 +184,7 @@ def assert_no_overlap(months: np.ndarray) -> None:
         if va_hi >= lo:
             raise AssertionError(f"{fold.describe()}: validation reaches into hold-out ({lo}-{hi})")
         train_idx, validation_idx = split_indices(observed, fold)
+        _require_populated_fold(fold, train_idx, validation_idx)
         if set(train_idx) & set(validation_idx):
             raise AssertionError(f"{fold.describe()}: sample index overlaps train/validation")
         if (set(train_idx) | set(validation_idx)) & holdout:

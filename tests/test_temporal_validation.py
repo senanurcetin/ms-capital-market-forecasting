@@ -216,3 +216,43 @@ def test_walkforward_still_accepts_train_only_chronological_rows(months):
     for fold, train, val in iter_folds(months[months <= 64]):
         assert (months[months <= 64][train] < fold.val_months[0]).all()
         assert len(val) > 0
+
+
+@pytest.mark.parametrize("run", [
+    lambda months: list(iter_folds(months)),
+    assert_no_overlap,
+])
+@pytest.mark.parametrize(("selector", "expected"), [
+    (lambda months: months[months <= 34], "no validation samples"),
+    (lambda months: months[months >= 36], "no training samples"),
+])
+def test_walkforward_refuses_unpopulated_fold_ranges(run, selector, expected, months):
+    with pytest.raises(ValueError, match=expected):
+        run(selector(months))
+
+
+def test_direct_split_indices_remains_a_pure_month_selector(months):
+    fold = build_folds()[0]
+    training, validation = split_indices(months[months <= 34], fold)
+    assert len(training) > 0 and len(validation) == 0
+    # Only consumers that train or certify folds require both populations.
+
+
+@pytest.mark.parametrize("run", [
+    lambda arr: list(iter_folds(arr)),
+    assert_no_overlap,
+])
+def test_walkforward_unsigned_integer_months_cannot_bypass_ordering(run):
+    # np.diff(uint64) wraps a negative difference to a huge positive value.
+    unsorted = np.array([0, 1, 2, 1, 3, 4, 5], dtype=np.uint64)
+    with pytest.raises(ValueError, match="chronological"):
+        run(unsorted)
+
+
+def test_holdout_unsigned_integer_months_reject_backwards_rows():
+    from src.evaluation.temporal_validation import assert_holdout_only
+
+    unsorted = np.array([65, 67, 66, 70], dtype=np.uint64)
+    with pytest.raises(ValueError, match="chronological"):
+        assert_holdout_only(unsorted)
+    assert_holdout_only(np.array([65, 65, 66, 70], dtype=np.uint64))
