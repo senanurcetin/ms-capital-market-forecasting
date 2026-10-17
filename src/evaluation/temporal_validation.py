@@ -151,7 +151,7 @@ def _validated_months(months: np.ndarray) -> np.ndarray:
 def _validated_chronological_months(months: np.ndarray) -> np.ndarray:
     """Fail before CV if source row order is not chronological or out of scope."""
     observed = _validated_months(months)
-    if (np.diff(observed) < 0).any():
+    if (observed[1:] < observed[:-1]).any():
         raise ValueError("walk-forward months must be chronological")
     _, holdout_end = holdout_months()
     if (observed > holdout_end).any():
@@ -165,7 +165,7 @@ def assert_holdout_only(months: np.ndarray) -> None:
     lo, hi = holdout_months()
     if ((observed < lo) | (observed > hi)).any():
         raise ValueError(f"evaluation includes data outside hold-out months {lo}-{hi}")
-    if (np.diff(observed) < 0).any():
+    if (observed[1:] < observed[:-1]).any():
         raise ValueError("hold-out month labels must be chronological")
 
 
