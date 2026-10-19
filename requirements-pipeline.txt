@@ -10,8 +10,8 @@ mlflow==3.16.1
 pandera==0.34.1
 tqdm==4.67.3
 kaggle==2.1.2
-google-cloud-bigquery==3.46.1
-google-cloud-bigquery-storage==2.42.0
-db-dtypes==1.7.2
+google-cloud-bigquery==3.46.2
+google-cloud-bigquery-storage==2.43.0
+db-dtypes==1.8.0
 # Transitive (google-auth, mlflow), pinned only to carry a security fix: 49.x has PYSEC-2026-3552.
 cryptography==50.0.2
