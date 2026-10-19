@@ -1,5 +1,5 @@
 # Dashboard - serving deps plus Streamlit and read-only BigQuery access.
-fastapi==0.143.0
+fastapi==0.143.2
 uvicorn==0.54.0
 pydantic==2.14.1
 lightgbm==4.6.0
