@@ -18,5 +18,5 @@ pyyaml==6.0.3
 fastapi==0.143.0
 uvicorn==0.54.0
 pydantic==2.14.1
-streamlit==1.65.0
+streamlit==1.66.0
 plotly==7.1.0
