@@ -60,9 +60,9 @@ def _load_booster(path: Path, kind: str):
 
         return load_ensemble(path.parent if path.is_file() else path)
     if kind == "lightgbm":
-        import lightgbm as lgb
+        from src.inference.booster_io import load_lightgbm
 
-        return lgb.Booster(model_file=str(path))
+        return load_lightgbm(path)
     if kind == "xgboost":
         import xgboost as xgb
 
@@ -180,8 +180,10 @@ def save_bundle(model_dir: str | Path, *, model, kind: str, features: list[str],
                       features=features)
         model_file = META_FILE
     elif kind == "lightgbm":
+        from src.inference.booster_io import save_lightgbm
+
         model_file = "model.txt"
-        model.save_model(str(model_dir / model_file))
+        save_lightgbm(model, model_dir / model_file)
     elif kind == "xgboost":
         model_file = "model.json"
         model.save_model(str(model_dir / model_file))

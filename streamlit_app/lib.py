@@ -17,6 +17,7 @@ state rather than a blank screen.
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 from pathlib import Path
@@ -64,28 +65,19 @@ DISCLAIMER = (
 def inject_dashboard_theme() -> None:
     """Apply report-only styling; no model results or metrics are modified.
 
-    The UI retains its original live source data. The rules use Streamlit's
+    The UI retains its original research source data. The rules use Streamlit's
     data-testid hooks and are progressive enhancement: if a selector changes,
     native Streamlit remains fully functional.
     """
-    st.markdown(
-        """
+    css = """
         <style>
         :root {
-          --ms-ink: #0e1c30;
-          --ms-card: #17283d;
-          --ms-border: #345163;
-          --ms-teal: #8ce6ca;
-        }
-        [data-testid="stApp"] {
-          background:
-            radial-gradient(circle at 92% 5%,rgba(40,179,162,.10),transparent 36%),
-            radial-gradient(circle at 7% 12%,rgba(43,111,159,.10),transparent 31%),
-            #0b1627;
-          color: #e3f2f0;
+          --ms-ink: #0B0F19;
+          --ms-card: #061524;
+          --ms-border: #28394E;
+          --ms-teal: #00E0FF;
         }
         [data-testid="stSidebar"] {
-          background: linear-gradient(180deg,#0c1a2c,#10293a);
           border-right: 1px solid #284657;
         }
         [data-testid="stSidebarNav"] { padding-top: 1rem; }
@@ -94,14 +86,14 @@ def inject_dashboard_theme() -> None:
           margin: 2px 8px;
           transition: background .12s ease;
         }
-        [data-testid="stSidebarNav"] a:hover { background: #1a4650; }
+        [data-testid="stSidebarNav"] a:hover { text-decoration: underline; }
         .block-container {
           max-width: 1480px;
           padding-top: clamp(1.5rem,3vw,2.6rem);
           padding-bottom: 3.3rem;
         }
         [data-testid="stMetric"] {
-          background: linear-gradient(150deg,#172e3e,#132738);
+          background: linear-gradient(150deg,#102238,#061524);
           border: 1px solid #325866;
           border-radius: 16px;
           padding: clamp(1rem,1.4vw,1.45rem);
@@ -109,7 +101,7 @@ def inject_dashboard_theme() -> None:
           min-height: 126px;
         }
         [data-testid="stMetricLabel"] {
-          color: #a7c4c9;
+          color: #B9C5CE;
           text-transform: uppercase;
           letter-spacing: .055em;
           font-weight: 700;
@@ -135,43 +127,63 @@ def inject_dashboard_theme() -> None:
         [data-testid="stAlert"] { border-radius: 13px; }
         [data-testid="stExpander"] { border: 1px solid #305162; border-radius: 14px; }
         [data-testid="stMarkdownContainer"] h1 {
-          color: #f3fffb;
+          color: inherit;
           letter-spacing: -.036em;
           font-size: clamp(2rem,3.3vw,3.15rem);
           line-height: 1.13;
         }
         [data-testid="stMarkdownContainer"] h2,
-        [data-testid="stMarkdownContainer"] h3 { color: #c3f4e2; letter-spacing: -.015em; }
+        [data-testid="stMarkdownContainer"] h3 { color: inherit; letter-spacing: -.015em; }
         hr { border-color: #2a4958; }
         .ms-report-eyebrow {
           display: inline-flex;
           gap: .5rem;
           align-items: center;
           padding: .44rem .9rem;
-          background: #17453f;
-          border: 1px solid #387a6d;
+          background: #162238;
+          border: 1px solid #405482;
           border-radius: 999px;
-          color: #b4f5db;
+          color: #8F9BFF;
           font-size: .72rem;
           font-weight: 800;
           letter-spacing: .11em;
           margin-bottom: .65rem;
         }
-        .ms-report-footnote { color: #aec8cb; font-size: .84rem; margin-top: .5rem; }
+        .ms-report-footnote { color: #B9C5CE; font-size: .84rem; margin-top: .5rem; }
         @media (max-width: 780px) {
           [data-testid="stMetric"] { min-height: 108px; }
           .block-container { padding-inline: 1rem; }
         }
         </style>
-        """,
-        unsafe_allow_html=True,
-    )
+        """
+    # CSS must follow the native theme, including a browser's System preference.
+    # A fixed dark background with native light-theme text makes navigation unreadable.
+    if st.context.theme.type == "light":
+        light_palette = {
+            "#0B0F19": "#F7F9FD", "#061524": "#FFFFFF",
+            "#E4EDF5": "#1C2430", "#162B45": "#E5EBF6",
+            "#102238": "#F0F4FB", "#B9C5CE": "#526173",
+            "#edfffb": "#122238", "#f3fffb": "#122238",
+            "#D4D9FF": "#3C4482", "#162238": "#EBEDF9",
+            "#8F9BFF": "#454E98", "#00E0FF": "#087A94",
+        }
+        for dark, light in light_palette.items():
+            css = css.replace(dark, light)
+    st.markdown(css, unsafe_allow_html=True)
 
 
 def page_header(title: str, subtitle: str = "") -> None:
     inject_dashboard_theme()
+    logo = Path(__file__).resolve().parents[1] / "docs/assets/nexus-official-transparent.svg"
+    encoded = base64.b64encode(logo.read_bytes()).decode("ascii")
     st.markdown(
-        '<span class="ms-report-eyebrow">MSCAPITAL · QUANTITATIVE RESEARCH</span>',
+        f'<img src="data:image/svg+xml;base64,{encoded}" alt="NEXUS" '
+        'width="210" height="63" style="object-fit:contain;object-position:left;'
+        'max-width:100%;background:#0B0F19;border-radius:8px">',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<span class="ms-report-eyebrow">NEXUS / MSCAPITAL / QUANTITATIVE RESEARCH</span>',
         unsafe_allow_html=True,
     )
     st.title(title)

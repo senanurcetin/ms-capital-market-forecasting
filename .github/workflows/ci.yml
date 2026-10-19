@@ -36,6 +36,15 @@ jobs:
       - name: Typecheck
         run: mypy
 
+      - name: Reconcile published research evidence
+        run: python -m src.evaluation.evidence --output .artifacts/evidence-audit.json
+
+      - name: Check documentation links and rebuild static report
+        run: |
+          python scripts/check_docs.py
+          python -m src.data.build_site
+          git diff --exit-code -- site/index.html
+
       # The tests require NO live BigQuery and NO downloaded data: the ingest tests
       # generate a synthetic feather file and the API tests use a fake model artefact.
       # That is why CI needs no credentials.

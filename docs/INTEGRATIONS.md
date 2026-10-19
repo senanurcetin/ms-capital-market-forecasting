@@ -1,0 +1,82 @@
+# Kaggle, BigQuery and zero-cost operation
+
+[Documentation index](README.md)
+
+## Data lineage
+
+```text
+Kaggle competition Feather files (restricted, stored outside Git)
+  → Arrow projections → chunked Parquet column groups
+  → BigQuery raw → staging (row alignment / no-look-ahead checks)
+  → feature blocks → one row per sample → local Parquet
+  → walk-forward training, untouched holdout, separate submitted ensemble
+  → derived results/ exports → Streamlit + static HTML report
+```
+
+Configuration is in `configs/config.yaml`; the default historical project is
+`workintech-working`, location `US`, with `mscapital_raw`, `mscapital_staging`,
+`mscapital_features` and `mscapital_mart` datasets. These names document the pipeline;
+their presence in source is not proof that remote tables still exist.
+
+| Integration | Recorded source | Verification boundary |
+|---|---|---|
+| Competition | [MSCapital](https://www.kaggle.com/competitions/ms-capital-real-financial-market-forecasting) | Download requires the owner's access and acceptance of competition rules |
+| Main public notebook | [My Hold-out Was a Lucky Stretch](https://www.kaggle.com/code/senanuretin/ms-capital-my-hold-out-was-a-lucky-stretch) | Remote notebook is separate from local executed notebooks |
+| Follow-up notebook | [Four Experiments That Did Not Help](https://www.kaggle.com/code/senanuretin/ms-capital-four-experiments-that-did-not-help) | Not automatically republished by this repository |
+| Leaderboard | `results/leaderboard.json` | Historical capture dated 2026-09-10, not current standing |
+| Warehouse | `configs/config.yaml`, `src/data/`, `src/features/`, `sql/` | Local tests do not certify current cloud credentials, IAM, storage or billing |
+| Predictions | `results/model_meta.json`, `results/model.txt` | Bundled LightGBM v3; submitted ensemble v4 is distinct |
+
+## Credentials and project isolation
+
+Use `MSCAPITAL_DATA_ROOT` for data outside the checkout, `MSCAPITAL_BQ_PROJECT` for your
+own project and `MSCAPITAL_GCP_KEY` or `GOOGLE_APPLICATION_CREDENTIALS` for a key path.
+Kaggle credentials remain in the user's Kaggle configuration. Never paste key contents
+into notebooks, issues, reports or environment examples. Viewing the app needs no keys.
+
+### Connection check on 19 October 2026
+
+The local Kaggle API credential was rejected with HTTP 401 when listing the owner's
+notebooks. Neither remote notebook status nor a fresh Kaggle run was verified.
+No Application Default Credentials or configured repository service-account key was
+available for BigQuery, so no warehouse query or write was submitted. The historical
+exports remain usable offline. Restoring live access requires valid owner credentials;
+the committed integration code and public notebook links alone cannot establish it.
+
+## Cost boundaries
+
+The portfolio path is the committed results bundle, local compute and a static report;
+it needs no database, paid API, custom domain or payment integration. There is no
+monetization flow. The project demonstrates research and engineering capability.
+
+Google documents a free allowance of 10 GiB storage and 1 TiB on-demand queries per
+month. Verify current regional/account terms in the
+[official free-tier documentation](https://docs.cloud.google.com/free/docs/free-cloud-features#bigquery)
+before running a rebuild. This dataset's raw + staging + feature layers can exceed
+storage allowances. Partitioned scans still count, and repeated runs share the same
+account allowance. Historical full-scale processing is not a promise of a free rebuild.
+
+The central client now applies `maximum_bytes_billed=1_000_000_000` to each query by
+default, including the shape-feature path. Set `MSCAPITAL_BQ_MAX_BYTES` to a positive
+integer only after reviewing the scan. Invalid or unlimited values fail before client
+creation. A query above the ceiling fails; it is not automatically retried without it.
+An explicitly injected third-party BigQuery client must enforce its own budget.
+
+A per-job ceiling cannot enforce a monthly $0 budget or constrain storage, network,
+load jobs or separately configured clients. Use a sandbox/account quota, dry-run SQL
+first, and check remaining allowance before any cloud job. Budget alerts alone are not
+a hard spending cap. See Google's [cost control guide](https://docs.cloud.google.com/bigquery/docs/best-practices-costs).
+
+Keep training offline after downloading the compact feature table. Avoid scheduled
+full refreshes, retain only intentionally needed cloud layers, and review storage
+before creating replacements. The current development pass does not delete remote data.
+
+## Scale triggers
+
+| Trigger | Response within the zero-cost constraint |
+|---|---|
+| Repeated warehouse scans | Reuse local Parquet; inspect dry-run bytes before another query |
+| Cloud storage approaches its allowance | Stop ingestion; inventory retention before rebuilding |
+| Streamlit memory or cold-start pressure | Share static `site/index.html`; keep training outside the app |
+| Export bundle approaches 24 MB | Keep aggregate reports, bound samples, preserve model/schema compatibility |
+| New result or model promotion | Re-export, audit, rebuild site, check model identity and rerun relevant tests |

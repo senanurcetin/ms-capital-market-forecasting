@@ -37,6 +37,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.inference.booster_io import load_lightgbm, save_lightgbm
+
 META_FILE = "ensemble_meta.json"
 
 
@@ -127,7 +129,7 @@ def save_ensemble(model_dir: str | Path, *, models: dict, weights: dict[str, flo
 
     for name, m in models.items():
         if name == "lightgbm":
-            m.booster_.save_model(str(model_dir / "model_lightgbm.txt"))
+            save_lightgbm(m.booster_, model_dir / "model_lightgbm.txt")
             entries[name] = {"kind": "lightgbm", "file": "model_lightgbm.txt",
                              "best_iteration": m.best_iteration_}
         elif name == "xgboost":
@@ -156,9 +158,7 @@ def load_ensemble(model_dir: str | Path) -> EnsembleArtefact:
     for name, entry in meta["parts"].items():
         path = model_dir / entry["file"]
         if entry["kind"] == "lightgbm":
-            import lightgbm as lgb
-
-            parts[name] = {"kind": "lightgbm", "booster": lgb.Booster(model_file=str(path)),
+            parts[name] = {"kind": "lightgbm", "booster": load_lightgbm(path),
                            "best_iteration": entry.get("best_iteration")}
         elif entry["kind"] == "xgboost":
             import xgboost as xgb

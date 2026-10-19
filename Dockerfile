@@ -59,6 +59,9 @@ RUN pip install --upgrade pip && pip install -r requirements-app.txt
 COPY src/ ./src/
 COPY streamlit_app/ ./streamlit_app/
 COPY configs/ ./configs/
+COPY results/ ./results/
+COPY docs/assets/ ./docs/assets/
+COPY .streamlit/ ./.streamlit/
 
 RUN chown -R appuser:appuser /app /data
 USER appuser
@@ -81,6 +84,9 @@ COPY api/ ./api/
 COPY streamlit_app/ ./streamlit_app/
 COPY configs/ ./configs/
 COPY sql/ ./sql/
+COPY results/ ./results/
+COPY docs/assets/ ./docs/assets/
+COPY .streamlit/ ./.streamlit/
 
 RUN chown -R appuser:appuser /app /data
 USER appuser
