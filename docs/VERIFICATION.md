@@ -8,8 +8,20 @@ Paired block-bootstrap comparisons exclude the historical blend and align model 
 The short README links to the preserved full narrative in `docs/RESEARCH.md`.
 CLI training now emits a hashed, credential-free experiment sidecar. Regression checks
 cover frozen-weight target independence, actual fold identity and sidecar creation.
-The supplied replacement Kaggle token verified an owner metadata listing; BigQuery
-access still requires usable credentials. No historical result artifact was overwritten.
+The supplied replacement Kaggle token verified an owner metadata listing. The later
+owner-supplied BigQuery key verified 22 tables, nine metadata contracts, and schema
+compatibility for all 292 served model features. Two download dry runs completed;
+both exceed the default scan ceiling and neither was executed. The dated
+[warehouse report](../results/warehouse_audit.json) records scope, estimates and storage
+warnings. Metadata counts do not validate uniqueness or reproduce historical scores.
+No historical experiment result artifact was overwritten.
+
+The preceding change also passed all four GitHub Actions jobs, including both Docker
+builds and a real synthetic artifact served through the API image. That remote check
+supersedes the Docker-unavailable boundary in the original 19 October table below.
+New warehouse regression tests cover missing tables, row/type drift, test target
+leakage, model feature compatibility, sanitized failures, dry-run-only execution,
+schema fingerprints and explicit query billing-project selection.
 
 [Documentation index](README.md)
 

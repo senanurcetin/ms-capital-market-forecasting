@@ -1,0 +1,305 @@
+{
+  "checked_at": "2026-10-20T20:31:04.437109+00:00",
+  "project": "workintech-working",
+  "status": "pass",
+  "scope": "Metadata contracts and optional dry runs only",
+  "data_queries_executed": 0,
+  "model_feature_count": 292,
+  "table_count": 22,
+  "logical_bytes": 74506418814,
+  "datasets": [
+    {
+      "layer": "raw",
+      "dataset": "mscapital_raw",
+      "tables": [],
+      "location": "US",
+      "status": "pass"
+    },
+    {
+      "layer": "staging",
+      "dataset": "mscapital_staging",
+      "tables": [
+        {
+          "table": "label",
+          "rows": 1257637,
+          "logical_bytes": 30183288,
+          "columns": 3,
+          "schema_sha256": "52de2fb0d4bdaa5efed346a5654d1595d412037e213fea7cfdf45ae52cc00417",
+          "modified": "2026-09-02T10:47:55.451000+00:00"
+        },
+        {
+          "table": "market_test",
+          "rows": 118359166,
+          "logical_bytes": 13006140976,
+          "columns": 14,
+          "schema_sha256": "ace7531a74bd24b5c4fe4bea2f1c0ad74795e0425fe60e9e47ff671fc9203345",
+          "modified": "2026-09-02T21:28:02.557000+00:00"
+        },
+        {
+          "table": "market_train",
+          "rows": 221756611,
+          "logical_bytes": 26061755368,
+          "columns": 15,
+          "schema_sha256": "07470f5a289b6a423ec1c2ee5447127cf4d0ef20fee076b9b6a75c9fbb7c6b51",
+          "modified": "2026-09-02T15:05:59.174000+00:00"
+        },
+        {
+          "table": "order_test",
+          "rows": 119465287,
+          "logical_bytes": 6690056072,
+          "columns": 7,
+          "schema_sha256": "9e53a0fa24d3e4e6cb13888901e7a15025bd8714b46b9cf742ebae2e44524434",
+          "modified": "2026-09-02T21:28:13.691000+00:00"
+        },
+        {
+          "table": "order_train",
+          "rows": 170056583,
+          "logical_bytes": 10883621312,
+          "columns": 8,
+          "schema_sha256": "0642e8d86d9368497a58d446e57f0d9d7da95b9d73b4a0a882ce8269cfa4c519",
+          "modified": "2026-09-02T10:49:48.388000+00:00"
+        },
+        {
+          "table": "transaction_test",
+          "rows": 70909408,
+          "logical_bytes": 3403651584,
+          "columns": 6,
+          "schema_sha256": "a5ddb3091d47db30ec05e4c35a42c431fddad6b7b80aeb1f0dd9db436a0af2ac",
+          "modified": "2026-09-02T21:28:23.256000+00:00"
+        },
+        {
+          "table": "transaction_train",
+          "rows": 103970264,
+          "logical_bytes": 5822334784,
+          "columns": 7,
+          "schema_sha256": "312501a8ad4da7f486705c75a2c6219aabd7f82c54103cf9d199fad92b134319",
+          "modified": "2026-09-02T10:48:07.545000+00:00"
+        }
+      ],
+      "location": "US",
+      "status": "pass"
+    },
+    {
+      "layer": "features",
+      "dataset": "mscapital_features",
+      "tables": [
+        {
+          "table": "dataset_test",
+          "rows": 647896,
+          "logical_bytes": 1432128368,
+          "columns": 293,
+          "schema_sha256": "84f8994edf5209f5514b1f82184c63043ac0c678d78c77b69e38975322d944d3",
+          "modified": "2026-09-03T11:52:15.229000+00:00"
+        },
+        {
+          "table": "dataset_train",
+          "rows": 1257637,
+          "logical_bytes": 2772746896,
+          "columns": 295,
+          "schema_sha256": "801875fb3a69d25e54b738f5df46668308b34fa466f8c3ce6c6428cb046191c8",
+          "modified": "2026-09-03T11:43:34.953000+00:00"
+        },
+        {
+          "table": "market_test",
+          "rows": 647896,
+          "logical_bytes": 812695152,
+          "columns": 160,
+          "schema_sha256": "8f466d4b60cf0498a05399c8f40c7249fb46037ec14d131a45bacfdb531bf8bc",
+          "modified": "2026-09-03T11:51:08.455000+00:00"
+        },
+        {
+          "table": "market_train",
+          "rows": 1257637,
+          "logical_bytes": 1578696544,
+          "columns": 160,
+          "schema_sha256": "8f466d4b60cf0498a05399c8f40c7249fb46037ec14d131a45bacfdb531bf8bc",
+          "modified": "2026-09-03T11:43:06.340000+00:00"
+        },
+        {
+          "table": "order_test",
+          "rows": 647896,
+          "logical_bytes": 386462296,
+          "columns": 82,
+          "schema_sha256": "0f081e73edcea84943c84a840748410c536d8fe4e380328240e2c6bea456a4fe",
+          "modified": "2026-09-03T11:51:19.899000+00:00"
+        },
+        {
+          "table": "order_train",
+          "rows": 1257637,
+          "logical_bytes": 731942856,
+          "columns": 82,
+          "schema_sha256": "0f081e73edcea84943c84a840748410c536d8fe4e380328240e2c6bea456a4fe",
+          "modified": "2026-09-03T11:43:13.953000+00:00"
+        },
+        {
+          "table": "shape_train",
+          "rows": 1257637,
+          "logical_bytes": 188501488,
+          "columns": 19,
+          "schema_sha256": "5acb71ccfa5d6a1a69859b3d2c871f023bed68231b84113f4d17b5e9614359c0",
+          "modified": "2026-09-08T22:04:09.705000+00:00"
+        },
+        {
+          "table": "transaction_test",
+          "rows": 647896,
+          "logical_bytes": 243337256,
+          "columns": 53,
+          "schema_sha256": "30f3669975461adad4919d37e595a09bd60c77ae95d273182d986843c80cf1aa",
+          "modified": "2026-09-03T11:51:38.229000+00:00"
+        },
+        {
+          "table": "transaction_train",
+          "rows": 1257637,
+          "logical_bytes": 462107496,
+          "columns": 53,
+          "schema_sha256": "30f3669975461adad4919d37e595a09bd60c77ae95d273182d986843c80cf1aa",
+          "modified": "2026-09-03T11:43:23.676000+00:00"
+        }
+      ],
+      "location": "US",
+      "status": "pass"
+    },
+    {
+      "layer": "mart",
+      "dataset": "mscapital_mart",
+      "tables": [
+        {
+          "table": "mart_backtest",
+          "rows": 9,
+          "logical_bytes": 1034,
+          "columns": 12,
+          "schema_sha256": "a4a0eaeccba64e329bfbb7c71503003feeb0e00fcbe70c1e054d9f1edae7fd9e",
+          "modified": "2026-09-03T12:32:45.981000+00:00"
+        },
+        {
+          "table": "mart_drift",
+          "rows": 294,
+          "logical_bytes": 31395,
+          "columns": 12,
+          "schema_sha256": "8c5c8ebc10546e72bf0b00304b0bb22a7975161aa46ef5fdb5a21d263d656014",
+          "modified": "2026-09-03T06:54:54.983000+00:00"
+        },
+        {
+          "table": "mart_feature_importance",
+          "rows": 292,
+          "logical_bytes": 20387,
+          "columns": 6,
+          "schema_sha256": "e2bf668cae9c0b4f4e39f4ba6100e6df129a8f4c44f4b69f2f60101dc53acb08",
+          "modified": "2026-09-03T12:32:50.500000+00:00"
+        },
+        {
+          "table": "mart_holdout_metrics",
+          "rows": 1,
+          "logical_bytes": 140,
+          "columns": 16,
+          "schema_sha256": "88b332bc7321017be7ad3d35da4ead15d69ddf5c40670feb3fd578178f910509",
+          "modified": "2026-09-03T12:32:42.051000+00:00"
+        },
+        {
+          "table": "mart_model_metrics",
+          "rows": 30,
+          "logical_bytes": 4000,
+          "columns": 15,
+          "schema_sha256": "5d0feb9fcd4f08a6a35ea828ef3a8d6980529a918043b89a39698be83ed8eb6d",
+          "modified": "2026-09-03T12:32:37.331000+00:00"
+        },
+        {
+          "table": "mart_run_metadata",
+          "rows": 1,
+          "logical_bytes": 122,
+          "columns": 12,
+          "schema_sha256": "4131c9de6c803b8a7ec03b1f9c3f8edfa2b351b8bed22e7dc0b030797b1996db",
+          "modified": "2026-09-03T12:32:54.728000+00:00"
+        }
+      ],
+      "location": "US",
+      "status": "pass"
+    }
+  ],
+  "contracts": [
+    {
+      "table": "staging.label",
+      "expected_rows": 1257637,
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "table": "staging.market_train",
+      "expected_rows": 221756611,
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "table": "staging.order_train",
+      "expected_rows": 170056583,
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "table": "staging.transaction_train",
+      "expected_rows": 103970264,
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "table": "features.dataset_train",
+      "expected_rows": 1257637,
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "table": "staging.market_test",
+      "expected_rows": 118359166,
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "table": "staging.order_test",
+      "expected_rows": 119465287,
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "table": "staging.transaction_test",
+      "expected_rows": 70909408,
+      "status": "pass",
+      "issues": []
+    },
+    {
+      "table": "features.dataset_test",
+      "expected_rows": 647896,
+      "status": "pass",
+      "issues": []
+    }
+  ],
+  "download_plans": [
+    {
+      "split": "train",
+      "sql": "SELECT * FROM `workintech-working.mscapital_features.dataset_train` ORDER BY sample_id",
+      "estimated_bytes": 2772746896,
+      "maximum_bytes_billed": 1000000000,
+      "within_job_ceiling": false,
+      "executed": false,
+      "status": "pass"
+    },
+    {
+      "split": "test",
+      "sql": "SELECT * FROM `workintech-working.mscapital_features.dataset_test` ORDER BY sample_id",
+      "estimated_bytes": 1432128368,
+      "maximum_bytes_billed": 1000000000,
+      "within_job_ceiling": false,
+      "executed": false,
+      "status": "pass"
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    "mscapital_raw: empty dataset; raw ingestion cannot be replayed from cloud raw tables",
+    "Logical table bytes exceed 10 GiB; inspect account storage billing. This is not a bill estimate."
+  ],
+  "limitations": [
+    "Metadata counts do not establish key uniqueness, null rates or target validity.",
+    "Schema compatibility does not prove export identity or reproduce historical scores.",
+    "A per-job ceiling does not establish remaining monthly free allowance."
+  ]
+}
