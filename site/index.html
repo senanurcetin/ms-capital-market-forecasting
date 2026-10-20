@@ -68,7 +68,7 @@ footer{color:#9aa0a6;font-size:12px;text-align:center;padding:24px 0 0}
 <section id="evidence">
   <h2>Three numbers, not one</h2>
   <div class="metrics">
-    <div class="metric"><div class="label">Walk-forward CV</div><div class="value" style="color:#4EA8FF">+0.14088</div><div class="note">ensemble · internal validation</div></div>
+    <div class="metric"><div class="label">Historical ensemble CV</div><div class="value" style="color:#4EA8FF">+0.14088</div><div class="note">same-fold fitted blend · optimistic diagnostic</div></div>
     <div class="metric"><div class="label">Hold-out (65–70)</div><div class="value" style="color:#f2994a">+0.15171</div><div class="note">LightGBM · favourable historical period</div></div>
     <div class="metric"><div class="label">Leaderboard</div><div class="value" style="color:#e8eaed">+0.12900</div><div class="note">v4 ensemble · captured 2026-09-10</div></div>
   </div>
@@ -81,6 +81,9 @@ footer{color:#9aa0a6;font-size:12px;text-align:center;padding:24px 0 0}
 </section>
 <section>
   <h2>Evidence and model identity</h2>
+  <p class="callout">Validation correction: historical ensemble weights were fitted and scored
+  on the same fold. The recorded ensemble CV is a fitted-blend diagnostic, not unbiased
+  out-of-sample evidence. New training uses earlier-fold blend calibration; historical artifacts are retained.</p>
   <p>Headline cards read <code>walkforward_summary.csv</code>,
   <code>holdout_metrics.json</code> and <code>leaderboard.json</code>.
   A dash means unavailable evidence, never a measured zero.</p>

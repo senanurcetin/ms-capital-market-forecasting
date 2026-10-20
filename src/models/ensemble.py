@@ -57,10 +57,9 @@ class CosineOptimalEnsemble:
 def evaluate_ensemble_gain(
     preds: dict[str, np.ndarray], y: np.ndarray, *, non_negative: bool = True
 ) -> dict:
-    """Measure whether the ensemble actually beats the best single model.
+    """Same-sample fitted-blend diagnostic, NOT out-of-sample ensemble performance.
 
-    Per the project plan: if it does not, the ensemble is not used. This function
-    leaves that decision to the data rather than to assumption.
+    Useful for checking the optimum; training validation must use evaluate_frozen_ensemble.
     """
     names = list(preds)
     P = np.column_stack([preds[n] for n in names])
@@ -76,4 +75,29 @@ def evaluate_ensemble_gain(
         "gain": ens_score - singles[best_name],
         "beats_best_single": ens_score > singles[best_name],
         "weights": ens.weight_map(),
+    }
+
+
+def evaluate_frozen_ensemble(
+    preds: dict[str, np.ndarray], y: np.ndarray,
+    calibration_preds: dict[str, np.ndarray], calibration_y: np.ndarray,
+) -> dict:
+    """Fit weights on earlier-fold predictions only, then score a later period.
+
+    The caller enforces chronology. Earlier folds' predictions must be out of training
+    sample for their base models. No current-period targets enter the weight fit.
+    """
+    names = list(preds)
+    if set(names) != set(calibration_preds):
+        raise ValueError("Calibration and evaluation model sets must match")
+    calibration = np.column_stack([calibration_preds[n] for n in names])
+    ensemble = CosineOptimalEnsemble(names).fit(calibration, calibration_y)
+    singles = {n: cosine_similarity(y, preds[n]) for n in names}
+    score = cosine_similarity(y, ensemble.predict(np.column_stack([preds[n] for n in names])))
+    best = max(singles, key=lambda name: singles[name])
+    return {
+        "single_scores": singles, "best_single": best, "best_single_score": singles[best],
+        "ensemble_score": score, "gain": score - singles[best],
+        "beats_best_single": score > singles[best], "weights": ensemble.weight_map(),
+        "evaluation_protocol": "prior_fold_blend",
     }

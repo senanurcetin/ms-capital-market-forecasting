@@ -1,5 +1,16 @@
 # Verification record — 19 October 2026
 
+## Follow-up — 20 October 2026
+
+Historical ensemble CV is now explicitly identified as a same-fold fitted-blend
+diagnostic. New training calibrates only on earlier folds, preserving actual fold IDs.
+Paired block-bootstrap comparisons exclude the historical blend and align model periods.
+The short README links to the preserved full narrative in `docs/RESEARCH.md`.
+CLI training now emits a hashed, credential-free experiment sidecar. Regression checks
+cover frozen-weight target independence, actual fold identity and sidecar creation.
+The supplied replacement Kaggle token verified an owner metadata listing; BigQuery
+access still requires usable credentials. No historical result artifact was overwritten.
+
 [Documentation index](README.md)
 
 This record separates local verification from remote integration and deployment status.

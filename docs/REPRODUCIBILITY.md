@@ -20,6 +20,7 @@ does not declare a second package installation path for Streamlit Cloud.
 
 ```bash
 python -m src.evaluation.evidence --output .artifacts/evidence-audit.json
+python -m src.evaluation.uncertainty
 python -m src.data.build_site
 python -m streamlit run streamlit_app/app.py
 ```
@@ -54,3 +55,6 @@ a Kaggle result. Do not export synthetic outputs over the historical `results/` 
 
 For full-data experiments, credentials, release management and CLI options see
 [operations](OPERATIONS.md) and [integration boundaries](INTEGRATIONS.md).
+
+Training CLI outputs now include a `.run.json` sidecar. See the
+[validation correction and experiment record contract](VALIDATION.md).

@@ -1,5 +1,8 @@
 # NEXUS · MSCapital Market Forecasting
 
+> **Validation correction (20 October 2026):** the historical ensemble CV fitted and scored blend weights on the same fold. Its +0.14088 is an optimistic fitted-blend diagnostic, not an unbiased external-performance estimate. New training calibrates weights on earlier folds only. Historical results are retained; no full-data rerun is claimed.
+
+
 <p align="right"><img src="docs/assets/nexus-official-midnight.svg" alt="NEXUS Official Midnight brand" width="220"></p>
 
 **Documentation:** [Start here](docs/README.md) · [Reproduce](docs/REPRODUCIBILITY.md) · [Kaggle / BigQuery](docs/INTEGRATIONS.md) · [Brand identity](docs/BRAND_IDENTITY.md).
@@ -36,7 +39,7 @@ The page worth opening first is *Why the leaderboard disagreed*.
 `BigQuery` · `LightGBM` · `XGBoost` · `scikit-learn` · `SHAP` · `Optuna` · `Pandera` ·
 `MLflow` · `FastAPI` · `Streamlit` · `Docker` · `GitHub Actions`
 
-**Research milestone: completed and handed over.** Five executed notebooks, two scored submissions, and
+**Research status: historical study with validation corrections.** Five executed notebooks, two scored submissions, and
 a test suite that injects the failures it claims to prevent. Follow-up maintenance and test
 corrections can still occur; the documented historical scores do not change without new
 evaluation evidence. Research limitations remain explicit in [Where this stands](#where-this-stands).
@@ -62,7 +65,7 @@ evaluation evidence. Research limitations remain explicit in [Where this stands]
 
 | | cosine | what it is |
 |---|---:|---|
-| Walk-forward CV mean | **+0.14088** | **the honest internal estimate** — averaged over 5 periods |
+| Walk-forward CV mean | **+0.14088** | **historical fitted-blend diagnostic** — averaged over 5 periods |
 | Hold-out, months 65–70 | +0.15171 | measured once, untouched — but a *lucky* period |
 | Leaderboard, first submission | +0.12800 | single LightGBM, months 0–63 |
 | **Leaderboard, shipped model** | **+0.12900** | ensemble, months 0–67 |
@@ -79,743 +82,55 @@ period in turn shows difficulty swinging from 0.117 to 0.148 — and months 65�
 completely different way, gives +0.14088. Purity was never the binding constraint: a single
 contiguous stretch is a sample of size one in the dimension that actually varies.
 
-### A prediction, its falsification, and what followed
-
-Before submitting, notebook 04 recorded a falsifiable forecast — reweighting the hold-out
-by the test set's spread mix gave **≈ 0.143**, with the caveat that anything materially
-below would need a different explanation.
-
-**Leaderboard: 0.128.** The prediction was wrong: right direction, magnitude off by three.
-
-It stays where it was written, with the correction beneath it, because a forecast is only
-evidence of understanding if it is recorded before the answer and reported honestly after.
-Six hypotheses were then stated and tested, **none of them costing a further submission**:
-
-| Hypothesis | Verdict |
-|---|---|
-| **The hold-out was a lucky period** | **confirmed — explains 46%** |
-| Spread-regime mix shift | real, but corrected *downward* to ~14% |
-| High-drift rate features hurt under shift | falsified at two thresholds |
-| Skill decays with elapsed time | falsified — the slope is *positive* |
-| Test set is categorically different | falsified — it is a *continuation* of training |
-| Sequence order carries missing signal | falsified — **+0.0006**, CI spanning zero |
-
-The fifth is worth one line of detail, because the obvious way to test it gives the wrong
-answer. Adversarial validation against *pooled* training data separates the test set at
-AUC **0.7910**, which looks like a different regime — but a narrow block always separates
-cleanly from a heterogeneous pool, so the number says nothing about drift. Compared
-block-to-block, the test set separates from the last training block at **0.7490**, which is
-*lower* than months 10–19 separate from months 0–9 (**0.7543**). By the only calibrated
-measure available, the test period is a continuation of the training period, not a break
-from it.
-
-Two results are worth pulling out. The hold-out sits at the **83rd percentile** of period
-difficulty (which swings 0.117–0.148 under a fixed model), and de-biasing for that gives
-+0.14084 — within 0.00004 of the walk-forward mean, computed a completely different way.
-And the forecast itself was **built wrong**: cosine factors exactly as
-`Σ cos_g · w_g` with `w_g = ‖y_g‖‖p_g‖ / (‖y‖‖p‖)`, so subgroups are weighted by
-*magnitude*, not row count. Correcting it moved the forecast **further** from the outcome.
-
-**→ The full investigation is [notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb).**
-
-### Five forecasts, five overshoots
-
-| Prediction | Predicted | Actual |
-|---|---:|---:|
-| Leaderboard, from the hold-out | 0.143 | 0.128 |
-| Spread-mix share of the gap | 26% | ~14% |
-| Gain from ensemble + more training data | +0.0047 | +0.0010 |
-| Gain from sequence-shape features | clears 0.0041 | +0.0006 |
-| Gain from aligning the loss with the metric | small but positive | **−0.0064** |
-
-The ensemble row is the best-evidenced of the five, because it was pre-registered somewhere
-it cannot be edited afterwards. The same forecast, written as an absolute score
-(`0.128 + 0.0047 = 0.1327`), went into the Kaggle submission description at upload time as
-"Predicted 0.132–0.133". It came back **0.129**.
-
-Different reasoning each time, the same direction of error every time — which points at one
-cause rather than five mistakes. **Effects of order 0.002–0.005, measured on internal
-splits, sit at this problem's resolution limit.** Fold-to-fold std is 0.0041;
-period-to-period std is 0.0091. A CV gap that is positive in 5 folds of 5 — averaging
-+0.0022, but ranging +0.0004 to +0.0052 across them — is a real
-*ordering* of two models and still buys almost nothing externally, because what separates
-them is small beside what separates one period from another.
-
-The rule that survives: below roughly the fold-to-fold std, treat an internal gain as
-evidence about **which** model to prefer, never as a quantity that will reach a leaderboard.
-Both submissions are consistent with that; none of the five forecasts were.
-
-The last one is the sharpest, because it is the only idea that came from this project's own
-metric analysis. Cosine weights rows by magnitude, so weighting the training loss by
-`|y|^alpha` looked like alignment. It is not: **the weights are a function of the target**,
-so the fit no longer estimates `E[y|x]` but a magnitude-tilted functional of it — and cosine
-is maximised by the conditional mean. Cosine's weighting describes how scores *aggregate
-across rows*, not where a model should spend capacity. Conflating those cost −0.0064 at
-alpha 0.5 and −0.0235 at alpha 1.0, with 0 of 6 comparisons improving in either arm.
-
-### Where it actually stands, against other people
-
-**204 teams. Median 0.137. This model 0.129 — rank 141, with 8 teams tied on the same
-score** (public leaderboard captured 2026-09-10; the figures come from
-[`results/leaderboard.json`](results/leaderboard.json), which is a captured snapshot rather
-than a number typed once and left to rot).
-
-That standing matters because it refutes the comfortable reading of everything above: the
-problem is **not** at its noise ceiling. The best score is 0.172 and the upper quartile
-begins at 0.146, reached through the same fold-to-fold std of 0.0041 — so the missing
-quantity is signal this pipeline does not extract, not headroom that does not exist.
-
-It also bounds what period difficulty can be blamed for. Difficulty is a property of the
-test window, so every team met the same one; it explains why *this* model scored below its
-own hold-out, and it cannot explain why it scored below other people's models on identical
-data. Roughly 0.008 of cosine separates it from the median, and that part is not luck and
-not the period — it is signal that was available and not found.
-
-Six hypotheses have been tested against that gap. One is confirmed, and it is the
-estimator rather than the model: the hold-out sits at the 83rd percentile of period
-difficulty, worth ~46% of the shortfall. One more is real but smaller than forecast (the
-spread-regime mix, ~14%). The remaining four are falsified — including aligning the
-training loss with the metric (**−0.0064**, which actively hurt).
-
-One of those four deserves a narrower statement than it usually gets. The sequence-order
-hypothesis was tested by adding **18 hand-built path statistics** to the existing 292, and
-they bought **+0.0006** with a CI spanning zero. That falsifies *those statistics*, not the
-hypothesis: the nine novel ones score **0.0057 standing alone**, which is where the
-constant-mean predictor sits (0.0059), so the summary carries essentially nothing and the
-experiment cannot separate "the path holds no signal" from "eighteen numbers were the wrong
-way to look at it". Distinguishing them needs a learned representation over the ~176
-snapshots rather than a hand-picked digest of them — the [DeepLOB](https://arxiv.org/abs/1808.03668)
-line of work is exactly that. It has since been done once, small; the result is
-[below](#where-this-stands) under *Measured: a learned sequence model*.
-
-Each is worked through in
-[notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb), along with two errors the
-audits found in my own analysis.
-
-The honest summary is not "the ceiling is here". It is: **the gap is real, six specific
-explanations have been tested, and the one that survives does not account for most of it.**
-
-Walk-forward CV, full data, 5 folds:
-
-| Model | cosine mean | across-fold std |
-|---|---:|---:|
-| **ensemble** | **+0.14088** | 0.00413 |
-| lightgbm | +0.13869 | 0.00332 |
-| xgboost | +0.13815 | 0.00471 |
-| ridge | +0.11813 | 0.00501 |
-| mean | +0.00588 | 0.01374 |
-| zero | 0.00000 | — |
-
-The two tree models differ by less than a fifth of the fold-to-fold noise — they are
-statistically indistinguishable, so stability decides. The ensemble beats the best single
-model in **5 of 5 folds** (median gain +0.0017) using closed-form OLS weights, no tuning.
-
----
-
 ## What I found
 
-Six things here are undocumented, would be got wrong by assumption, and would
-each degrade a model *without raising a single error*. Finding them is most of the work in
-this repository.
-
-| # | Finding | If missed | Where |
-|---|---|---|---|
-| 1 | The market table's window is **600 s**, not the 60 s of the other two | 90% of the order-book history is silently discarded | [01](notebooks/01_data_discovery.ipynb) |
-| 2 | `price = 0` is an **empty-level sentinel**, not a price | mean relative spread reads **−0.005648** instead of **+0.001258** — the sign flips | [01](notebooks/01_data_discovery.ipynb) |
-| 3 | `side` and `order_action` encodings are **recoverable by measurement** | order-flow features get built backwards | [01](notebooks/01_data_discovery.ipynb) |
-| 4 | The `*_last` features were reading from **different snapshots** | `mkt_depth_imb1_last` deviated by 1.994 — the full width of its range | [01](notebooks/01_data_discovery.ipynb) |
-| 5 | Predictive features and **transferable** features are the same features | — (this one is the payoff, not a trap) | [03](notebooks/03_features_and_drift.ipynb) |
-| 6 | The model is **weakest exactly where the test set lives** | the hold-out overstates the leaderboard — measured at 14%, of which this explains ~1/7 | [04](notebooks/04_models_and_errors.ipynb), [05](notebooks/05_why_the_leaderboard_disagreed.ipynb) |
-
-Finding 6 is the one I would lead with in a review, because neither measurement produces it
-alone. The drift report says *where the test set sits*: 35.7% of its samples fall in the
-tightest-spread quartile, against 25% in training. The error analysis says *where the model
-is weak*: 0.1315 cosine in that quartile versus 0.1941 in the widest. Only together do they
-say the two overlap — and that turns a vague "performance may vary" into a number that a
-leaderboard can falsify. It did: the effect is real but, once the metric's own weighting is
-applied, explains only about a seventh of the actual 14% gap. Being specific enough to be
-wrong is what made the rest visible.
-
-Two of these were found by checking my own work rather than the data: #4 came from
-recomputing features independently instead of re-reading the code that produced them, and
-a sixth item — a claim that the 999-row ceiling meant truncation — turned out to be
-**over-stated** and is documented as a mistake and its repair, because the lesson
-generalises: *an exact round number is evidence of a mechanism, not evidence that the
-mechanism matters.*
-
-### Notebooks
-
-Each is executed, with outputs, and generated from a script so the narrative stays
-reviewable in version control. All follow the same shape: **what I expected → what I
-measured → what I changed.**
-
-| | |
-|---|---|
-| [01 — Data Discovery](notebooks/01_data_discovery.ipynb) | the four data findings, plus one corrected mistake |
-| [02 — The Target, and Why Random Splits Are Banned](notebooks/02_target_and_leakage.ipynb) | the validation rule settled by experiment: a random split inflates the score by +0.0047 (1.04×) |
-| [03 — Features, and Whether They Survive the Test Set](notebooks/03_features_and_drift.ipynb) | SHAP × drift: the top-20 features shift 4.2× less than average |
-| [04 — Models, and Where They Fail](notebooks/04_models_and_errors.ipynb) | error analysis by liquidity regime — and the risk it exposes |
-| [05 — Why the Leaderboard Disagreed](notebooks/05_why_the_leaderboard_disagreed.ipynb) | **the longest one, and the one to read**: six hypotheses, four falsified, two analysis errors found and corrected |
-
----
-
-## The dashboard
-
-Seven pages, grouped the way the work happened - what the data turned out to be, what the
-model does, and then why the leaderboard disagreed with the hold-out. The last one is the
-one worth opening first: six hypotheses, four falsified, laid out as a scoreboard rather
-than a narrative.
-
-```bash
-make streamlit          # :8501
-```
-
-It runs anywhere, with no pipeline and no API. Everything it shows travels in
-[`results/`](results/): derived aggregates only - fold scores, backtest curves, SHAP
-importances, the investigation tables - plus the trained artefact and a 4,970-row sample
-of the feature table. No competition data is redistributed. `make export-results`
-refreshes it from a live pipeline run.
-
-That sample is drawn **evenly across all 71 months**, and the reason is a defect worth
-recording. It used to be `head(5000)`, and because `sample_id` is chronological those rows
-were all month 0 - so every distribution on the published page was one month of data
-captioned as the training set, and the monthly-volatility chart was a single point under a
-caption claiming a 2.69x swing. Per-month statistics are now computed on the full 1.26M
-rows and exported alongside, because a standard deviation from seventy sampled rows is
-noise presented as a regime.
-
-The Predictions page scores **in-process** when no API is reachable, using the same bundle
-the API would have loaded, so a published dashboard is interactive rather than a page of
-error messages. With `make api` running it uses the real serving path instead.
-
-**It is running here: [ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)**
-
-**Deploying it** (free): [Streamlit Community Cloud](https://share.streamlit.io) reads this
-repository directly - point it at `streamlit_app/app.py` on `main`, and **set the Python
-version to 3.11** under Advanced settings. That last part is not cosmetic: the default is
-currently 3.14, for which the pinned wheels do not exist, so the build silently falls back
-to compiling pandas and numpy from source and stalls. Root `requirements.txt` is
-deliberately lean for the same class of reason - the pipeline-only packages (MLflow, SHAP,
-DuckDB, Polars, Kaggle) sit in `requirements-pipeline.txt` so the deployed app does not
-install them to draw a bar chart.
-
-> Vercel is not an option here and it is worth saying why: it runs serverless functions,
-> while Streamlit is a long-lived server holding a WebSocket per viewer. The hacks that
-> claim otherwise are fragile, and a broken link in a portfolio is worse than no link.
-
----
-
-## Run it in 30 seconds
-
-The real pipeline needs Kaggle credentials, a GCP project, ~20 GB of disk and hours of
-upload. So there is a second path that needs none of it:
-
-```bash
-pip install -r requirements-dev.txt
-make demo
-```
-
-That generates synthetic data **with the real schema and the real quirks** — one Arrow
-record batch per file, a 600 s market window against 60 s elsewhere, `price = 0`
-sentinels paired with zero volume, mid-normalised prices — and then drives the genuine
-code: the column-group converter, the walk-forward harness with its embargo and runtime
-leakage guard, every model, the closed-form ensemble, the hold-out measurement, and
-artefact save/reload in the format the API serves. It finishes in about half a minute and
-prints the commands to start the API and dashboard on the result.
-
-What it does *not* cover is the BigQuery feature SQL, which needs GCP. That layer is
-tested structurally instead (`tests/test_feature_sql.py`), and the demo's feature table
-takes its column names from the same SQL generators, so the two schemas cannot drift apart.
-
-It writes to `<repo>/.demo` (override with `MSCAPITAL_DEMO_ROOT`), deliberately **not** to
-the configured `data_root` — that points at a large local disk with a platform-specific
-absolute path, and using it made the demo Windows-only until CI caught it on Linux.
-
-> The demo's data is synthetic and its signal is planted, so its scores are meaningless
-> as results. **No number reported anywhere in this repository comes from it.**
-
----
-
-## The data: measured facts, not assumptions
-
-Row counts come from the Arrow footers; distributions come from the data itself.
-
-| File | Rows | Cols | On disk | Uncompressed |
-|---|---:|---:|---:|---:|
-| `train/market.feather` | 221,756,611 | 13 | 4.10 GiB | **11.53 GB** |
-| `train/order.feather` | 170,056,583 | 6 | 1.21 GiB | 3.06 GB |
-| `train/transaction.feather` | 103,970,264 | 5 | 476 MiB | 1.77 GB |
-| `train/label.feather` | 1,257,637 | 3 | 9.6 MiB | — |
-| `test/*` (3 files) | 308,733,861 | — | 3.47 GiB | 9.51 GB |
-| **Total** | **804,517,319** | | **9.26 GiB** | **25.9 GB** |
-
-**Structure.** Each `sample_id` is an independent, anonymous observation window. There
-is **no symbol/instrument column**, so no cross-sample history can be constructed and
-the problem reduces to tabular regression over 1,257,637 rows.
-
-**`sample_id` is not a time axis you can lean on.** In train it is chronological, but only at the scale
-of months: the lag-1 autocorrelation of 1,000-sample block means of volatility, trade intensity and
-spread is **+0.93**, and it falls to **-0.05** once each month's mean is
-removed (**-0.06** is what a sequence with no order inside a month would give, because
-subtracting a group mean forces a negative value), so nothing is ordered *within* a month. In the test set it is
-**+0.01** (se about 0.04), and about zero at every block size from 10 to 10,000, although its
-647,896 samples are 37 months' worth. `make test-order` measures this
-([`results/split_order.json`](results/split_order.json)). The consequence is practical: any feature, correction or
-"market context" built from neighbouring samples can be computed in train and cannot be computed on the
-test set, so it can look like a gain in cross-validation and be unavailable at scoring time. I did not
-establish how the test ids were assigned; the measurement says only that they carry no order.
-
-**Window lengths differ per table** (measured, not assumed):
-
-| Table | Window | Rows per sample | Note |
-|---|---:|---:|---|
-| market | **600 s** | 176.3 | one snapshot every ~3.4 s; no ceiling (max 212) |
-| order | 60 s | 135.2 | hard ceiling at 999 rows, but it binds for 0.0025% of samples |
-| transaction | 60 s | 82.7 | same ceiling, binds for 0.0005% |
-
-The 999 ceiling is real — never exceeded, in either split, for two independent tables —
-but measuring *how often it binds* showed it almost never does (31 and 6 samples out of
-1,257,637). The `is_truncated` features it originally justified were constant-zero for
-99.997% of rows and were removed; `*_window_covered`, which varies continuously, was kept.
-See `notebooks/01_data_discovery.ipynb`.
-
-`seconds_before_predict` is the distance back from the prediction instant, sorted
-descending within a sample; `0` is the tick closest to prediction time. Because the
-value is always `>= 0`, **look-ahead is structurally impossible**.
-
-**Encodings resolved empirically** (prices are normalised around mid ≈ 1.0):
-
-| Code | Meaning | Evidence |
-|---|---|---|
-| `order.side = 0` | BID | mean price 0.9979 (below mid) |
-| `order.side = 1` | ASK | mean price 1.0036 (above mid) |
-| `order_action = 0` | NEW | 128.1M events |
-| `order_action = 1` | CANCEL | 42.0M events; NEW ≈ CANCEL + TRANSACTION balances |
-| `transaction.side = 0` | BUY (aggressor lifts the ask) | 87.5% above mid, mean **+5.26 bps** |
-| `transaction.side = 1` | SELL (aggressor hits the bid) | 88.7% below mid, mean **−5.27 bps** |
-
-**`price = 0` is not a price but an "empty level" sentinel** — it always comes with
-`volume = 0`. Real prices live in 0.909–1.052. Left uncleaned, mean `rel_spread` reads
-−0.005648 instead of the correct +0.001258. There are **no genuinely crossed books** (0 rows).
-
-**Target.** std 0.002618 (26 bps), median exactly 0 (5.54% exact zeros — a tick-size
-artefact), autocorrelation between consecutive samples ≈ 0. Monthly std swings by
-**2.69×**, i.e. clear regime shift.
-
----
-
-## Architecture
-
-![Pipeline architecture](docs/architecture.svg)
-
-*Generated by `make diagram` — the feature counts on it are read from `results/`, so the
-picture cannot drift from the pipeline the way a hand-drawn one does.*
-
-<details>
-<summary>The same thing as text</summary>
-
-```
-Kaggle feather (single record batch, 11.5 GB uncompressed)
-        │  column-group converter (peak RAM 7.9 GB)
-        ▼
-   Parquet parts ──► BigQuery
-        │             mscapital_raw → staging → features → mart
-        │             GROUP BY sample_id: 804M rows → 1.26M rows
-        ▼
- dataset_train.parquet (1.40 GB, 292 features)
-        │
-        ▼
- Walk-forward CV ──► MLflow ──► model artefact ──► FastAPI ──► Streamlit
-```
-
-</details>
-
-### Why a column-group converter
-
-Every competition file is a **single Arrow record batch**. Consequently row-wise
-streaming is impossible, `memory_map` is useless (the buffers are compressed), and
-`market` cannot be read in one go on a 16 GB machine.
-
-The way out: Arrow IPC compresses each buffer separately and `read_table(columns=[...])`
-pushes the projection into the C++ reader (measured: 1 column 0.43 GB, 5 columns
-1.15 GB — linear). Market is split into 3 column groups and rejoined in BigQuery on
-`row_id`.
-
-That positional-join assumption is verified twice: `tests/test_ingestion.py` performs a
-synthetic single-batch round-trip, and in BigQuery the alignment check found **zero**
-`sample_id` / `seconds_before_predict` mismatches across 221.7M rows.
-
----
-
-## The metric: cosine similarity
-
-`cos(y, ŷ) = Σyŷ / (‖y‖·‖ŷ‖)` — **scale-invariant but not shift-invariant.**
-
-- Multiplying predictions by a constant does not change the score → calibrating
-  magnitude is wasted effort.
-- Adding a bias **hurts**. Empirical proof: the constant-prediction `mean` model scores
-  **−0.0036**.
-- Ensemble weights need no grid search: the vector in the span of the model predictions
-  closest in cosine to `y` is its orthogonal projection, which is the **OLS solution**.
-  `tests/test_ensemble.py` verifies this against 200 random weight vectors.
-
----
+The source contains 804.5M market/order/trade rows, with different observation windows,
+empty-book sentinels, truncated event histories and 292 engineered columns (264 distinct).
+The complete findings, failed hypotheses and executed notebook evidence are retained in
+[the historical research narrative](docs/RESEARCH.md).
 
 ## Validation: walk-forward with an embargo
 
-Random splits are **forbidden** — consecutive samples can have overlapping lookback windows.
+Base-model evaluation uses five chronological periods and a one-month embargo. Early
+stopping uses each validation fold, so these are not nested outer-test estimates.
+The historical ensemble also fitted its weights on its scored folds. New runs fit blend
+weights only on earlier out-of-fold predictions and omit the first fold from ensemble
+scoring. The uncertainty report aligns model periods and excludes the historical blend.
+[Validation protocol and limitations](docs/VALIDATION.md).
 
+## Architecture
+
+Kaggle Feather files → Arrow/Parquet projections → BigQuery staging/features → local
+model training → derived results → NEXUS Streamlit and self-contained HTML reports.
+The dashboard requires no cloud credentials. [Architecture diagram](docs/architecture.svg).
+
+## Reproduce
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m src.evaluation.evidence
+python -m src.evaluation.uncertainty
+python -m streamlit run streamlit_app/app.py
 ```
-Fold 1: train months 0–34 │ embargo │ val 36–40
-...
-Fold 5: train months 0–58 │ embargo │ val 60–64
-HOLD-OUT (untouchable): months 65–70
-```
 
-That ban is measured, not inherited. [Notebook 02](notebooks/02_target_and_leakage.ipynb)
-trains the same model on the same data under both splits: the random arrangement scores
-**+0.0047 higher (1.04×)**. Real inflation, but far smaller than the rule implies — which
-is consistent with the near-zero target autocorrelation. The rule stays, because it costs
-nothing and the downside of being wrong is a model that looks good and is not.
-
-`assert_fold_integrity()` re-verifies each fold against the data at runtime.
-`tests/test_train_integrity.py` injects broken setups — a random split, an embargo
-violation, a hold-out leak — and proves the guard **catches** them.
-
-### Data contracts
-
-Every fact in "measured facts" above is also a Pandera schema in
-[`src/data/validation.py`](src/data/validation.py), so a discovery becomes something the
-pipeline enforces rather than something a future reader has to rediscover:
-
-| Contract | What it protects |
-|---|---|
-| `seconds_before_predict >= 0` | look-ahead stays structurally impossible |
-| `<= window` (600 s / 60 s / 60 s) | the per-table window semantics |
-| `price >= 0`, with 0 allowed | the empty-level sentinel convention |
-| `side in {0,1}`, `order_action in {0,1}` | the encodings recovered by measurement |
-| `<= 999 rows` per sample | the truncation ceiling |
-| descending seconds within a sample | the chronological order `ARRAY_AGG` relies on |
-
-**Code against artefact.** The BigQuery feature tables are *materialised*: generated once,
-then queried for months, while the SQL that produced them stays editable in git. The two can
-drift apart with no error and no NaN — and once did here, when the generators emitted 82
-order and 53 transaction features while BigQuery still held 81 and 52. `make schema-check`
-compares the column set the SQL will emit against the column set the tables actually have,
-and `tests/test_validation.py` simulates drift in both directions to prove the check fires.
-
-`make validate` runs the contracts against the real data. As with the fold guard,
-`tests/test_validation.py` **injects each violation** and asserts it is caught — a schema
-nobody has seen fail is a schema nobody knows works.
-
----
-
-## Explainability
-
-TreeSHAP over the hold-out. The strongest signals are imbalance features, which is what
-microstructure theory predicts:
-
-| Feature | Share |
-|---|---:|
-| `txn_count_imbalance_10s` | 5.48% |
-| `ord_new_count_imbalance_30s` | 5.12% |
-| `ord_new_count_imbalance_10s` | 3.82% |
-| `mkt_micro_minus_mid_last` | 2.83% |
-| `mkt_mid_return_60s` | 2.14% |
-
-Contribution by family: market 47.5% · order 32.4% · transaction 20.1%.
-
-### Ablation: SHAP alone answers the wrong question
-
-SHAP is computed on a model that already has every feature, so a family can rank high
-simply by encoding information available elsewhere. Retraining on subsets asks the question
-that actually matters — what would I lose without it:
-
-| Family | features | SHAP share | alone | **marginal** |
-|---|---:|---:|---:|---:|
-| `mkt` | 159 | 47.5% | +0.108 | **+0.021** |
-| `ord` | 81 | 32.4% | **+0.074** | **+0.017** |
-| `txn` | 52 | 20.1% | +0.086 | +0.008 |
-
-The three rankings disagree, and that is the finding. `ord` is the **weakest family on its
-own** yet the **second most valuable at the margin**: order flow needs the book to be
-interpretable — a burst of new bids means one thing when the spread is wide and another
-when it is tight. `txn` runs the other way, respectable alone but largely redundant once
-the book and order flow are present, since executed trades are downstream of order flow and
-the market table already carries per-snapshot trade aggregates.
-
-All three have positive marginal value, so none is dropped — but that now rests on an
-experiment rather than on an importance ranking never designed to answer it.
-See [notebook 03](notebooks/03_features_and_drift.ipynb).
-
-### Drift: do the features survive the test set?
-
-Of 292 features, 199 shift negligibly between train and test, 85 slightly, 8 moderately,
-and **none** shifts "large" (standardised mean difference ≥ 0.5). But the average hides the
-structure:
-
-| Feature kind | median shift |
-|---|---:|
-| imbalance / OFI / return (scale-free) | **0.002 – 0.007** |
-| depth, last-snapshot | 0.021 – 0.028 |
-| rate / intensity / count | **0.176** |
-| spread | 0.260 |
-
-The test period is a measurably more liquid market — 1.36× order events, 1.35× trade count,
-1.24× depth, but **0.80× spread** and 0.91× mid volatility. Everything that *counts* events
-moves; everything that measures the *balance* between two counts does not, because a ratio
-divides the density out.
-
-That matters because the two rankings converge: the top-20 features by SHAP have a median
-shift of **0.0065** versus **0.0275** across all features, and importance correlates
-**−0.21** with drift. The features the model leans on are the ones that move least. See
-[notebook 03](notebooks/03_features_and_drift.ipynb).
-
-**The honest caveat, and its resolution:** rate features are still in the set and they *do*
-shift, so they were the natural suspect for the leaderboard shortfall — and that suspicion
-turned out to be wrong. Rather than spend a submission to find out,
-[notebook 05](notebooks/05_why_the_leaderboard_disagreed.ipynb) tests the *mechanism* on training data
-alone: train on a fixed window (months 0–34) and evaluate at increasing distance into the
-future. If high-drift features were a liability under shift, pruning them would help more
-as the gap grows.
-
-It does not. At `|shift| >= 0.2` the trend is flat (r = −0.11); at `|shift| >= 0.1` it is
-negative and pruning **costs** skill on average. The hypothesis is falsified at both
-thresholds, without a submission.
-
----
-
-## Hyperparameter search: how much of a gain is real?
-
-Tuning was deprioritised on a judgement. This replaced it with a number.
-
-| | gain |
-|---|---:|
-| Claimed by the search (23 trials, 30% of rows) | +0.00260 |
-| Surviving fresh seeds | +0.00062 |
-| **Full data, paired** | **−0.00038** |
-
-**Tuning bought nothing.** Three quarters of the apparent gain was selection noise — keeping
-the best of N trials on an objective with fold-to-fold std 0.0041 finds favourable noise as
-well as good parameters — and what survived reversed sign on full data. The hand-chosen
-defaults stand, now on evidence.
-
-The reusable part is the apparatus: any best-of-N result on a noisy objective is inflated
-by the maximum of N noise draws, and the correction costs one extra evaluation. Reporting
-only the first number would have claimed a +0.0026 improvement that reverses.
-
-> **A search space is a compute budget in another notation.** The first attempt allowed
-> `learning_rate` down to 0.01, where early stopping never fires and every round runs.
-> Such trials cost ~10x the baseline and a one-hour search was killed after three with
-> nothing to show. The version here bounds the worst trial to ~2x, caps wall-clock, and
-> logs every trial as it lands.
-
----
-
-## Feature redundancy
-
-Auditing a *new* feature set found five of eighteen columns duplicating something that
-already existed. The obvious next question was whether the original 292 had the same
-problem. They do: **31 pairs correlate above 0.999**, leaving **264 distinct features, not
-292**.
-
-| r | pair | why |
-|---:|---|---|
-| 1.0000 | `txn_intensity_60s` / `txn_n_total` | a rate over a *fixed* window is the count over a constant |
-| 1.0000 | `txn_vwap_60s` / `txn_vwap_total` | the widest nested window *is* the whole sample |
-| 1.0000 | `mkt_spread_mean_5s` / `mkt_rel_spread_mean_5s` | prices are normalised so mid ≈ 1.0 — dividing by it changes nothing |
-
-The last is the instructive failure: that prices sit near 1.0 was measured and documented
-in notebook 01, and the consequence for the feature set was simply never followed up.
-Nothing here invalidates a result — boosting is untroubled by correlated inputs — but "292
-features" counts columns, not information. `make feature-audit` reproduces it.
-
----
+See [reproducibility](docs/REPRODUCIBILITY.md), [experiment operations](docs/OPERATIONS.md)
+and [Kaggle / BigQuery integration](docs/INTEGRATIONS.md). Training now creates a `.run.json`
+sidecar containing input/output hashes, selected rows, model parameters and code revision.
 
 ## Where this stands
 
-**Finished.** The pipeline runs end to end, `make demo` reproduces it on synthetic data in
-15 seconds, and every claim above is generated by committed code rather than typed in.
-
-**Open, and stated rather than hidden:**
-
-| | |
-|---|---|
-| ~54% of the leaderboard gap | unexplained. Six hypotheses tested; period difficulty covers 46% and the spread-regime mix ~14%, four were falsified. The learned sequence representation, the one candidate left, has now been tried once and small: it finds real signal on its own (0.077) but was not shown to add to the tabular model (see below). |
-| Leaderboard 0.129 vs median 0.137 | below typical. Tuning, ensembling, more data, sequence order and metric alignment are all measured at roughly zero or worse, so what is missing is signal this pipeline does not extract. |
-| Prediction horizon | undocumented by the competition; it does not affect the modelling |
-| Official metric | confirmed only indirectly — 0.128 is consistent with cosine or Pearson, and inconsistent with RMSE, MAE or R² |
-
-**Measured: dropping the 28 near-duplicate features is not provably free.** `make prune` ran on the
-full training data - LightGBM, 2 seeds x 3 walk-forward folds, identical rows and seeds with only the
-column list differing. Pruned minus full is **-0.00048** (se 0.00086), 95% CI
-**[-0.00218, +0.00121]**, and the pruned set was better in **4 of 6**
-comparisons. The rule was fixed in the module before the run: pruning counts as free
-only if the interval's lower bound is above -0.0010. It is -0.00218, so the verdict written to
-[`results/feature_prune_meta.json`](results/feature_prune_meta.json) is *"keep all features: pruning costs something or cannot be ruled out as costing it"*.
-
-That is a statement about what six comparisons can rule out, not evidence that pruning hurts: the
-point estimate is far below the fold-to-fold std of 0.0041, and the six differences run from -0.0035 to
-+0.0019 with their sign depending on the seed (seed 0 averages +0.00046, seed 1 -0.00143). All 292
-columns stay. A tighter answer needs more seeds; nothing here promises a score.
-
-**Measured: a learned sequence model finds signal of its own, but was not shown to add to the tabular
-one.** `make sequence` builds a 176 x 16 tensor per sample from the raw market snapshots and trains a
-small dilated CNN on it (3 seeds, averaged). Train months 40-59, validation 60-62 (early stopping and
-blend weights only), test 63-70, on a one-in-three subsample of the samples. On the test months the
-tabular LightGBM scores **0.12307**, the CNN alone **0.07657**, and a blend
-fitted on validation **0.11767**. The paired gain of the blend over the tabular model is
-**-0.00091** (se 0.00402), 95% CI **[-0.01042, +0.00859]**,
-and the blend was better in **4 of 8** months. The rule was fixed before the run: the
-sequence model "adds signal" only if that interval lies above zero, and counts as worth shipping only
-if the mean gain also reaches 0.0041. Neither holds, and the verdict written to
-[`results/sequence_probe.json`](results/sequence_probe.json) is *"not shown: the interval includes zero, so a gain of this size cannot be told from none at eight months"*.
-
-Two things are true at once. The CNN alone is far above the 0.0057 that the eighteen hand-built
-statistics scored on their own, and its predictions correlate only 0.54 with the tabular
-model's, so the learned representation does carry signal the digest missed. But eight test months
-leave an interval about +-0.0095 wide, so a gain of 0.004 would not have been detected, and the
-experiment is small in ways that probably handicap the CNN more than the gradient-boosted model (an
-expectation, not something measured): a third of the samples, 20 training months, one architecture,
-and a test cosine that moves from 0.048 to 0.085 between seeds. This is "not shown",
-not "falsified". Nothing here changes the shipped model, and the blend weights in the result file are
-on different prediction scales, so they are not shares.
-
-**Measured: a regime estimated from the feature space did not help.** Since `sample_id` carries no order in
-the test set, `make regime-clusters` builds the regime from a pool's own features alone: a k-means (8
-clusters) over six market-state signals, with each sample described by its cluster's centre in the signals'
-own units, the cluster's share of the pool and its own distance to the centre. Two variants: *static*, fitted
-on the training pool (so any gain is a nonlinear function of a sample's own features), and *transductive*,
-fitted on each pool's own features as the test pool would be. Train months 0-39, validation 40-47 (early
-stopping only), test months 48-70 scored as one mixed pool, since the real test pool is a mix with no month
-label. Pooled test cosine, two seeds: plain 292 features **0.14046**, static **0.13938**,
-transductive **0.13942**. The paired per-month gain of the transductive variant over plain is
-**-0.00101** (se 0.00056), 95% CI **[-0.00216, +0.00015]**, better in
-**9 of 23** months. The rule was fixed before the run: it counts only if that interval lies
-above zero and the mean reaches 0.0041. Neither holds, and the verdict written to
-[`results/regime_clusters.json`](results/regime_clusters.json) is *"not shown: the interval includes zero, so a gain of this size cannot be told from none"*.
-
-Unlike the sequence experiment, this interval is narrow (about +-0.0011), so it does rule out a gain larger than
-roughly +0.0002 on this split. The two variants differ by only +0.00005, which says that
-knowing how the pool is composed added nothing beyond what a sample's own features already tell the model.
-Limits: one split, one choice of signals and of k, no tuning, and the 23 months are scored by the same two models,
-so they are not 23 independent comparisons. Nothing here changes the shipped model.
-
-**Measured: four extra ensemble members were not shown to improve the ensemble.** `make ensemble-probe` fits
-a Huber-loss LightGBM, an extra-randomised shallow LightGBM, CatBoost and a small MLP (all predicting on the
-target's own scale, so blend weights mean something) next to the LightGBM + XGBoost + Ridge base, on the same
-split as the regime experiment, with blend weights fitted on the validation months only. Test cosine of each
-member alone: LightGBM **0.14033**, XGBoost **0.14277**, Ridge 0.11633,
-Huber LightGBM 0.13679, extra-trees LightGBM 0.14128, CatBoost 0.13753,
-MLP 0.12984. The three-member base scores **0.14383** pooled over the 23 test months and the
-seven-member blend **0.14350**. The paired per-month gain of the seven over the three is
-**+0.00169** (se 0.00135), 95% CI **[-0.00110, +0.00448]**, better in **11 of 23**
-months. The rule was fixed before the run: the extra members count only if that interval lies above zero, and
-are worth shipping only if the mean gain also reaches 0.0010. The interval includes zero, so neither holds;
-the verdict written to [`results/ensemble_probe.json`](results/ensemble_probe.json) is *"not shown: the interval includes zero, so a gain of this size cannot be told from none"*.
-
-Two things sit awkwardly with the positive mean. The competition scores cosine over the whole test set, not
-month by month, and on that pooled number the seven-member blend is slightly *lower* than the base
-(0.14350 against 0.14383). And the fitted blend does not look like a stable one: it puts all its weight on
-Huber LightGBM (0.36), extra-trees LightGBM (0.41) and the MLP (0.23) and none on LightGBM,
-XGBoost or CatBoost, which follows how the members ranked on validation rather than on test, where Huber LightGBM
-is the weakest of the trees. Adding each member to the base on its own, an exploration of four comparisons
-that is not corrected for being four: the MLP, the one member that is not a tree and the least correlated with
-LightGBM, gives +0.00172 (better in 14 of 23 months), extra-trees LightGBM +0.00091,
-CatBoost +0.00048 (better in 18 of 23, the most consistent) and Huber LightGBM +0.00048.
-The interval above is about +-0.003 wide, so a real gain of this size could not be told from none, and a
-loss of 0.001 could not be ruled out either. Nothing here changes the shipped ensemble: it would have meant
-four more artefacts to load, two more libraries in the serving image and more memory per request, for a gain
-that was not shown.
-
-### Three free corrections, and a sixth forecast that did not happen
-
-Cosine has structure the training loss cannot see, and each piece of it suggests a
-correction that costs no retraining: it is not shift-invariant, it weights rows by
-magnitude, and it is computed once over the whole test set so relative magnitudes *across*
-regimes are part of the score. `make pred-geometry` measures all three.
-
-| Correction | Gain | Chosen out of sample? |
-|---|---:|---|
-| Regime scaling, best configuration | **+0.00220** | no |
-| Regime scaling, same correction | **-0.00020** | yes |
-| Subtract the prediction's own mean | +0.00062 | yes, but improves only 4 of 6 months |
-| Rank-transform the predictions | -0.01951 | yes |
-| Keep only the sign | -0.05000 | yes |
-
-Every reshaping of the magnitudes loses, which says the model is already close to the best
-form the metric can read it in — the predicted magnitudes carry information beyond their
-ordering, or rank-transforming would be free.
-
-The regime correction is the useful failure. It describes something real: across volatility
-quartiles the target spans **1.69×** while the model spans **1.55×**, so the model does
-under-scale, and the one context its 292 features cannot see is what the market is doing
-around each sample - which is also the one context the test set does not let you rebuild, because
-its `sample_id`s carry no order (see the measurement under *Structure*). The version of it that
-the test set does allow, a regime estimated from the feature space, was tried and did not help (see
-*Measured: a regime estimated from the feature space did not help*). Fitted in place it is worth **+0.00220** — comparable to the
-ensemble, and it would have been a perfectly respectable sixth forecast. Choosing its single
-free parameter out of sample leaves **-0.00020**: not smaller, gone. The pooled number
-was measuring the freedom to pick alpha, and the protocol is the only thing that separated
-the two.
-
-**Five forecasts, five overshoots, all in the same direction.** That pattern is the most
-transferable thing here: on this problem, priors about what should help are systematically
-optimistic, and only the measurement settles it.
-
----
-
-## Setup and usage
-
-See the [reproducibility guide](docs/REPRODUCIBILITY.md) for a clean setup and the
-[operations reference](docs/OPERATIONS.md) for model releases, experiments and credentials.
+This is a non-commercial, English-first research portfolio. Competition scores remain
+historical; no new score, trading profitability or full-data rerun is claimed. The served
+LightGBM v3 and the separately submitted v4 ensemble have distinct evaluation scopes.
+See the [model card](MODEL_CARD.md) and [verification record](docs/VERIFICATION.md).
 
 ## Cost
 
-Ordinary viewing uses committed results and local compute, with no cloud calls or paid API.
-Historical full-data runs are not a guarantee of a free rebuild: raw, staging and feature
-layers can exceed account allowances. The BigQuery client defaults to a 1 GB per-query
-ceiling; monthly usage and storage require separate controls. See the
-[integration and cost guide](docs/INTEGRATIONS.md) before running cloud jobs.
-
----
+Viewing uses committed results. Cloud rebuilds need separate account/storage budget
+controls; the client caps individual queries but cannot guarantee a zero monthly bill.
+[Cost boundaries](docs/INTEGRATIONS.md#cost-boundaries).
 
 ## Licence
 
-[MIT](LICENSE) for the code. The competition data is **not** redistributed here and remains
-subject to the
-[Kaggle competition rules](https://www.kaggle.com/competitions/ms-capital-real-financial-market-forecasting).
-
-[`CONTRIBUTING.md`](CONTRIBUTING.md) says what a change has to do, [`SECURITY.md`](SECURITY.md)
-how to report a vulnerability and what to harden before exposing the API, and
-[`CHANGELOG.md`](CHANGELOG.md) what has changed. Pushing a `v*` tag from `main` - or running
-*Actions -> Release images -> Run workflow* with a version such as `v1.1.0`, which creates the tag
-itself - publishes the `api` and `app` images to GitHub Container Registry and then creates the GitHub
-release, whose notes are that version's section of the changelog
-(`.github/workflows/release.yml`). Either way only a commit on `main` is published, and a by-hand run
-must start from `main`.
-
-Nothing here is investment advice: the backtesting module measures a model's ranking power
-for research, and was never evaluated as a trading strategy.
-
----
-
-## Project layout
-
-```
-src/
-  config.py              single source of paths and constants
-  data/                  ingestion (column groups) · bq_loader · staging · mart · test_pipeline
-  features/              market (159) · order (81) · transaction (52) · assemble
-  evaluation/            metrics (cosine) · temporal_validation · backtesting · explain · the diagnostics and
-                         experiments behind the findings (period_difficulty, feature_prune, split_order,
-                         regime_clusters, ...)
-  models/                baseline · lightgbm · xgboost · ensemble · train (CLI) · finalize · ship, plus the
-                         experiments: sequence_cnn · extra_members · ensemble_probe
-  inference/             predictor — used by the API, which never imports training code
-api/main.py              FastAPI: /health /model-info /predict /batch-predict /metrics /reload (token-gated)
-api/guards.py            rate limiter + Prometheus metrics (standard library only)
-streamlit_app/           eight-page dashboard (st.navigation router + pages/)
-sql/                     BigQuery staging DDL
-tests/                   deterministic and regression checks; no live BigQuery or downloaded data required
-```
+[MIT](LICENSE) covers software. Competition data remains subject to Kaggle rules.
+[Notices](NOTICE.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md).

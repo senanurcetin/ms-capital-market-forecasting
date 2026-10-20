@@ -14,6 +14,8 @@ historical evaluation evidence, not a subscription product or a market data serv
 | Review interface and screenshot evidence | [Dashboard evidence](DASHBOARD_EVIDENCE.md) |
 | Reuse the approved logo and palette | [NEXUS identity](BRAND_IDENTITY.md) |
 | Review checks and live integration limitations | [Verification record](VERIFICATION.md) |
+| Inspect validation corrections and uncertainty | [Validation protocol](VALIDATION.md) |
+| Read the complete historical study | [Research narrative](RESEARCH.md) |
 | Contribute, report vulnerabilities or check attribution | [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [notices](../NOTICE.md) |
 
 ## Repository ownership

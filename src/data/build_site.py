@@ -252,7 +252,7 @@ def build() -> Path:
 <section id="evidence">
   <h2>Three numbers, not one</h2>
   <div class="metrics">
-    {_metric("Walk-forward CV", score_text(cv), "ensemble · internal validation", ACCENT)}
+    {_metric("Historical ensemble CV", score_text(cv), "same-fold fitted blend · optimistic diagnostic", ACCENT)}
     {_metric("Hold-out (65–70)", score_text(ho), "LightGBM · favourable historical period", WARN)}
     {_metric("Leaderboard", score_text(lb_score), f"v4 ensemble · captured {capture}", INK)}
   </div>
@@ -267,6 +267,9 @@ def build() -> Path:
     parts.append(f"""
 <section>
   <h2>Evidence and model identity</h2>
+  <p class="callout">Validation correction: historical ensemble weights were fitted and scored
+  on the same fold. The recorded ensemble CV is a fitted-blend diagnostic, not unbiased
+  out-of-sample evidence. New training uses earlier-fold blend calibration; historical artifacts are retained.</p>
   <p>Headline cards read <code>walkforward_summary.csv</code>,
   <code>holdout_metrics.json</code> and <code>leaderboard.json</code>.
   A dash means unavailable evidence, never a measured zero.</p>

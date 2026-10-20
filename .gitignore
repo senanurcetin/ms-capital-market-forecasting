@@ -36,3 +36,4 @@ gcp-key.json
 htmlcov/
 .artifacts/
 .mypy_cache/
+pytest-cache-files-*/

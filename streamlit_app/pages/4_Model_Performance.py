@@ -14,11 +14,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
 import streamlit as st
+from src.evaluation.uncertainty import compare
 
 from streamlit_app.lib import load_results_table, load_summary, missing, page_header
 
 st.set_page_config(page_title="MSCapital · Model performance", page_icon="📈", layout="wide")
 page_header("Model Performance", "Walk-forward validation - primary metric: cosine similarity")
+st.warning(
+    "Historical ensemble CV fitted blend weights on the same validation fold it scored. "
+    "Its recorded +0.14088 is a fitted-blend diagnostic, not an unbiased out-of-sample estimate. "
+    "New training uses prior-fold calibration; historical artifacts have not been rerun."
+)
 
 table = load_results_table()
 summary = load_summary()
@@ -27,6 +33,7 @@ if table is None or summary is None:
     st.stop()
 
 st.subheader("Model comparison")
+st.caption("Recorded per-model summaries. Prior-fold blends omit their first fold; use aligned comparisons below when period coverage differs.")
 fmt: dict[Any, Any] = {c: "{:+.5f}" for c in table.columns if c.startswith("cosine")}
 st.dataframe(table.style.format(fmt), width="stretch")
 st.caption(
@@ -66,3 +73,16 @@ if "ensemble" in summary:
         "scale-invariant, the optimum is the orthogonal projection of y onto the span of "
         "the model predictions - which is exactly the OLS solution."
     )
+
+st.subheader("Aligned comparisons and temporal uncertainty")
+try:
+    uncertainty = compare(summary)
+except ValueError as exc:
+    st.info(f"Aligned uncertainty report unavailable: {exc}")
+else:
+    st.caption(uncertainty["estimand"])
+    st.dataframe(pd.DataFrame(uncertainty["comparisons"]), hide_index=True, width="stretch")
+    for limitation in uncertainty["limits"]:
+        st.caption(limitation)
+    for exclusion in uncertainty["excluded"]:
+        st.caption(f"Excluded: {exclusion}")

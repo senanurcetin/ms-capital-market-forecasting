@@ -39,6 +39,12 @@ page_header(
 )
 
 # ---------------------------------------------------------------- the three numbers
+st.warning(
+    "Validation correction: the historical ensemble CV score includes blend fitting on its "
+    "evaluation folds. It is an optimistic fitted-blend diagnostic. The recorded holdout "
+    "and external leaderboard scores are separate measurements. New training calibrates "
+    "blend weights using earlier folds only; see Model performance for aligned comparisons."
+)
 res = load_results_table()
 hold = load_json("holdout_metrics.json")
 period = load_json("period_difficulty_meta.json")

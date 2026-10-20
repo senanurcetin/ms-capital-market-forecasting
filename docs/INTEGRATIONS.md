@@ -43,6 +43,20 @@ available for BigQuery, so no warehouse query or write was submitted. The histor
 exports remain usable offline. Restoring live access requires valid owner credentials;
 the committed integration code and public notebook links alone cannot establish it.
 
+### Recovery on 20 October 2026
+
+The replacement owner-provided token successfully authenticated a read-only Kaggle
+owner notebook listing (HTTP 200, five returned records). The GitHub repository secret
+was updated through secret storage; no token is committed. This verifies metadata access,
+not notebook execution, data download or a new competition submission. BigQuery remains
+unverified because no usable service-account/ADC credential is available.
+
+The opt-in `Integration metadata` GitHub Actions workflow can check the existing
+repository `KAGGLE_API_TOKEN` without exposing or copying its value to a workstation.
+It lists owner notebook metadata only: no notebook execution, submission or data download.
+Locally, use `python scripts/check_integrations.py --kaggle` with an environment token,
+or `--bigquery` for ADC/service-account dataset metadata. Missing credentials fail visibly.
+
 ## Cost boundaries
 
 The portfolio path is the committed results bundle, local compute and a static report;

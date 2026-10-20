@@ -6,6 +6,12 @@ Notable changes to the code, the serving API and the published results. The form
 
 ## [Unreleased]
 
+### Research validation correction
+- New ensemble validation fits blend weights only on earlier out-of-fold predictions.
+  The historical +0.14088 remains recorded but is explicitly labelled a same-fold fitted diagnostic.
+- Added aligned paired temporal bootstrap comparisons, lightweight hashed training run records,
+  an opt-in metadata-only integration workflow and a shorter README with preserved research history.
+
 ### Added
 - NEXUS research evidence page with per-file source labels, metric reconciliation and a
   downloadable SHA-256 inventory. Offline CLI audit is also run in CI.
