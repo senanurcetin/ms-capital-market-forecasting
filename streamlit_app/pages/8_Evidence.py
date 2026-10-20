@@ -61,6 +61,34 @@ st.download_button(
 with st.expander("Artifact inventory and SHA-256 hashes"):
     st.dataframe(pd.DataFrame(report["files"]), hide_index=True, width="stretch")
 
+st.subheader("Warehouse verification snapshot")
+warehouse_path = BUNDLED / "warehouse_audit.json"
+if warehouse_path.is_file():
+    warehouse = json.loads(warehouse_path.read_text(encoding="utf-8"))
+    st.caption(f"Checked {warehouse['checked_at']} · bundled metadata snapshot · no live connection on this page")
+    if warehouse["status"] == "pass":
+        st.success(
+            f"{warehouse['table_count']} tables inspected; {len(warehouse['contracts'])} metadata contracts passed. "
+            f"All {warehouse['model_feature_count']} bundled model features are present with numeric types."
+        )
+    else:
+        st.warning("Warehouse contracts failed. Inspect the snapshot before attempting a rebuild.")
+    for warning in warehouse.get("warnings", []):
+        st.warning(warning)
+    st.dataframe(pd.DataFrame([
+        {"Split": plan["split"], "Dry-run estimate (GB)": plan["estimated_bytes"] / 1e9
+         if plan.get("estimated_bytes") is not None else None,
+         "Within job ceiling": plan.get("within_job_ceiling"), "Executed": plan["executed"]}
+        for plan in warehouse.get("download_plans", [])
+    ]), hide_index=True, width="stretch")
+    st.caption("Estimates above the job ceiling cannot run with the default client. No data query was executed for this audit.")
+    for limitation in warehouse.get("limitations", []):
+        st.caption(limitation)
+    st.download_button("Download warehouse snapshot (JSON)", warehouse_path.read_bytes(),
+                       file_name="mscapital-warehouse-snapshot.json", mime="application/json")
+else:
+    st.info("No bundled warehouse snapshot is available. Run the opt-in warehouse audit with owner credentials.")
+
 st.subheader("Reproduce the research")
 st.markdown(
     "[Reproducibility guide](https://github.com/senanurcetin/ms-capital-market-forecasting/blob/main/docs/REPRODUCIBILITY.md) · "

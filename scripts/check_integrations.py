@@ -2,8 +2,11 @@
 import argparse
 import json
 import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 def check_kaggle() -> dict:
@@ -32,11 +35,13 @@ def check_bigquery() -> dict:
     try:
         from google.cloud import bigquery
         from google.oauth2 import service_account
+        from src.config import gcp_key_path, load_config
 
-        key = os.environ.get("MSCAPITAL_GCP_KEY") or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-        credentials = service_account.Credentials.from_service_account_file(key) if key else None
+        cfg = load_config()
+        key = Path(gcp_key_path())
+        credentials = service_account.Credentials.from_service_account_file(str(key)) if key.is_file() else None
         client = bigquery.Client(
-            project=os.environ.get("MSCAPITAL_BQ_PROJECT", "workintech-working"), credentials=credentials,
+            project=cfg.bigquery.project, credentials=credentials, location=cfg.bigquery.location,
         )
         datasets = list(client.list_datasets(max_results=20, timeout=20))
         return {"status": "pass", "scope": "Dataset metadata only; no SQL", "returned": len(datasets)}

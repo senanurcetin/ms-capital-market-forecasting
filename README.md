@@ -104,6 +104,12 @@ Kaggle Feather files → Arrow/Parquet projections → BigQuery staging/features
 model training → derived results → NEXUS Streamlit and self-contained HTML reports.
 The dashboard requires no cloud credentials. [Architecture diagram](docs/architecture.svg).
 
+**Warehouse verified on 20 October 2026:** 22 tables, nine metadata contracts, and
+292 model features compatible with both assembled datasets. The
+[dated audit](results/warehouse_audit.json) includes schema fingerprints and download
+dry runs. Existing logical storage is about 69.4 GiB; full feature downloads exceed
+the default query ceiling. [Verification scope and cost boundaries](docs/INTEGRATIONS.md).
+
 ## Reproduce
 
 ```bash
