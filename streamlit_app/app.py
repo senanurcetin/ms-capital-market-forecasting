@@ -28,7 +28,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import streamlit as st  # noqa: E402
 
-st.set_page_config(page_title="MSCapital", page_icon="📈", layout="wide")
+st.set_page_config(page_title="MSCapital · NEXUS Research", page_icon=":material/query_stats:", layout="wide")
+
+st.logo(str(Path(__file__).resolve().parents[1] / "docs/assets/nexus-official-midnight.svg"), size="large")
+st.sidebar.caption("NEXUS / APPLIED DATA SCIENCE")
+st.sidebar.caption("Historical research · non-commercial")
 
 PAGES = Path(__file__).parent / "pages"
 
@@ -58,5 +62,6 @@ st.navigation({
     ],
     "The investigation": [
         page("7_Investigation.py", "Why the leaderboard disagreed", ":material/search:"),
+        page("8_Evidence.py", "Research evidence", ":material/fact_check:"),
     ],
 }).run()

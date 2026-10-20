@@ -23,12 +23,14 @@ can break when a CDN changes. It is one file.
 from __future__ import annotations
 
 import argparse
+import base64
 import html
 import json
 import logging
 from pathlib import Path
 
 import pandas as pd
+from streamlit_app.metric_evidence import optional_score, score_text
 
 log = logging.getLogger(__name__)
 
@@ -45,9 +47,9 @@ APP = "https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.ap
 
 INK = "#e8eaed"
 MUTED = "#9aa0a6"
-BG = "#0e1117"
-PANEL = "#161a23"
-ACCENT = "#4c9aff"
+BG = "#0B0F19"
+PANEL = "#061524"
+ACCENT = "#4EA8FF"
 WARN = "#f2994a"
 GOOD = "#3ecf8e"
 
@@ -196,8 +198,13 @@ def build() -> Path:
     shap = _read_csv("shap_global.csv")
     dec = _read_csv("cosine_decomposition.csv")
 
-    cv = float(res.loc[res.model == "ensemble", "cosine_mean"].iloc[0]) if res is not None else 0
-    ho = hold.get("scores", {}).get("cosine", 0)
+    cv_rows: pd.Series = res.loc[res.model == "ensemble", "cosine_mean"] if res is not None else pd.Series(dtype=float)
+    cv = optional_score(cv_rows.iloc[0]) if len(cv_rows) else None
+    ho = optional_score(hold.get("scores", {}).get("cosine"))
+    lb_score = optional_score(lb.get("our_score"))
+    capture = html.escape(str(lb.get("captured", "unavailable")))
+    debiased = score_text(optional_score(period_meta.get("debiased")))
+    logo = base64.b64encode((ROOT / "docs/assets/nexus-official-transparent.svg").read_bytes()).decode("ascii")
 
     hyps = pd.DataFrame([
         ("The hold-out was a lucky period", "fix the model, score every period in turn",
@@ -226,6 +233,8 @@ def build() -> Path:
     parts: list[str] = []
     parts.append(f"""
 <header>
+  <img class="brand" src="data:image/svg+xml;base64,{logo}" alt="NEXUS" width="240" height="72">
+  <p class="eyebrow">NEXUS / APPLIED DATA SCIENCE / QUANTITATIVE RESEARCH</p>
   <h1>MSCapital — Real Financial Market Forecasting</h1>
   <p class="sub">Short-horizon return prediction from market microstructure.
      804.5M raw rows reduced to a scored model on a 16 GB laptop.</p>
@@ -233,22 +242,42 @@ def build() -> Path:
      <a href="{RELEASE}">Release v1.1.0</a> ·
      <a href="{HF}">Model on Hugging Face</a> ·
      <a href="{REPO}/blob/main/notebooks/05_why_the_leaderboard_disagreed.ipynb">The investigation</a></p>
+  <p class="cap">Historical research snapshot · no live market feed · non-commercial portfolio</p>
+  <nav class="links" aria-label="Research sections"><a href="#evidence">Evidence</a> ·
+  <a href="#comparison">Model comparison</a> · <a href="#investigation">Investigation</a> ·
+  <a href="#limitations">Limitations</a></nav>
 </header>""")
 
     parts.append(f"""
-<section>
+<section id="evidence">
   <h2>Three numbers, not one</h2>
   <div class="metrics">
-    {_metric("Walk-forward CV", f"{cv:+.5f}", "averaged over 5 periods — the honest estimate", ACCENT)}
-    {_metric("Hold-out (65–70)", f"{ho:+.5f}", "measured once — but a <em>lucky</em> period", WARN)}
-    {_metric("Leaderboard", "+0.12900", "the only externally graded number", INK)}
+    {_metric("Historical ensemble CV", score_text(cv), "same-fold fitted blend · optimistic diagnostic", ACCENT)}
+    {_metric("Hold-out (65–70)", score_text(ho), "LightGBM · favourable historical period", WARN)}
+    {_metric("Leaderboard", score_text(lb_score), f"v4 ensemble · captured {capture}", INK)}
   </div>
   <p class="callout">The hold-out is listed second on purpose. Holding the model fixed and
   scoring every period in turn, difficulty swings from 0.117 to 0.148 — and months 65–70 sit
   at the <strong>83rd percentile</strong>. De-biasing gives
-  <strong>{period_meta.get('debiased', 0):+.5f}</strong>, within 0.00004 of the walk-forward
+  <strong>{debiased}</strong>, within 0.00004 of the walk-forward
   mean computed a completely different way. Purity was never the binding constraint; period
   difficulty was.</p>
+</section>""")
+
+    parts.append(f"""
+<section>
+  <h2>Evidence and model identity</h2>
+  <p class="callout">Validation correction: historical ensemble weights were fitted and scored
+  on the same fold. The recorded ensemble CV is a fitted-blend diagnostic, not unbiased
+  out-of-sample evidence. New training uses earlier-fold blend calibration; historical artifacts are retained.</p>
+  <p>Headline cards read <code>walkforward_summary.csv</code>,
+  <code>holdout_metrics.json</code> and <code>leaderboard.json</code>.
+  A dash means unavailable evidence, never a measured zero.</p>
+  <p>The bundled prediction model is LightGBM v3. The externally submitted v4 ensemble
+  is a separate artifact; its score does not describe the default prediction interface.</p>
+  <p class="links"><a href="{REPO}/blob/main/docs/REPRODUCIBILITY.md">Reproduce and audit</a> ·
+  <a href="{REPO}/blob/main/MODEL_CARD.md">Model card</a> ·
+  <a href="{REPO}/blob/main/docs/INTEGRATIONS.md">Kaggle and BigQuery lineage</a></p>
 </section>""")
 
     if period is not None:
@@ -264,7 +293,7 @@ def build() -> Path:
 
     if res is not None:
         parts.append(f"""
-<section>
+<section id="comparison">
   <h2>Model comparison</h2>
   {_table(res[["model", "cosine_mean", "cosine_std", "cosine_min", "cosine_max"]],
           dict.fromkeys(("cosine_mean", "cosine_std", "cosine_min", "cosine_max"), "{:+.5f}"))}
@@ -276,7 +305,7 @@ def build() -> Path:
 </section>""")
 
     parts.append(f"""
-<section>
+<section id="investigation">
   <h2>Why the leaderboard disagreed</h2>
   <p>The hold-out said +0.15171. Before submitting, a falsifiable forecast was recorded:
   <strong>≈ 0.143</strong>. The leaderboard said <strong>0.128</strong>. Six hypotheses
@@ -332,15 +361,14 @@ def build() -> Path:
 </section>""")
 
     parts.append(f"""
-<section>
+<section id="limitations">
   <h2>Where this stands</h2>
-  <p>{lb['n_teams']} teams, median {lb['median']:.3f}, this model {lb['our_score']:.3f} —
-  rank {lb['our_rank']}, below typical, so the problem is
-  <em>not</em> at its noise ceiling. Six hypotheses tested, one confirmed at 46%, and the
-  remaining +0.0128 has no identified cause. Against the spread of a single period
-  (period-to-period std 0.0091) that is 1.4&#963; — large enough to keep looking for, and
-  not large enough to rule out an unlucky test period. Saying so is more useful than a
-  tidy story.</p>
+  <p>Historical leaderboard capture: {capture}. Recorded score {score_text(lb_score)};
+  rank {html.escape(str(lb.get('our_rank', 'unavailable')))} of
+  {html.escape(str(lb.get('n_teams', 'unavailable')))} teams.
+  Period difficulty helps explain the internal-to-external gap. It cannot explain
+  this model's position relative to other teams evaluated on the same test set.
+  This pipeline has not demonstrated a deployable trading strategy.</p>
   <p class="cap">This page is static and shows results only. The interactive dashboard —
   live prediction, microstructure explorer, drift analysis — is a Streamlit app in the
   repository: <code>make streamlit</code>.</p>
@@ -357,13 +385,19 @@ MIT licensed; competition data is not redistributed.</footer>""")
 body{{margin:0;background:{BG};color:{INK};
   font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   padding:40px 20px}}
-main{{max-width:860px;margin:0 auto}}
-h1{{font-size:26px;margin:0 0 6px;letter-spacing:-.02em}}
+main{{max-width:1100px;margin:0 auto}}
+h1{{font-size:clamp(30px,5vw,56px);line-height:1.12;margin:18px 0;letter-spacing:-.04em;max-width:22ch}}
+.brand{{object-fit:contain;object-position:left;max-width:100%}}
+.eyebrow{{color:#8F9BFF;font-size:11px;letter-spacing:.16em;margin-top:24px}}
+a:focus-visible{{outline:2px solid #00E0FF;outline-offset:4px}}
+nav{{margin-top:24px}}
+section{{scroll-margin-top:24px;overflow-x:auto}}
+svg{{max-width:100%;height:auto}}
 h2{{font-size:17px;margin:0 0 14px;color:{ACCENT};font-weight:600}}
 .sub{{color:{MUTED};margin:0 0 10px;max-width:60ch}}
 .links a{{color:{ACCENT};text-decoration:none}}
 .links a:hover{{text-decoration:underline}}
-header{{border-bottom:1px solid #2a2f3a;padding-bottom:22px;margin-bottom:8px}}
+header{{border-bottom:1px solid #28394e;padding:12px 0 32px;margin-bottom:28px}}
 section{{background:{PANEL};border:1px solid #232833;border-radius:10px;
   padding:22px;margin:18px 0}}
 .metrics{{display:flex;gap:14px;flex-wrap:wrap}}
@@ -392,6 +426,7 @@ footer{{color:{MUTED};font-size:12px;text-align:center;padding:24px 0 0}}
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:image/svg+xml;base64,{logo}">
 <title>MSCapital — Real Financial Market Forecasting</title>
 <meta name="description" content="Short-horizon return prediction from market
 microstructure: 804.5M rows, six data findings, and an investigation into why the

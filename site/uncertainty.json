@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "reference": "lightgbm",
+  "folds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "method": "circular block bootstrap, percentile 95%; shared paired indices",
+  "estimand": "unweighted mean of recorded fold cosine scores, NOT pooled-row cosine",
+  "draws": 10000,
+  "seed": 42,
+  "excluded": [
+    "ensemble: historical weights were fitted and scored on the same fold"
+  ],
+  "comparisons": [
+    {
+      "model": "lightgbm",
+      "block_length": 1,
+      "mean_fold_cosine": 0.13869070888869803,
+      "interval_low": 0.13607047857120333,
+      "interval_high": 0.1413109392061927,
+      "paired_delta": 0.0,
+      "delta_low": 0.0,
+      "delta_high": 0.0,
+      "wins_vs_reference": 0
+    },
+    {
+      "model": "mean",
+      "block_length": 1,
+      "mean_fold_cosine": 0.005880536067957832,
+      "interval_low": -0.004374833076531459,
+      "interval_high": 0.016549418403868324,
+      "paired_delta": -0.1328101728207402,
+      "delta_low": -0.14488625120523863,
+      "delta_high": -0.12073409443624175,
+      "wins_vs_reference": 0
+    },
+    {
+      "model": "ridge",
+      "block_length": 1,
+      "mean_fold_cosine": 0.1181288592159025,
+      "interval_low": 0.1144250217554615,
+      "interval_high": 0.12201835578872873,
+      "paired_delta": -0.02056184967279553,
+      "delta_low": -0.02227037134476334,
+      "delta_high": -0.018893002812948423,
+      "wins_vs_reference": 0
+    },
+    {
+      "model": "xgboost",
+      "block_length": 1,
+      "mean_fold_cosine": 0.13815413634853288,
+      "interval_low": 0.1341808056260923,
+      "interval_high": 0.1414946377916771,
+      "paired_delta": -0.0005365725401651478,
+      "delta_low": -0.0023518223627341573,
+      "delta_high": 0.0015443751453571354,
+      "wins_vs_reference": 1
+    },
+    {
+      "model": "zero",
+      "block_length": 1,
+      "mean_fold_cosine": 0.0,
+      "interval_low": 0.0,
+      "interval_high": 0.0,
+      "paired_delta": -0.13869070888869803,
+      "delta_low": -0.1413109392061927,
+      "delta_high": -0.13607047857120333,
+      "wins_vs_reference": 0
+    },
+    {
+      "model": "lightgbm",
+      "block_length": 2,
+      "mean_fold_cosine": 0.13869070888869803,
+      "interval_low": 0.13585619721061862,
+      "interval_high": 0.14152442943241783,
+      "paired_delta": 0.0,
+      "delta_low": 0.0,
+      "delta_high": 0.0,
+      "wins_vs_reference": 0
+    },
+    {
+      "model": "mean",
+      "block_length": 2,
+      "mean_fold_cosine": 0.005880536067957832,
+      "interval_low": -0.0008833814980774259,
+      "interval_high": 0.012104982560027622,
+      "paired_delta": -0.1328101728207402,
+      "delta_low": -0.14139559076114425,
+      "delta_high": -0.12479252239401813,
+      "wins_vs_reference": 0
+    },
+    {
+      "model": "ridge",
+      "block_length": 2,
+      "mean_fold_cosine": 0.1181288592159025,
+      "interval_low": 0.11349275602779527,
+      "interval_high": 0.12201835578872873,
+      "paired_delta": -0.02056184967279553,
+      "delta_low": -0.022363441182823327,
+      "delta_high": -0.018893002812948423,
+      "wins_vs_reference": 0
+    },
+    {
+      "model": "xgboost",
+      "block_length": 2,
+      "mean_fold_cosine": 0.13815413634853288,
+      "interval_low": 0.13418080562609233,
+      "interval_high": 0.1414946377916771,
+      "paired_delta": -0.0005365725401651478,
+      "delta_low": -0.0018690409071652203,
+      "delta_high": 0.0007958958268349248,
+      "wins_vs_reference": 1
+    },
+    {
+      "model": "zero",
+      "block_length": 2,
+      "mean_fold_cosine": 0.0,
+      "interval_low": 0.0,
+      "interval_high": 0.0,
+      "paired_delta": -0.13869070888869803,
+      "delta_low": -0.14152442943241783,
+      "delta_high": -0.13585619721061862,
+      "wins_vs_reference": 0
+    }
+  ],
+  "limits": [
+    "Exploratory resampling intervals, not calibrated generalization confidence bounds.",
+    "Few folds, overlapping expanding training sets and nonstationarity limit inference.",
+    "Block 1 is an IID sensitivity check; block 2 preserves local adjacency but wraps endpoints.",
+    "Base-model early stopping used each validation fold; this is not nested outer validation.",
+    "No significance tests, multiple-comparison claims or new competition scores are produced."
+  ],
+  "source_sha256": "34299e9d386186fa40a35467af9bf8a52cb539850daaac1da28c193d05c80767"
+}

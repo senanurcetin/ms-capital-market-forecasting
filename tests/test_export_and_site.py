@@ -199,6 +199,35 @@ def test_the_site_build_is_deterministic(tmp_path, monkeypatch):
     assert first == second
 
 
+def test_site_does_not_invent_scores_when_evidence_is_missing(tmp_path, monkeypatch):
+    from src.data import build_site
+
+    empty = tmp_path / "empty-results"
+    empty.mkdir()
+    monkeypatch.setattr(build_site, "RESULTS", empty)
+    monkeypatch.setattr(build_site, "SITE", tmp_path / "site")
+    rendered = build_site.build().read_text(encoding="utf-8")
+    assert "+0.12900" not in rendered
+    assert "+0.00000" not in rendered
+    assert rendered.count('>—</div>') == 3
+
+
+def test_site_headline_uses_the_captured_leaderboard_value(tmp_path, monkeypatch):
+    from src.data import build_site
+
+    original = build_site._read_json
+
+    def read(name):
+        value = original(name)
+        return {**value, "our_score": 0.08765} if name == "leaderboard.json" else value
+
+    monkeypatch.setattr(build_site, "_read_json", read)
+    monkeypatch.setattr(build_site, "SITE", tmp_path)
+    rendered = build_site.build().read_text(encoding="utf-8")
+    assert "+0.08765" in rendered
+    assert "+0.12900" not in rendered
+
+
 def test_the_site_loads_nothing_from_the_network():
     """The page is meant to be one self-contained file - it is served from anywhere,
     including offline. A CDN reference would make it depend on a host that can go away."""

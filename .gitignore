@@ -34,3 +34,6 @@ gcp-key.json
 # Tooling caches and coverage output
 .coverage
 htmlcov/
+.artifacts/
+.mypy_cache/
+pytest-cache-files-*/

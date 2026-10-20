@@ -11,4 +11,10 @@ tests/
 !README.md
 *.feather
 *.parquet
+!results/*.parquet
+.venv/
+.artifacts/
+.mypy_cache/
+.demo/
+.coverage
 *.zip

@@ -23,6 +23,7 @@ from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
 
 from src.config import gcp_key_path, load_config, parquet_dir
+from src.data.query_budget import query_config
 
 log = logging.getLogger(__name__)
 
@@ -36,7 +37,8 @@ DEFAULT_WORKERS = 8
 def client() -> bigquery.Client:
     cfg = load_config()
     return bigquery.Client.from_service_account_json(
-        gcp_key_path(), location=cfg.bigquery.location
+        gcp_key_path(), location=cfg.bigquery.location,
+        default_query_job_config=query_config(),
     )
 
 

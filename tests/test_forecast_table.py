@@ -25,7 +25,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-README = ROOT / "README.md"
+README = ROOT / "docs/RESEARCH.md"  # Full forecast narrative moved out of the concise README.
 PAGE = ROOT / "streamlit_app" / "pages" / "7_Investigation.py"
 SITE_BUILDER = ROOT / "src" / "data" / "build_site.py"
 

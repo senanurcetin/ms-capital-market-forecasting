@@ -154,11 +154,9 @@ GROUP BY sample_id
 
 
 def run(split: str = "train", *, bq=None) -> dict:
-    from google.cloud import bigquery
+    from src.data.bq_loader import client
 
-    from src.config import gcp_key_path
-
-    bq = bq or bigquery.Client.from_service_account_json(str(gcp_key_path()))
+    bq = bq or client()
     sql = build_sql(split)
     job = bq.query(sql)
     job.result()
@@ -179,11 +177,11 @@ def download(split: str = "train") -> object:
     from pathlib import Path
 
     import pyarrow.parquet as pq
-    from google.cloud import bigquery
 
-    from src.config import gcp_key_path, load_config
+    from src.config import load_config
+    from src.data.bq_loader import client
 
-    bq = bigquery.Client.from_service_account_json(str(gcp_key_path()))
+    bq = client()
     cfg = load_config()
     tid = feature_table("shape", split).strip("`")
     dst = Path(cfg.paths.features) / f"shape_{split}.parquet"

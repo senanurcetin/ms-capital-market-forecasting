@@ -6,6 +6,29 @@ Notable changes to the code, the serving API and the published results. The form
 
 ## [Unreleased]
 
+### Research validation correction
+- New ensemble validation fits blend weights only on earlier out-of-fold predictions.
+  The historical +0.14088 remains recorded but is explicitly labelled a same-fold fitted diagnostic.
+- Added aligned paired temporal bootstrap comparisons, lightweight hashed training run records,
+  an opt-in metadata-only integration workflow and a shorter README with preserved research history.
+
+### Added
+- NEXUS research evidence page with per-file source labels, metric reconciliation and a
+  downloadable SHA-256 inventory. Offline CLI audit is also run in CI.
+- Documentation index, reproducibility guide, integration/cost boundaries and official brand provenance.
+
+### Changed
+- Official NEXUS 2.0 wordmark and palette across the research interface and offline report.
+- Static headline cards now read the captured leaderboard and show unavailable evidence as a dash.
+- BigQuery clients enforce a default 1 GB per-query ceiling, including shape feature queries.
+- Consolidated setup and experiment commands into one operations reference; retained executed research evidence.
+
+### Fixed
+- LightGBM bundle reads and writes support Unicode workspace paths on Windows through Python text IO.
+- Dashboard custom colors follow the active native theme, preserving readable system-light navigation.
+- Dashboard container images now include bundled results, brand assets and theme configuration.
+- Architecture family counts now come from model metadata instead of a stale market-feature constant.
+
 ## [1.1.0] - 2026-10-06
 
 ### Added

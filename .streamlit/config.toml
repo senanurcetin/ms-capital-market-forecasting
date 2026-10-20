@@ -6,10 +6,8 @@
 # a reader who switches to light in Streamlit's own settings should get a designed page
 # rather than the stock blue - and on a projector or a printout, light is the readable one.
 #
-# The accent is teal rather than Streamlit's default blue for a specific reason: the charts
-# on these pages are already blue, and an accent that matches the data makes the two read
-# as the same thing. A distinct accent keeps "this is interface" and "this is a
-# measurement" visually separate.
+# NEXUS 2.0 identity: midnight, cyan, blue, lavender and violet.
+# Native light/dark surfaces remain authoritative, including the System theme choice.
 
 [theme]
 base = "dark"
@@ -26,27 +24,27 @@ showSidebarBorder = true
 chartCategoricalColors = [
     "#4C9AFF",  # blue      - the measurement
     "#F2A63B",  # amber     - the comparison
-    "#3FBFA8",  # teal      - the accent
+    "#00E0FF",  # cyan      - the accent
     "#B47CE6",  # violet
     "#E5698C",  # rose
     "#8FB339",  # olive
 ]
 
 [theme.dark]
-primaryColor = "#3FBFA8"
-backgroundColor = "#0B1627"
-secondaryBackgroundColor = "#17283D"
-textColor = "#E3F2F0"
-linkColor = "#8CE6CA"
-borderColor = "#345163"
-dataframeHeaderBackgroundColor = "#17283D"
+primaryColor = "#4EA8FF"
+backgroundColor = "#0B0F19"
+secondaryBackgroundColor = "#061524"
+textColor = "#E4EDF5"
+linkColor = "#00E0FF"
+borderColor = "#28394E"
+dataframeHeaderBackgroundColor = "#061524"
 
 [theme.light]
-primaryColor = "#0F8C7A"
+primaryColor = "#3156C8"
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F4F6F9"
 textColor = "#1C2430"
-linkColor = "#0F8C7A"
+linkColor = "#2851BD"
 borderColor = "#DDE3EA"
 dataframeHeaderBackgroundColor = "#F4F6F9"
 

@@ -34,11 +34,17 @@ from streamlit_app.metric_evidence import optional_score, score_text
 
 st.set_page_config(page_title="MSCapital · Overview", page_icon="📈", layout="wide")
 page_header(
-    "MSCapital - Market Intelligence",
+    "MSCapital - Market Forecasting",
     "Short-horizon return prediction from 60 s of order/trade flow and 600 s of book history",
 )
 
 # ---------------------------------------------------------------- the three numbers
+st.warning(
+    "Validation correction: the historical ensemble CV score includes blend fitting on its "
+    "evaluation folds. It is an optimistic fitted-blend diagnostic. The recorded holdout "
+    "and external leaderboard scores are separate measurements. New training calibrates "
+    "blend weights using earlier folds only; see Model performance for aligned comparisons."
+)
 res = load_results_table()
 hold = load_json("holdout_metrics.json")
 period = load_json("period_difficulty_meta.json")

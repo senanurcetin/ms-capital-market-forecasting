@@ -214,6 +214,9 @@ diagram:
 site:
 	$(PY) -m src.data.build_site
 
+evidence:
+	$(PY) -m src.evaluation.evidence --output .artifacts/evidence-audit.json
+
 export-results:
 	$(PY) -m src.data.export_results
 

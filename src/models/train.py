@@ -29,7 +29,7 @@ from src.evaluation.temporal_validation import (
     stability,
 )
 from src.models.base import Model, feature_columns
-from src.models.ensemble import evaluate_ensemble_gain
+from src.models.ensemble import evaluate_frozen_ensemble
 
 log = logging.getLogger(__name__)
 
@@ -107,7 +107,10 @@ def run_walk_forward(
     *,
     experiment: str | None = None,
     log_mlflow: bool = True,
+    last_folds: int = 0,
 ) -> dict:
+    if type(last_folds) is not int or last_folds < 0:
+        raise ValueError("last_folds must be a nonnegative integer")
     cfg = load_config()
     df = load_dataset("train") if df is None else df
     months = df["month"].to_numpy()
@@ -135,8 +138,12 @@ def run_walk_forward(
     results: dict[str, list[dict]] = {name: [] for name in model_factories}
     fold_preds: list[dict[str, np.ndarray]] = []
     fold_truth: list[np.ndarray] = []
+    fold_ids: list[int] = []
 
-    for fold, tr, va in iter_folds(months):
+    selected_folds = list(iter_folds(months))
+    if last_folds:
+        selected_folds = selected_folds[-last_folds:]
+    for fold, tr, va in selected_folds:
         assert_fold_integrity(months, fold, tr, va)
         log.info("%s | train %s / val %s", fold.describe(), f"{len(tr):,}", f"{len(va):,}")
         Xtr, ytr = df.iloc[tr], y_all[tr]
@@ -157,6 +164,8 @@ def run_walk_forward(
                 "fold": fold.index, "model": name, "train_rows": len(tr),
                 "val_rows": len(va), "train_seconds": round(elapsed, 1),
                 "best_iteration": getattr(model, "best_iteration_", None), **scores,
+                "train_months": list(fold.train_months), "val_months": list(fold.val_months),
+                "embargo_months": list(fold.embargo_months),
             }
             results[name].append(row)
             preds_this_fold[name] = pred
@@ -184,6 +193,7 @@ def run_walk_forward(
 
         fold_preds.append(preds_this_fold)
         fold_truth.append(yva)
+        fold_ids.append(fold.index)
 
     summary: dict[str, dict[str, Any]] = {}
     for name, rows in results.items():
@@ -195,13 +205,18 @@ def run_walk_forward(
 
     # Ensemble: does it genuinely beat the best single model, fold by fold?
     ens_rows = []
-    for i, (preds, truth) in enumerate(zip(fold_preds, fold_truth, strict=False), start=1):
-        if len(preds) > 1:
-            gain = evaluate_ensemble_gain(preds, truth)
-            gain["fold"] = i
+    for i, (preds, truth) in enumerate(zip(fold_preds, fold_truth, strict=True)):
+        if i > 0 and len(preds) > 1:
+            calibration = {
+                name: np.concatenate([previous[name] for previous in fold_preds[:i]])
+                for name in preds
+            }
+            gain = evaluate_frozen_ensemble(preds, truth, calibration, np.concatenate(fold_truth[:i]))
+            gain["fold"] = fold_ids[i]
+            gain["calibration_folds"] = fold_ids[:i]
             ens_rows.append(gain)
             log.info("fold %d ensemble=%+.5f vs best single (%s)=%+.5f  gain=%+.5f  %s",
-                     i, gain["ensemble_score"], gain["best_single"],
+                     fold_ids[i], gain["ensemble_score"], gain["best_single"],
                      gain["best_single_score"], gain["gain"],
                      "BEATS IT" if gain["beats_best_single"] else "does not beat it")
     if ens_rows:
@@ -210,6 +225,7 @@ def run_walk_forward(
             "stability": stability([r["ensemble_score"] for r in ens_rows]),
             "beats_best_single_in_folds": sum(r["beats_best_single"] for r in ens_rows),
             "n_folds": len(ens_rows),
+            "evaluation_protocol": "prior_fold_blend",
         }
     return summary
 
@@ -261,9 +277,16 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--no-mlflow", action="store_true")
     ap.add_argument("--out", default=None, help="summary JSON path")
     args = ap.parse_args(argv)
+    if args.folds < 0 or not 0 <= args.sample_frac <= 1:
+        ap.error("folds must be nonnegative and sample-frac must be between 0 and 1")
+
+    from src.config import REPO_ROOT
+    from src.models.run_record import fingerprint, record_run, write_record
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     cfg = load_config()
+    source_path = Path(cfg.paths.features) / "dataset_train.parquet"
+    source = fingerprint(source_path)
     df = load_dataset("train")
     if args.sample_frac:
         # Sample WITHIN each month so the temporal structure is preserved.
@@ -272,16 +295,17 @@ def main(argv: list[str] | None = None) -> None:
         )
         log.info("sampled: %s rows (frac=%.3f)", f"{len(df):,}", args.sample_frac)
 
-    if args.folds:
-        from src.evaluation import temporal_validation as tv
-
-        original = tv.build_folds
-        tv.build_folds = lambda: original()[-args.folds :]
-        globals()["iter_folds"] = tv.iter_folds
-
+    factories = build_model_factories(args.models.split(","), args.quick)
+    parameters = {}
+    for name, factory in factories.items():
+        model = factory()
+        parameters[name] = {
+            key: getattr(model, key) for key in
+            ("params", "alpha", "num_boost_round", "early_stopping_rounds", "chunk_rows")
+            if hasattr(model, key)
+        }
     summary = run_walk_forward(
-        build_model_factories(args.models.split(","), args.quick),
-        df=df, log_mlflow=not args.no_mlflow,
+        factories, df=df, log_mlflow=not args.no_mlflow, last_folds=args.folds,
     )
     table = results_frame(summary)
     print("\n" + table.to_string(index=False))
@@ -289,12 +313,23 @@ def main(argv: list[str] | None = None) -> None:
     out = Path(args.out) if args.out else Path(cfg.paths.features) / "walkforward_summary.json"
     serialisable = {
         k: {"stability": v["stability"],
+            "evaluation_protocol": v.get("evaluation_protocol", "walkforward_with_early_stopping"),
             "per_fold": [{kk: vv for kk, vv in r.items() if kk != "weights"}
                          for r in v["per_fold"]]}
         for k, v in summary.items()
     }
+    if fingerprint(source_path) != source:
+        raise RuntimeError("Training input changed during the run; refusing to publish results")
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(serialisable, indent=2, default=str), encoding="utf-8")
     table.to_csv(out.with_suffix(".csv"), index=False)
+    record = record_run(
+        frame=df, source=source, config=dict(cfg.validation),
+        options={"models": args.models, "quick": args.quick, "last_folds": args.folds,
+                 "sample_frac": args.sample_frac, "sampling_seed": 42},
+        models=parameters, summary_path=out, root=REPO_ROOT,
+    )
+    write_record(out.with_suffix(".run.json"), record)
     log.info("summary written: %s", out)
 
 

@@ -26,6 +26,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 README = (ROOT / "README.md").read_text(encoding="utf-8")
+NARRATIVE = (ROOT / "docs/RESEARCH.md").read_text(encoding="utf-8")
 RESULTS = ROOT / "results"
 
 
@@ -44,7 +45,7 @@ def readme_has(value: str) -> bool:
     tables, in prose and inside bold markers, and pinning the sentence would make the test
     fail on rewording instead of on drift.
     """
-    return value in README
+    return value in NARRATIVE
 
 
 # ------------------------------------------------------------------ the headline scores
@@ -215,7 +216,7 @@ def test_no_surface_still_quotes_the_stale_standing():
     # justify running the experiment at all. Those docstrings are documentation as much as
     # the README is, so the sweep now covers every tracked source and narrative file
     # rather than an enumerated list that has to be remembered.
-    surfaces = [ROOT / "README.md",
+    surfaces = [ROOT / "README.md", ROOT / "docs/RESEARCH.md",
                 *sorted((ROOT / "src").rglob("*.py")),
                 *sorted((ROOT / "streamlit_app").rglob("*.py")),
                 *sorted((ROOT / "scripts").glob("*.py")),
@@ -307,7 +308,7 @@ def test_the_spread_sentinel_figures_match_the_notebook_that_measured_them():
     # matches a data-contract row that quotes nothing, and including it made this fail
     # for the wrong reason.
     claims = [
-        line for line in README.splitlines()
+        line for line in NARRATIVE.splitlines()
         if "no genuinely crossed books" in line
         or ("empty-level sentinel" in line and "relative spread" in line)
     ]
@@ -392,3 +393,10 @@ def test_ensemble_probe_matches_the_measurement():
     assert p["ship_gain_threshold"] == 0.0010 and p["n_months"] == 23
     # the paragraph says the pooled number went DOWN while the monthly mean went up
     assert pc["extended"] < pc["base"] and p["mean_gain"] > 0
+
+
+def test_concise_readme_preserves_headline_sources_and_correction():
+    for value in ("+0.14088", "+0.15171", "+0.12800", "+0.12900"):
+        assert value in README
+    assert "fitted-blend diagnostic" in README
+    assert "docs/RESEARCH.md" in README
