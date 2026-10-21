@@ -13,6 +13,21 @@ preserves their real fold IDs. Current targets cannot change the fitted blend we
 Base-model early stopping still uses its validation fold; fully nested outer validation
 would require a separate full-data experiment and is not claimed here.
 
+`python -m src.evaluation.revalidate` is a separate, opt-in retrospective check with
+the fixed settings in `configs/revalidation.json`: LightGBM at 300 rounds and Ridge
+at alpha 10, no sampling, no early stopping on the scored periods, and blend calibration
+on earlier folds only. `run_walk_forward(..., fit_validation=False)` passes no scored
+validation data to `model.fit`. Months 65–70 are never scored again by this command.
+Previously explored historical folds remain retrospective evidence even with this
+cleaner fitting boundary; they do not become a new independent test set.
+
+The command requires the complete local training Parquet and writes a separate summary
+and hashed run record. It never replaces the historical summary or promotes a model.
+If the table is absent, `python -m src.data.export_rest --destination <outside-Git-path>`
+can resume a bounded REST `tabledata.list` export without SQL or the Storage Read API.
+It checks source identity, total rows and every expected sample key before publishing
+the local file. Streaming part assembly avoids holding the full float64 table in RAM.
+
 `python -m src.evaluation.uncertainty` writes `site/uncertainty.json`. It:
 
 - aligns all eligible models on the same consecutive fold IDs;

@@ -78,9 +78,10 @@ shift-sensitive metric rewards. Directional accuracy 0.5516, RMSE 0.003364.
 on months never touched by feature design, model selection, tuning or early stopping. That
 is all true, and it is not the right number. Holding a model fixed and scoring it on every
 period in turn shows difficulty swinging from 0.117 to 0.148 — and months 65–70 sit at the
-**83rd percentile**. De-biasing for that gives +0.14084; the walk-forward mean, computed a
-completely different way, gives +0.14088. Purity was never the binding constraint: a single
-contiguous stretch is a sample of size one in the dimension that actually varies.
+**83rd percentile**. A heuristic period adjustment gives +0.14084. Its numerical proximity
+to the historical fitted-blend mean (+0.14088) does not establish independent validation:
+the blend was fitted on its scored folds. A single contiguous stretch also underrepresents
+variation across periods; neither observation alone explains the external score gap.
 
 ## What I found
 

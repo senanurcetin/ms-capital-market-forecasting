@@ -108,6 +108,7 @@ def run_walk_forward(
     experiment: str | None = None,
     log_mlflow: bool = True,
     last_folds: int = 0,
+    fit_validation: bool = True,
 ) -> dict:
     if type(last_folds) is not int or last_folds < 0:
         raise ValueError("last_folds must be a nonnegative integer")
@@ -153,10 +154,13 @@ def run_walk_forward(
         for name, factory in model_factories.items():
             t0 = time.perf_counter()
             model = factory()
-            try:
-                model.fit(Xtr, ytr, eval_set=(Xva, yva))
-            except TypeError:
+            if not fit_validation:
                 model.fit(Xtr, ytr)
+            else:
+                try:
+                    model.fit(Xtr, ytr, eval_set=(Xva, yva))
+                except TypeError:
+                    model.fit(Xtr, ytr)
             pred = model.predict(Xva)
             elapsed = time.perf_counter() - t0
             scores = evaluate(yva, pred)
@@ -198,7 +202,8 @@ def run_walk_forward(
     summary: dict[str, dict[str, Any]] = {}
     for name, rows in results.items():
         cos = [r["cosine"] for r in rows]
-        summary[name] = {"per_fold": rows, "stability": stability(cos)}
+        summary[name] = {"per_fold": rows, "stability": stability(cos),
+                         "evaluation_protocol": "walkforward_with_early_stopping" if fit_validation else "walkforward_fixed_fit"}
         s = summary[name]["stability"]
         log.info("%-10s cosine mean=%+.5f std=%.5f min=%+.5f (worst fold %d)",
                  name, s["mean"], s["std"], s["min"], s["worst_fold"])

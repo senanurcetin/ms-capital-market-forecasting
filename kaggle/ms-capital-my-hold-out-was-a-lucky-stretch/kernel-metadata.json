@@ -1,0 +1,18 @@
+{
+  "id": "senanuretin/ms-capital-my-hold-out-was-a-lucky-stretch",
+  "title": "MS Capital: My Hold-out Was a Lucky Stretch",
+  "code_file": "ms-capital-my-hold-out-was-a-lucky-stretch.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": false,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": false,
+  "keywords": [],
+  "dataset_sources": [
+    "senanuretin/ms-capital-validation-results"
+  ],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "model_sources": []
+}

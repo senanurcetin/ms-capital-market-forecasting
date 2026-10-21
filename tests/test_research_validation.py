@@ -40,6 +40,27 @@ def test_training_preserves_fold_ids_and_uses_only_earlier_calibration():
     assert result["ensemble"]["evaluation_protocol"] == "prior_fold_blend"
 
 
+def test_fixed_fit_never_receives_scored_validation_labels():
+    class FixedModel:
+        name = "fixed"
+
+        def fit(self, X, y, **kwargs):
+            assert kwargs == {}, "Outer validation must not be passed to fitting"
+            self.train_last_month = X.month.max()
+            return self
+
+        def predict(self, X):
+            assert X.month.min() > self.train_last_month
+            return np.zeros(len(X))
+
+    months = np.repeat(np.arange(71), 3)
+    frame = pd.DataFrame({"sample_id": np.arange(len(months)), "month": months,
+                          "target": np.sin(months) * 0.001, "mkt_x": np.cos(months)})
+    result = run_walk_forward({"fixed": FixedModel}, frame, log_mlflow=False, fit_validation=False)
+    assert result["fixed"]["evaluation_protocol"] == "walkforward_fixed_fit"
+    assert len(result["fixed"]["per_fold"]) == 5
+
+
 def test_bootstrap_preserves_adjacency_and_seed():
     a = block_indices(5, 2, 100, 42)
     np.testing.assert_array_equal(a, block_indices(5, 2, 100, 42))
