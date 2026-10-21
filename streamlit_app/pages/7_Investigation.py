@@ -95,11 +95,11 @@ else:
         st.metric("Hold-out months 65-70", f"{pm['holdout_cosine']:+.5f}")
         st.metric("Median of other blocks", f"{pm['typical_cosine']:+.5f}")
         st.metric("Hold-out percentile", f"{pm['holdout_percentile'] * 100:.0f}%")
-        st.success(
-            f"De-biased: **{pm['debiased']:+.5f}**\n\n"
-            f"Walk-forward mean: **+0.14088**\n\n"
-            "Two routes, computed completely differently, agreeing to 0.00004. Nothing was "
-            "tuned to make them meet."
+        st.info(
+            f"Heuristic period adjustment: **{pm['debiased']:+.5f}**\n\n"
+            f"Historical fitted-blend mean: **+0.14088**\n\n"
+            "Numerical agreement does not validate either estimate independently. The blend "
+            "was fitted and scored on the same fold targets."
         )
 
 st.divider()

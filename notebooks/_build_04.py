@@ -452,7 +452,8 @@ this page.
 
 
 def main() -> None:
-    nb = nbf.v4.new_notebook(cells=CELLS)
+    cells = [*CELLS[:1], md('## Validation correction — 21 October 2026\n\nThis notebook preserves a historical executed study. The ensemble score +0.14088 fitted blend weights on its scored fold targets and is an optimistic fitted-blend diagnostic. Its proximity to the heuristic period adjustment +0.14084 does not establish independent validation. Base-model early stopping also used its scored validation fold. New repository runs support fixed-budget fits with no scored validation labels passed into model.fit and blend calibration on earlier folds only. Historical outputs below are not a rerun of that corrected protocol. See [validation protocol](../docs/VALIDATION.md).\n'), *CELLS[1:]]
+    nb = nbf.v4.new_notebook(cells=cells)
     nb.metadata = {
         "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
         "language_info": {"name": "python", "version": "3.11"},

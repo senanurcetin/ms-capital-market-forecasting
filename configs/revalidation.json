@@ -1,0 +1,12 @@
+{
+  "protocol": "retrospective_fixed_fit_prior_fold_blend",
+  "models": ["lightgbm", "ridge"],
+  "lightgbm_rounds": 300,
+  "lightgbm_threads": 2,
+  "ridge_alpha": 10.0,
+  "sampling": "none",
+  "fit_validation": false,
+  "holdout_policy": "months 65-70 excluded; do not remeasure",
+  "selection_policy": "fixed before this run; no search, no early stopping on scored folds",
+  "limitations": "Previously explored historical folds; retrospective revalidation, not a new independent test or a reproduction of the old fitted blend."
+}

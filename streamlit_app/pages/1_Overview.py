@@ -101,10 +101,10 @@ if period:
     st.info(
         f"**The hold-out is listed second on purpose.** Holding the model fixed and scoring "
         f"every period in turn, difficulty swings from 0.117 to 0.148 - and months 65-70 sit "
-        f"at the **{_ordinal(pct)} percentile**. De-biasing for that gives "
-        f"**{period['debiased']:+.5f}**, within 0.00004 of the walk-forward mean computed a "
-        f"completely different way. Purity was never the binding constraint; period "
-        f"difficulty was."
+        f"at the **{_ordinal(pct)} percentile**. A heuristic period adjustment gives "
+        f"**{period['debiased']:+.5f}**. Its proximity to the historical fitted-blend mean "
+        f"does not establish independent validation. Period variability and same-fold blend "
+        f"fitting both limit interpretation; neither alone explains the external score gap."
     )
 
 st.divider()

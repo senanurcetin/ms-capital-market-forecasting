@@ -1,0 +1,89 @@
+name: Research revalidation
+
+on:
+  workflow_dispatch:
+    inputs:
+      full_data:
+        description: Export the full training feature table via REST and run fixed-fit evaluation
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-revalidation
+  cancel-in-progress: false
+
+jobs:
+  publications:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - run: python -m pip install kaggle==2.1.2
+      - name: Read back the two owned public notebooks
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: python scripts/check_kaggle_publications.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kaggle-publication-readback
+          path: .artifacts/kaggle-publications.json
+
+  full-data:
+    if: inputs.full_data
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      MSCAPITAL_DATA_ROOT: ${{ runner.temp }}/mscapital-revalidation
+      MSCAPITAL_GCP_KEY: ${{ runner.temp }}/mscapital-revalidation-key.json
+      OMP_THREAD_LIMIT: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      POLARS_MAX_THREADS: "2"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-pipeline.txt
+      - run: python -m pip install -r requirements-pipeline.txt
+      - name: Materialize temporary owner credential
+        env:
+          GCP_KEY_JSON: ${{ secrets.MSCAPITAL_REVALIDATION_GCP_KEY }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          raw = os.environ["GCP_KEY_JSON"]
+          if not raw:
+              raise SystemExit("Temporary revalidation credential is not configured")
+          json.loads(raw)
+          key = Path(os.environ["MSCAPITAL_GCP_KEY"])
+          key.write_text(raw, encoding="utf-8")
+          key.chmod(0o600)
+          PY
+      - name: Export existing training table without SQL or Storage Read API
+        run: python -u -m src.data.export_rest --destination "$MSCAPITAL_DATA_ROOT/features"
+      - name: Run locked full-data fixed-fit protocol
+        run: python -u -m src.evaluation.revalidate --output .artifacts/revalidation/walkforward_fixed.json
+      - name: Retain derived reports only
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: full-data-revalidation
+          path: .artifacts/revalidation/
+          retention-days: 7
+      - name: Remove temporary credential
+        if: always()
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          Path(os.environ["MSCAPITAL_GCP_KEY"]).unlink(missing_ok=True)
+          PY

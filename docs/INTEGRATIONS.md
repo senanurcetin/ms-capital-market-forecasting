@@ -89,6 +89,25 @@ It lists owner notebook metadata only: no notebook execution, submission or data
 Locally, use `python scripts/check_integrations.py --kaggle` with an environment token,
 or `--bigquery` for ADC/service-account dataset metadata. Missing credentials fail visibly.
 
+### Notebook updates on 21 October 2026
+
+Both existing public Kaggle notebooks were updated with the same-fold ensemble
+correction and completed execution on Kaggle CPU: the main holdout analysis at version
+4 and the experiment summary at version 2. Their source and metadata are versioned in
+[kaggle/](../kaggle/README.md). They re-execute the historical analysis and plot;
+they do not retrain the competition pipeline or submit predictions. The opt-in
+`scripts/check_kaggle_publications.py` checks the latest completed run and compares
+ordered cell-source hashes with the versioned copies.
+
+The manual `Research revalidation` workflow separately supports a full-data run of
+the locked protocol in `configs/revalidation.json`. It uses a temporary repository
+secret `MSCAPITAL_REVALIDATION_GCP_KEY`, materializes it only under the runner's
+temporary directory, and deletes the file in an always-run cleanup step. Restricted
+feature data stays in that ephemeral runner; only derived metrics and hashed run
+records are uploaded. Remove the temporary repository secret after the run.
+This workflow is opt-in, never runs on pull requests and does not publish or submit
+Kaggle notebooks. The default dispatch performs notebook readback only.
+
 ## Cost boundaries
 
 The portfolio path is the committed results bundle, local compute and a static report;

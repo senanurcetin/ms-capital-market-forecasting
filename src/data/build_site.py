@@ -258,10 +258,10 @@ def build() -> Path:
   </div>
   <p class="callout">The hold-out is listed second on purpose. Holding the model fixed and
   scoring every period in turn, difficulty swings from 0.117 to 0.148 — and months 65–70 sit
-  at the <strong>83rd percentile</strong>. De-biasing gives
-  <strong>{debiased}</strong>, within 0.00004 of the walk-forward
-  mean computed a completely different way. Purity was never the binding constraint; period
-  difficulty was.</p>
+  at the <strong>83rd percentile</strong>. A heuristic period adjustment gives
+  <strong>{debiased}</strong>. Its proximity to the historical fitted-blend mean does not
+  establish independent validation. Period variation and same-fold blend fitting both
+  limit interpretation; neither alone explains the external score gap.</p>
 </section>""")
 
     parts.append(f"""

@@ -13,7 +13,7 @@
 
 | Experiment / interface | Score or model | Interpretation |
 | --- | --- | --- |
-| Internal walk-forward CV, five folds | Ensemble cosine **+0.14088** | Cross-period internal estimate |
+| Historical walk-forward, five folds | Ensemble cosine **+0.14088** | Same-fold fitted-blend diagnostic; optimistic, not an unbiased estimate |
 | Untouched hold-out, months 65–70 | LightGBM cosine **+0.15171** | Favorable period; not ensemble performance |
 | Submitted leaderboard result | v4 ensemble cosine **+0.12900** | External competition measurement, below recorded median |
 | Interactive demo inference | Default LightGBM v3 per current model card | Inference demo; **not** the scored leaderboard ensemble |
