@@ -40,8 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      MSCAPITAL_DATA_ROOT: ${{ runner.temp }}/mscapital-revalidation
-      MSCAPITAL_GCP_KEY: ${{ runner.temp }}/mscapital-revalidation-key.json
+      MSCAPITAL_DATA_ROOT: /tmp/mscapital-revalidation
+      MSCAPITAL_GCP_KEY: /tmp/mscapital-revalidation-key.json
       OMP_THREAD_LIMIT: "2"
       OPENBLAS_NUM_THREADS: "2"
       POLARS_MAX_THREADS: "2"
