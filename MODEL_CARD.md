@@ -1,6 +1,6 @@
 # Model card — MSCapital short-horizon return model
 
-> **Validation correction (20 October 2026):** the historical ensemble CV fitted and scored blend weights on the same fold. Its +0.14088 is an optimistic fitted-blend diagnostic, not an unbiased external-performance estimate. New training calibrates weights on earlier folds only. Historical results are retained; no full-data rerun is claimed.
+> **Validation correction (20 October 2026):** the historical ensemble CV fitted and scored blend weights on the same fold. Its +0.14088 is an optimistic fitted-blend diagnostic, not an unbiased external-performance estimate. New training calibrates weights on earlier folds only. Historical results are retained. A separate [fixed-fit full-data revalidation](docs/REVALIDATION.md) completed on 21 October 2026; its model set and training budget differ from the historical blend.
 
 
 > **For research only. Not investment advice.** Nothing here was evaluated as a trading

@@ -1,0 +1,6 @@
+# Keep hashed runner evidence byte-identical on Windows and Linux.
+results/walkforward_fixed.json text eol=lf
+results/walkforward_fixed.run.json text eol=lf
+results/walkforward_fixed.csv text eol=lf
+results/walkforward_fixed.uncertainty.json text eol=lf
+configs/revalidation.json text eol=lf

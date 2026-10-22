@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "reference": "lightgbm",
+  "folds": [
+    2,
+    3,
+    4,
+    5
+  ],
+  "method": "circular block bootstrap, percentile 95%; shared paired indices",
+  "estimand": "unweighted mean of recorded fold cosine scores, NOT pooled-row cosine",
+  "draws": 10000,
+  "seed": 42,
+  "excluded": [],
+  "comparisons": [
+    {
+      "model": "ensemble",
+      "block_length": 1,
+      "mean_fold_cosine": 0.13829910504084553,
+      "interval_low": 0.1351583183654374,
+      "interval_high": 0.14052057372837817,
+      "paired_delta": 0.00025287352959840054,
+      "delta_low": -0.00011753824826263304,
+      "delta_high": 0.0004687288726077446,
+      "wins_vs_reference": 3
+    },
+    {
+      "model": "lightgbm",
+      "block_length": 1,
+      "mean_fold_cosine": 0.13804623151124717,
+      "interval_low": 0.1352903637161082,
+      "interval_high": 0.14003733775336227,
+      "paired_delta": 0.0,
+      "delta_low": 0.0,
+      "delta_high": 0.0,
+      "wins_vs_reference": 0
+    },
+    {
+      "model": "ridge",
+      "block_length": 1,
+      "mean_fold_cosine": 0.11851958097932049,
+      "interval_low": 0.1138897841537696,
+      "interval_high": 0.12314937780487137,
+      "paired_delta": -0.019526650531926665,
+      "delta_low": -0.022211335907185596,
+      "delta_high": -0.016841965156667735,
+      "wins_vs_reference": 0
+    },
+    {
+      "model": "ensemble",
+      "block_length": 2,
+      "mean_fold_cosine": 0.13829910504084553,
+      "interval_low": 0.13616824261853555,
+      "interval_high": 0.14042996746315553,
+      "paired_delta": 0.00025287352959840054,
+      "delta_low": 3.810835276407687e-05,
+      "delta_high": 0.0004676387064327242,
+      "wins_vs_reference": 3
+    },
+    {
+      "model": "lightgbm",
+      "block_length": 2,
+      "mean_fold_cosine": 0.13804623151124717,
+      "interval_low": 0.1361011200609552,
+      "interval_high": 0.1399913429615391,
+      "paired_delta": 0.0,
+      "delta_low": 0.0,
+      "delta_high": 0.0,
+      "wins_vs_reference": 0
+    },
+    {
+      "model": "ridge",
+      "block_length": 2,
+      "mean_fold_cosine": 0.11851958097932049,
+      "interval_low": 0.1138897841537696,
+      "interval_high": 0.12314937780487137,
+      "paired_delta": -0.019526650531926665,
+      "delta_low": -0.022211335907185596,
+      "delta_high": -0.016841965156667735,
+      "wins_vs_reference": 0
+    }
+  ],
+  "limits": [
+    "Exploratory resampling intervals, not calibrated generalization confidence bounds.",
+    "Few folds, overlapping expanding training sets and nonstationarity limit inference.",
+    "Block 1 is an IID sensitivity check; block 2 preserves local adjacency but wraps endpoints.",
+    "Base models used fixed fits without scored validation labels; these remain retrospective historical folds.",
+    "No significance tests, multiple-comparison claims or new competition scores are produced."
+  ],
+  "source_sha256": "16ecb23b8c9379772da3c5e8422838f9a63607b5253c950bfc35609bdb66a8e9"
+}

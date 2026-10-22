@@ -89,6 +89,38 @@ if warehouse_path.is_file():
 else:
     st.info("No bundled warehouse snapshot is available. Run the opt-in warehouse audit with owner credentials.")
 
+st.subheader("Kaggle publication readback")
+publication_path = BUNDLED / "kaggle_publications.json"
+if publication_path.is_file():
+    publications = json.loads(publication_path.read_text(encoding="utf-8"))
+    st.caption(f"Checked {publications['checked_at']} · bundled readback snapshot · no Kaggle calls on this page")
+    st.dataframe(pd.DataFrame([
+        {"Notebook": row["id"], "Latest run": row.get("latest_run_status"),
+         "Source matches repository": row.get("source_matches"), "Status": row["status"]}
+        for row in publications["publications"]
+    ]), hide_index=True, width="stretch")
+    st.caption("Completed notebook execution re-renders historical analyses. It does not retrain the competition model or create a submission.")
+    st.download_button("Download Kaggle readback (JSON)", publication_path.read_bytes(),
+                       file_name="mscapital-kaggle-readback.json", mime="application/json")
+else:
+    st.info("No bundled publication readback is available.")
+
+fixed_path = BUNDLED / "walkforward_fixed.json"
+fixed_record = BUNDLED / "walkforward_fixed.run.json"
+if fixed_path.is_file() and fixed_record.is_file():
+    st.subheader("Retrospective full-data revalidation")
+    fixed = json.loads(fixed_path.read_text(encoding="utf-8"))
+    record = json.loads(fixed_record.read_text(encoding="utf-8"))
+    st.caption(f"Recorded {record['created_at']} · {record['selected_rows']:,} source rows · {record['n_features']} features")
+    st.dataframe(pd.DataFrame([
+        {"Model": name, "Mean fold cosine": block["stability"]["mean"],
+         "Scored folds": len(block["per_fold"]), "Protocol": block["evaluation_protocol"]}
+        for name, block in fixed.items()
+    ]), hide_index=True, width="stretch")
+    st.info("Fixed-budget model fits receive no scored validation labels; blend weights use earlier folds only. Base models score five folds; the blend scores four. Compare on shared periods. These historical periods were already explored, so this is retrospective evidence, not a new independent test. No holdout remeasurement, model promotion or submission.")
+    st.download_button("Download revalidation run record (JSON)", fixed_record.read_bytes(),
+                       file_name="mscapital-revalidation-run.json", mime="application/json")
+
 st.subheader("Reproduce the research")
 st.markdown(
     "[Reproducibility guide](https://github.com/senanurcetin/ms-capital-market-forecasting/blob/main/docs/REPRODUCIBILITY.md) · "

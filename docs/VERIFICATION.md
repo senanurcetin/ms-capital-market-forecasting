@@ -1,5 +1,22 @@
 # Verification record — 19 October 2026
 
+## Follow-up — 22 October 2026
+
+The [full-data runner job](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/runs/39663832723)
+completed on 21 October with 1,257,637 source rows and 292 features. Fixed-budget
+LightGBM and Ridge fits received no scored validation data; ensemble calibration
+used earlier folds only. No sampling, holdout remeasurement or model promotion occurred.
+[Comparable four-period scores, hashes and limitations](REVALIDATION.md) are retained.
+The temporary repository credential secret was removed after the completed job.
+
+Both public Kaggle notebook runs completed and their ordered source hashes match the
+versioned repository copies. [Readback snapshot](../results/kaggle_publications.json).
+PR #80 passed all four CI jobs with 73.44% coverage before merging.
+
+Browser validation could not attach to the in-app webview on 22 October; no fresh live
+or mobile screenshot is claimed. Headless Streamlit rendering and Docker/API checks
+are separate evidence. The existing screenshot retains its historical date.
+
 ## Follow-up — 20 October 2026
 
 Historical ensemble CV is now explicitly identified as a same-fold fitted-blend

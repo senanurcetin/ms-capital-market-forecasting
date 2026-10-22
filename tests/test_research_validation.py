@@ -38,6 +38,8 @@ def test_training_preserves_fold_ids_and_uses_only_earlier_calibration():
     assert len(ensemble) == 1 and ensemble[0]["fold"] == 5
     assert ensemble[0]["calibration_folds"] == [4]
     assert result["ensemble"]["evaluation_protocol"] == "prior_fold_blend"
+    assert result["ensemble"]["stability"]["worst_fold"] == 5
+    assert result["mean"]["stability"]["worst_fold"] in [4, 5]
 
 
 def test_fixed_fit_never_receives_scored_validation_labels():
@@ -76,6 +78,17 @@ def test_historical_blend_is_excluded_and_pairs_have_identical_periods():
     for row in report["comparisons"]:
         if row["model"] == "lightgbm":
             assert row["delta_low"] == row["delta_high"] == 0
+
+
+def test_fixed_fit_uncertainty_uses_the_actual_fit_protocol():
+    summary = {
+        name: {"evaluation_protocol": "walkforward_fixed_fit",
+               "per_fold": [{"fold": i, "cosine": 0.01 * i} for i in range(1, 6)]}
+        for name in ("lightgbm", "ridge")
+    }
+    report = compare(summary, draws=100)
+    assert any("fixed fits without scored validation labels" in text for text in report["limits"])
+    assert not any("early stopping used" in text for text in report["limits"])
 
 
 @pytest.mark.parametrize("bad", [None, True, float("nan"), float("inf"), 2.0])

@@ -69,7 +69,10 @@ def compare(summary: dict, *, reference: str = "lightgbm", draws: int = 10_000, 
             "Exploratory resampling intervals, not calibrated generalization confidence bounds.",
             "Few folds, overlapping expanding training sets and nonstationarity limit inference.",
             "Block 1 is an IID sensitivity check; block 2 preserves local adjacency but wraps endpoints.",
-            "Base-model early stopping used each validation fold; this is not nested outer validation.",
+            ("Base models used fixed fits without scored validation labels; these remain retrospective historical folds."
+             if all(block.get("evaluation_protocol") == "walkforward_fixed_fit"
+                    for name, block in summary.items() if name != "ensemble")
+             else "Base-model early stopping used each validation fold; this is not nested outer validation."),
             "No significance tests, multiple-comparison claims or new competition scores are produced.",
         ],
     }

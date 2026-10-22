@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-10-21T20:00:32.097549+00:00",
+  "code": {
+    "commit": "eb750b12e9f74a00d633c3aa9ccc45a32cef3731",
+    "dirty": false
+  },
+  "python": "3.11.17",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "2.2.3",
+    "scikit-learn": "1.8.0",
+    "lightgbm": "4.6.0",
+    "xgboost-cpu": "3.2.0"
+  },
+  "source": {
+    "file": "dataset_train.parquet",
+    "bytes": 1141103601,
+    "sha256": "9cbccefbaa6d290e57a160d924765d9fe08244dc7714daed9509c70903d89074"
+  },
+  "options": {
+    "protocol": "retrospective_fixed_fit_prior_fold_blend",
+    "models": [
+      "lightgbm",
+      "ridge"
+    ],
+    "lightgbm_rounds": 300,
+    "lightgbm_threads": 2,
+    "ridge_alpha": 10.0,
+    "sampling": "none",
+    "fit_validation": false,
+    "holdout_policy": "months 65-70 excluded; do not remeasure",
+    "selection_policy": "fixed before this run; no search, no early stopping on scored folds",
+    "limitations": "Previously explored historical folds; retrospective revalidation, not a new independent test or a reproduction of the old fitted blend."
+  },
+  "model_parameters": {
+    "lightgbm": {
+      "objective": "regression",
+      "metric": "None",
+      "learning_rate": 0.03,
+      "num_leaves": 127,
+      "min_data_in_leaf": 500,
+      "feature_fraction": 0.7,
+      "bagging_fraction": 0.8,
+      "bagging_freq": 1,
+      "lambda_l2": 5.0,
+      "max_bin": 127,
+      "num_threads": 2,
+      "verbosity": -1,
+      "seed": 42,
+      "num_boost_round": 300
+    },
+    "ridge": {
+      "alpha": 10.0
+    }
+  },
+  "validation": {
+    "embargo_months": 1,
+    "folds": [
+      {
+        "train_end": 34,
+        "val_start": 36,
+        "val_end": 40
+      },
+      {
+        "train_end": 40,
+        "val_start": 42,
+        "val_end": 46
+      },
+      {
+        "train_end": 46,
+        "val_start": 48,
+        "val_end": 52
+      },
+      {
+        "train_end": 52,
+        "val_start": 54,
+        "val_end": 58
+      },
+      {
+        "train_end": 58,
+        "val_start": 60,
+        "val_end": 64
+      }
+    ],
+    "holdout": {
+      "start": 65,
+      "end": 70
+    }
+  },
+  "selected_rows": 1257637,
+  "n_features": 292,
+  "features_sha256": "7be9963c1bd1e94925f7030726e637075e55e921fd3e64b2f1c3710c78688bc8",
+  "rows_per_month": {
+    "0": 17653,
+    "1": 17715,
+    "2": 17654,
+    "3": 17670,
+    "4": 17716,
+    "5": 17685,
+    "6": 17664,
+    "7": 17678,
+    "8": 17651,
+    "9": 17661,
+    "10": 17665,
+    "11": 17607,
+    "12": 17661,
+    "13": 17719,
+    "14": 17744,
+    "15": 17722,
+    "16": 17744,
+    "17": 17759,
+    "18": 17754,
+    "19": 17809,
+    "20": 17770,
+    "21": 17797,
+    "22": 17758,
+    "23": 17722,
+    "24": 17758,
+    "25": 17806,
+    "26": 17805,
+    "27": 17809,
+    "28": 17786,
+    "29": 17730,
+    "30": 17676,
+    "31": 17699,
+    "32": 17642,
+    "33": 17685,
+    "34": 17688,
+    "35": 17699,
+    "36": 17671,
+    "37": 17730,
+    "38": 17729,
+    "39": 17760,
+    "40": 17795,
+    "41": 17789,
+    "42": 17752,
+    "43": 17749,
+    "44": 17750,
+    "45": 17796,
+    "46": 17851,
+    "47": 17806,
+    "48": 17807,
+    "49": 17825,
+    "50": 17820,
+    "51": 17852,
+    "52": 17792,
+    "53": 17768,
+    "54": 17786,
+    "55": 17771,
+    "56": 17672,
+    "57": 17684,
+    "58": 17660,
+    "59": 17787,
+    "60": 17770,
+    "61": 17711,
+    "62": 17739,
+    "63": 17744,
+    "64": 17740,
+    "65": 17691,
+    "66": 17187,
+    "67": 17515,
+    "68": 17326,
+    "69": 17454,
+    "70": 17597
+  },
+  "summary": {
+    "file": "walkforward_fixed.json",
+    "bytes": 9087,
+    "sha256": "16ecb23b8c9379772da3c5e8422838f9a63607b5253c950bfc35609bdb66a8e9"
+  },
+  "note": "Input hash identifies the source Parquet; sampling seed and fraction identify the selected frame.",
+  "protocol_source": {
+    "file": "revalidation.json",
+    "bytes": 531,
+    "sha256": "e3d89adc4156f29d29f44bf85571a14e641ac00648d24e4de11b66bccf953f1b"
+  }
+}
