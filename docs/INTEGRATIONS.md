@@ -108,6 +108,11 @@ records are uploaded. Remove the temporary repository secret after the run.
 This workflow is opt-in, never runs on pull requests and does not publish or submit
 Kaggle notebooks. The default dispatch performs notebook readback only.
 
+The [21 October full-data run](REVALIDATION.md) completed successfully. It performed
+REST data reads, not SQL queries, and published only derived reports. The temporary
+repository secret was removed after completion. The [Kaggle readback snapshot](../results/kaggle_publications.json)
+also verifies completed execution and matching sources for both public notebooks.
+
 ## Cost boundaries
 
 The portfolio path is the committed results bundle, local compute and a static report;

@@ -280,6 +280,24 @@ def build() -> Path:
   <a href="{REPO}/blob/main/docs/INTEGRATIONS.md">Kaggle and BigQuery lineage</a></p>
 </section>""")
 
+    fixed_report = _read_json("walkforward_fixed.uncertainty.json") or {}
+    fixed_rows = [row for row in fixed_report.get("comparisons", []) if row.get("block_length") == 2]
+    if fixed_rows:
+        fixed_table = pd.DataFrame([
+            {"Model": row["model"], "Mean fold cosine": row["mean_fold_cosine"]}
+            for row in fixed_rows
+        ])
+        parts.append(f"""
+<section>
+  <h2>Separate full-data fixed-fit revalidation</h2>
+  {_table(fixed_table, {"Mean fold cosine": "{:+.6f}"})}
+  <p class="cap">All models use the same {len(fixed_report.get('folds', []))} scored periods.
+  Fixed-budget fits receive no scored validation labels; blend weights use earlier folds only.
+  These previously explored historical periods are retrospective evidence, not a new independent test.
+  No holdout remeasurement, model promotion or competition submission.</p>
+  <p><a href="{REPO}/blob/main/docs/REVALIDATION.md">Run hashes, full population, protocol and uncertainty</a></p>
+</section>""")
+
     if period is not None:
         hl = int(period.cosine.idxmax())
         parts.append(f"""

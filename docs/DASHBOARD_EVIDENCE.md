@@ -38,3 +38,12 @@ The current source has eight research pages, including Research evidence. The im
 remains a historical capture of the earlier seven-page layout. The current interface uses
 the official NEXUS 2.0 assets from the owner’s Drive Logo folder. Source-render checks and
 browser captures do not establish which commit Streamlit Cloud currently serves.
+
+## Verification boundary — 22 October 2026
+
+The Evidence page now separates the warehouse snapshot, completed Kaggle publication
+readback and fixed-fit full-data revalidation. The static report compares the new models
+on shared periods; the historical headline cards remain explicitly labeled.
+The browser bridge could not attach during this pass, so no refreshed live desktop or
+mobile screenshot is certified. Source rendering through Streamlit AppTest and Docker
+checks do not replace that visual review. The official logo files remain unchanged.

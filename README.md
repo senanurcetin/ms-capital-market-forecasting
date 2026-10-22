@@ -1,6 +1,6 @@
 # NEXUS · MSCapital Market Forecasting
 
-> **Validation correction (20 October 2026):** the historical ensemble CV fitted and scored blend weights on the same fold. Its +0.14088 is an optimistic fitted-blend diagnostic, not an unbiased external-performance estimate. New training calibrates weights on earlier folds only. Historical results are retained; no full-data rerun is claimed.
+> **Validation correction (20 October 2026):** the historical ensemble CV fitted and scored blend weights on the same fold. Its +0.14088 is an optimistic fitted-blend diagnostic, not an unbiased external-performance estimate. Historical results are retained. A separate [full-data fixed-fit revalidation](docs/REVALIDATION.md) completed on 21 October with earlier-fold blend calibration.
 
 
 <p align="right"><img src="docs/assets/nexus-official-midnight.svg" alt="NEXUS Official Midnight brand" width="220"></p>
@@ -127,9 +127,16 @@ sidecar containing input/output hashes, selected rows, model parameters and code
 ## Where this stands
 
 This is a non-commercial, English-first research portfolio. Competition scores remain
-historical; no new score, trading profitability or full-data rerun is claimed. The served
+historical; no new competition score or trading profitability is claimed. The served
 LightGBM v3 and the separately submitted v4 ensemble have distinct evaluation scopes.
 See the [model card](MODEL_CARD.md) and [verification record](docs/VERIFICATION.md).
+
+The separate full-data check uses 1,257,637 source rows and 292 features. On the same
+four periods, fixed-budget LightGBM scores **+0.138046** and the prior-fold calibrated
+blend **+0.138299**. These are retrospective measurements, with no holdout remeasurement
+or model promotion. [Protocol, run hashes and uncertainty](docs/REVALIDATION.md).
+Both existing Kaggle notebooks were corrected and re-executed; their completed runs
+and matching source hashes are recorded in [publication readback](results/kaggle_publications.json).
 
 ## Cost
 

@@ -204,6 +204,8 @@ def run_walk_forward(
         cos = [r["cosine"] for r in rows]
         summary[name] = {"per_fold": rows, "stability": stability(cos),
                          "evaluation_protocol": "walkforward_with_early_stopping" if fit_validation else "walkforward_fixed_fit"}
+        worst_position = int(summary[name]["stability"]["worst_fold"]) - 1
+        summary[name]["stability"]["worst_fold"] = rows[worst_position]["fold"]
         s = summary[name]["stability"]
         log.info("%-10s cosine mean=%+.5f std=%.5f min=%+.5f (worst fold %d)",
                  name, s["mean"], s["std"], s["min"], s["worst_fold"])
@@ -225,9 +227,11 @@ def run_walk_forward(
                      gain["best_single_score"], gain["gain"],
                      "BEATS IT" if gain["beats_best_single"] else "does not beat it")
     if ens_rows:
+        ensemble_stability = stability([r["ensemble_score"] for r in ens_rows])
+        ensemble_stability["worst_fold"] = ens_rows[int(ensemble_stability["worst_fold"]) - 1]["fold"]
         summary["ensemble"] = {
             "per_fold": ens_rows,
-            "stability": stability([r["ensemble_score"] for r in ens_rows]),
+            "stability": ensemble_stability,
             "beats_best_single_in_folds": sum(r["beats_best_single"] for r in ens_rows),
             "n_folds": len(ens_rows),
             "evaluation_protocol": "prior_fold_blend",

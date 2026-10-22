@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-10-21T19:41:44.807598+00:00",
+  "publications": [
+    {
+      "id": "senanuretin/ms-capital-four-experiments-that-did-not-help",
+      "url": "https://www.kaggle.com/code/senanuretin/ms-capital-four-experiments-that-did-not-help",
+      "status": "pass",
+      "latest_run_status": "COMPLETE",
+      "source_matches": true,
+      "source_sha256": "bdcb6aeb7c566a3bf78c4eed482bf4a04cdd7e1def2250cb03ed6c6d12744aef",
+      "public": true,
+      "scope": "Re-execution of historical result analysis; no full model retraining or submission"
+    },
+    {
+      "id": "senanuretin/ms-capital-my-hold-out-was-a-lucky-stretch",
+      "url": "https://www.kaggle.com/code/senanuretin/ms-capital-my-hold-out-was-a-lucky-stretch",
+      "status": "pass",
+      "latest_run_status": "COMPLETE",
+      "source_matches": true,
+      "source_sha256": "0f16848456bb21b88a44cef83c03b93bf3e56824e632b21f60887c312764499a",
+      "public": true,
+      "scope": "Re-execution of historical result analysis; no full model retraining or submission"
+    }
+  ],
+  "status": "pass"
+}

@@ -44,8 +44,10 @@ jobs:
           python scripts/check_docs.py
           python -m src.data.build_site
           python -m src.evaluation.uncertainty
+          python -m src.evaluation.uncertainty --source results/walkforward_fixed.json --output results/walkforward_fixed.uncertainty.json
           git diff --exit-code -- site/index.html
           git diff --exit-code -- site/uncertainty.json
+          git diff --exit-code -- results/walkforward_fixed.uncertainty.json
 
       # The tests require NO live BigQuery and NO downloaded data: the ingest tests
       # generate a synthetic feather file and the API tests use a fake model artefact.

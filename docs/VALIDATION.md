@@ -10,8 +10,9 @@ New `run_walk_forward` ensemble evaluation fits nonnegative weights on earlier f
 out-of-training predictions and freezes them before scoring the current fold. Fold 1
 has no earlier calibration data, so it has no ensemble score. Selecting the last N folds
 preserves their real fold IDs. Current targets cannot change the fitted blend weights.
-Base-model early stopping still uses its validation fold; fully nested outer validation
-would require a separate full-data experiment and is not claimed here.
+The default harness still uses its validation fold for base-model early stopping.
+The separate fixed-fit revalidation below avoids that fitting dependency; it does not
+turn previously explored historical periods into a fresh independent test.
 
 `python -m src.evaluation.revalidate` is a separate, opt-in retrospective check with
 the fixed settings in `configs/revalidation.json`: LightGBM at 300 rounds and Ridge
@@ -27,6 +28,9 @@ If the table is absent, `python -m src.data.export_rest --destination <outside-G
 can resume a bounded REST `tabledata.list` export without SQL or the Storage Read API.
 It checks source identity, total rows and every expected sample key before publishing
 the local file. Streaming part assembly avoids holding the full float64 table in RAM.
+
+This locked protocol [completed on the full dataset](REVALIDATION.md). Its artifacts
+are stored separately from the historical summary and the served prediction model.
 
 `python -m src.evaluation.uncertainty` writes `site/uncertainty.json`. It:
 

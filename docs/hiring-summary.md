@@ -1,6 +1,6 @@
 # Reviewer brief — MS Capital Market Forecasting
 
-> **Validation correction (20 October 2026):** the historical ensemble CV fitted and scored blend weights on the same fold. Its +0.14088 is an optimistic fitted-blend diagnostic, not an unbiased external-performance estimate. New training calibrates weights on earlier folds only. Historical results are retained; no full-data rerun is claimed.
+> **Validation correction (20 October 2026):** the historical ensemble CV fitted and scored blend weights on the same fold. Its +0.14088 is an optimistic fitted-blend diagnostic, not an unbiased external-performance estimate. New training calibrates weights on earlier folds only. Historical results are retained. A separate [fixed-fit full-data revalidation](REVALIDATION.md) completed on 21 October 2026; its model set and training budget differ from the historical blend.
 
 
 **Role:** Quantitative ML, analytics engineering and model risk validation. **Stage:** completed research system, not a live investment or trading service.

@@ -1,6 +1,6 @@
 # Historical research narrative
 
-> **Validation correction (20 October 2026):** the historical ensemble CV fitted and scored blend weights on the same fold. Its +0.14088 is an optimistic fitted-blend diagnostic, not an unbiased external-performance estimate. New training calibrates weights on earlier folds only. Historical results are retained; no full-data rerun is claimed.
+> **Validation correction (20 October 2026):** the historical ensemble CV fitted and scored blend weights on the same fold. Its +0.14088 is an optimistic fitted-blend diagnostic, not an unbiased external-performance estimate. New training calibrates weights on earlier folds only. Historical results are retained. A separate [fixed-fit full-data revalidation](REVALIDATION.md) completed on 21 October 2026; its model set and training budget differ from the historical blend.
 
 # NEXUS · MSCapital Market Forecasting
 
@@ -114,8 +114,9 @@ measure available, the test period is a continuation of the training period, not
 from it.
 
 Two results are worth pulling out. The hold-out sits at the **83rd percentile** of period
-difficulty (which swings 0.117–0.148 under a fixed model), and de-biasing for that gives
-+0.14084 — within 0.00004 of the walk-forward mean, computed a completely different way.
+difficulty (which swings 0.117–0.148 under a fixed model), and a heuristic period adjustment
+gives +0.14084. Its proximity to the historical fitted-blend mean is not independent
+validation: the blend weights were fitted on their scored fold targets.
 And the forecast itself was **built wrong**: cosine factors exactly as
 `Σ cos_g · w_g` with `w_g = ‖y_g‖‖p_g‖ / (‖y‖‖p‖)`, so subgroups are weighted by
 *magnitude*, not row count. Correcting it moved the forecast **further** from the outcome.
