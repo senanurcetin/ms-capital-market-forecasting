@@ -1,71 +1,42 @@
-# Verification record — 19 October 2026
-
-## Follow-up — 22 October 2026
-
-The [full-data runner job](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/runs/39663832723)
-completed on 21 October with 1,257,637 source rows and 292 features. Fixed-budget
-LightGBM and Ridge fits received no scored validation data; ensemble calibration
-used earlier folds only. No sampling, holdout remeasurement or model promotion occurred.
-[Comparable four-period scores, hashes and limitations](REVALIDATION.md) are retained.
-The temporary repository credential secret was removed after the completed job.
-
-Both public Kaggle notebook runs completed and their ordered source hashes match the
-versioned repository copies. [Readback snapshot](../results/kaggle_publications.json).
-PR #80 passed all four CI jobs with 73.44% coverage before merging.
-
-Browser validation could not attach to the in-app webview on 22 October; no fresh live
-or mobile screenshot is claimed. Headless Streamlit rendering and Docker/API checks
-are separate evidence. The existing screenshot retains its historical date.
-
-## Follow-up — 20 October 2026
-
-Historical ensemble CV is now explicitly identified as a same-fold fitted-blend
-diagnostic. New training calibrates only on earlier folds, preserving actual fold IDs.
-Paired block-bootstrap comparisons exclude the historical blend and align model periods.
-The short README links to the preserved full narrative in `docs/RESEARCH.md`.
-CLI training now emits a hashed, credential-free experiment sidecar. Regression checks
-cover frozen-weight target independence, actual fold identity and sidecar creation.
-The supplied replacement Kaggle token verified an owner metadata listing. The later
-owner-supplied BigQuery key verified 22 tables, nine metadata contracts, and schema
-compatibility for all 292 served model features. Two download dry runs completed;
-both exceed the default scan ceiling and neither was executed. The dated
-[warehouse report](../results/warehouse_audit.json) records scope, estimates and storage
-warnings. Metadata counts do not validate uniqueness or reproduce historical scores.
-No historical experiment result artifact was overwritten.
-
-The preceding change also passed all four GitHub Actions jobs, including both Docker
-builds and a real synthetic artifact served through the API image. That remote check
-supersedes the Docker-unavailable boundary in the original 19 October table below.
-New warehouse regression tests cover missing tables, row/type drift, test target
-leakage, model feature compatibility, sanitized failures, dry-run-only execution,
-schema fingerprints and explicit query billing-project selection.
+# Verification status — 22 October 2026
 
 [Documentation index](README.md)
 
-This record separates local verification from remote integration and deployment status.
-The historical research metrics and model artifacts were retained.
+Implementation baseline: [PR #81](https://github.com/senanurcetin/ms-capital-market-forecasting/pull/81),
+commit `935d7e8`. Its [CI run](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/runs/39716676929)
+passed all four jobs. These records establish the checks below; they do not certify
+which commit the public Streamlit deployment currently serves.
 
-| Check | Result |
+| Check | Latest recorded evidence |
 |---|---|
-| Complete offline pytest suite | Passed; four optional-dependency tests skipped; coverage 72.02%, above the configured 68% floor |
-| Ruff | Passed across application, pipeline, tests and scripts |
-| Mypy | Passed across 80 source files |
-| Streamlit AppTest | Router and all eight research pages rendered, including local prediction and evidence |
-| Synthetic end-to-end pipeline | 2,500 samples: ingestion, 292-feature assembly, five embargoed folds, holdout, model save/reload and prediction completed |
-| Evidence reconciliation | 48 bundled files inventoried; CSV/JSON/fold headline metrics agree |
-| Documentation links | All local link targets in the documentation set resolve |
-| Official logo provenance | Transparent wordmark SHA-256 matches the source file in the owner's Drive Logo folder |
-| Docker build | Not executed: Docker Desktop Linux engine was unavailable |
-| Live Kaggle / BigQuery | Not verified; see [connection status](INTEGRATIONS.md#connection-check-on-19-october-2026) |
-| Public Streamlit deployment | The running public revision has not been certified by these local checks |
+| Offline regression suite | Passed; coverage **73.49%**, above the configured 68% floor; optional skips are recorded in the CI log |
+| Ruff and mypy | Passed across the configured application, pipeline, dashboard and scripts |
+| Runtime-only Streamlit rendering | Router and all eight research pages passed, including the new publication and full-data evidence |
+| Docker | API and dashboard images built successfully |
+| API artifact compatibility | Synthetic model trained, loaded and served through the API image |
+| Published evidence | Historical headline metrics reconcile; full-data summary, CSV, run hashes and shared-fold comparisons are checked separately |
+| Official NEXUS identity | Three official SVG hashes are covered by regression checks; their source is documented in [brand provenance](BRAND_IDENTITY.md) |
+| Kaggle | Both corrected public notebooks completed execution and matched the versioned cell sources; [readback snapshot](../results/kaggle_publications.json) |
+| BigQuery | 22 tables inspected and nine metadata contracts passed on 20 October; [dated warehouse report](../results/warehouse_audit.json) |
+| Full-data revalidation | Completed on 21 October: 1,257,637 source rows, 292 features, no sampling; [protocol, results and hashes](REVALIDATION.md) |
+| Live desktop/mobile visual review | Not certified: the browser bridge could not attach on 22 October |
 
-The synthetic demo's planted signal is not a competition measurement. No new Kaggle
-submission, paid cloud job, warehouse mutation or model promotion was performed.
-The revised theme uses native surfaces for System/light/dark preferences so custom
-colors cannot force dark backgrounds under native light navigation text. Final checks
-use Streamlit AppTest and deterministic tests; no Playwright is required.
+## Scope and remaining limits
 
-The Python validation environment lives outside the OneDrive checkout to avoid syncing
-installed dependencies. Temporary reports are ignored under `.artifacts/`; data and
-credentials stay outside the tracked project. Historical screenshot evidence retains
-its original date and is not presented as a capture of this revision.
+The fixed-fit run passed no scored validation data to model fitting and calibrated
+blend weights only on earlier folds. It did not remeasure the holdout, promote a model
+or create a competition submission. Previously explored periods remain retrospective
+evidence. The temporary BigQuery repository secret was removed after the completed run.
+
+Synthetic demo scores are not competition measurements. Metadata row counts do not
+establish uniqueness or null rates; the separate REST export verified every expected
+sample key before the full-data run. Hashes identify bytes, not independent provenance.
+
+The existing screenshot is a dated 12 October source-rendered capture. No refreshed
+live/mobile screenshot or deployed-commit equivalence is claimed. Streamlit AppTest
+checks rendering; it does not replace browser interaction or visual inspection.
+See [dashboard evidence](DASHBOARD_EVIDENCE.md).
+
+Earlier local checks on 19 October had lower coverage and no working Docker/cloud
+access. They are superseded by the dated CI and integration records above; historical
+connection recovery details remain in [integrations](INTEGRATIONS.md).

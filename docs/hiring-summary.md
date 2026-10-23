@@ -11,9 +11,10 @@ The project converts very large market microstructure data into a reproducible s
 
 | Assessment question | Evidence |
 |---|---|
-| Does it beat its internal validation protocol? | Five walk-forward/embargo folds: mean cosine **+0.14088**; [validation design](../README.md#validation-walk-forward-with-an-embargo) |
-| Does the holdout generalize to a competition ranking? | Holdout **+0.15171**, shipped leaderboard **+0.12900**; [result analysis](../README.md#headline-result) |
-| What contradicts the best-case story? | Public snapshot: **141st/204 teams**, model below snapshot median; [leaderboard evidence](../results/leaderboard.json) |
+| What does corrected retrospective validation show? | On four shared scored periods: LightGBM **+0.138046**, blend **+0.138299**; small exploratory gain, not established superiority. [Fixed-fit protocol and uncertainty](REVALIDATION.md) |
+| What happened to the historical CV headline? | **+0.14088** is a same-fold fitted-blend diagnostic, not an unbiased estimate. [Historical analysis](RESEARCH.md#headline-result) |
+| Does the holdout generalize to a competition ranking? | LightGBM v3 holdout **+0.15171**; separate v4 ensemble leaderboard **+0.12900**; [result analysis](../README.md#headline-result) |
+| What contradicts the best-case story? | Public snapshot dated **10 September 2026**: **141st/204 teams**, model below snapshot median; [leaderboard evidence](../results/leaderboard.json) |
 | Where are reproducibility and limitations documented? | [Model card](../MODEL_CARD.md), [analysis notebook](../notebooks/05_why_the_leaderboard_disagreed.ipynb), [README](../README.md#where-this-stands) |
 | Can a reviewer see the interface? | [Source-rendered historical capture](assets/mscapital-research-dashboard.png), [published Streamlit app](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/), and [visual verification boundaries](DASHBOARD_EVIDENCE.md) |
 

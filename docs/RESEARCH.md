@@ -2,76 +2,21 @@
 
 > **Validation correction (20 October 2026):** the historical ensemble CV fitted and scored blend weights on the same fold. Its +0.14088 is an optimistic fitted-blend diagnostic, not an unbiased external-performance estimate. New training calibrates weights on earlier folds only. Historical results are retained. A separate [fixed-fit full-data revalidation](REVALIDATION.md) completed on 21 October 2026; its model set and training budget differ from the historical blend.
 
-# NEXUS · MSCapital Market Forecasting
-
-<p align="right"><img src="docs/assets/nexus-official-midnight.svg" alt="NEXUS Official Midnight brand" width="220"></p>
-
-**Documentation:** [Start here](README.md) · [Reproduce](REPRODUCIBILITY.md) · [Kaggle / BigQuery](INTEGRATIONS.md) · [Brand identity](BRAND_IDENTITY.md).
-
-**Technical reviewer brief:** [Problem, quantitative evidence and limitations](hiring-summary.md).
-
-![MSCapital research dashboard — captured source-rendered Streamlit overview](assets/mscapital-research-dashboard.png)
-
-> **Source-rendered Streamlit capture (12 October 2026), not a live-market feed.** This screenshot documents the research UI from source; it is not independent proof that the currently deployed app matches the image or that all current pages render. [Dashboard evidence, model-version boundaries and recapture checks](DASHBOARD_EVIDENCE.md).
-
-[![Live dashboard](https://img.shields.io/badge/dashboard-live-3FBFA8.svg)](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)
-[![CI](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/workflows/ci.yml/badge.svg)](https://github.com/senanurcetin/ms-capital-market-forecasting/actions/workflows/ci.yml)
-[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](../LICENSE)
-[![Ruff](https://img.shields.io/badge/lint-ruff-261230.svg)](https://docs.astral.sh/ruff/)
-
-An end-to-end, production-shaped ML system that predicts short-horizon returns from market
-microstructure data — **804.5M raw rows** reduced to a scored model, on a 16 GB laptop.
-Built on the Kaggle
-[MSCapital](https://www.kaggle.com/competitions/ms-capital-real-financial-market-forecasting)
-competition dataset.
-
-**▶ [Open the published Streamlit dashboard](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)** — eight research pages, including source provenance and a downloadable evidence report. [Portfolio case study](https://senanur-cetin.vercel.app/projects/mscapital-market-forecasting) · [Dashboard screenshot review status](DASHBOARD_EVIDENCE.md).
-
-**Kaggle notebook:** [MS Capital: My Hold-out Was a Lucky Stretch](https://www.kaggle.com/code/senanuretin/ms-capital-my-hold-out-was-a-lucky-stretch) — the period-difficulty and walk-forward analysis behind the headline result, runnable on Kaggle.
-
-**Model on Hugging Face:** [senanurcetin/ms-capital-market-forecasting](https://huggingface.co/senanurcetin/ms-capital-market-forecasting) —
-the v4 ensemble, the model card and every result file. **Latest release:**
-[v1.1.0](https://github.com/senanurcetin/ms-capital-market-forecasting/releases/tag/v1.1.0).
-**Kaggle notebook (what the later experiments found):**
-[MS Capital: Four Experiments That Did Not Help](https://www.kaggle.com/code/senanuretin/ms-capital-four-experiments-that-did-not-help).
-The page worth opening first is *Why the leaderboard disagreed*.
-
-`BigQuery` · `LightGBM` · `XGBoost` · `scikit-learn` · `SHAP` · `Optuna` · `Pandera` ·
-`MLflow` · `FastAPI` · `Streamlit` · `Docker` · `GitHub Actions`
-
-**Research milestone: completed and handed over.** Five executed notebooks, two scored submissions, and
-a test suite that injects the failures it claims to prevent. Follow-up maintenance and test
-corrections can still occur; the documented historical scores do not change without new
-evaluation evidence. Research limitations remain explicit in [Where this stands](#where-this-stands).
-
-**Where to start**, depending on how long you have:
-
-| | |
-|---|---|
-| **2 minutes** | [Headline result](#headline-result) — the scores, and the forecast that was wrong |
-| **20 minutes** | ↑ plus [What I found](#what-i-found) and [notebook 01](../notebooks/01_data_discovery.ipynb) — the six data findings that drive everything |
-| **an hour** | ↑ plus [notebook 05](../notebooks/05_why_the_leaderboard_disagreed.ipynb) — six hypotheses — one confirmed, one real but smaller than forecast, four falsified — and two errors caught in my own analysis |
-
-**Model-version boundary:** the [model card](../MODEL_CARD.md) identifies the **default served inference model as LightGBM v3**; the separately submitted **v4 ensemble** earned the external +0.129 leaderboard score. Do not treat the dashboard prediction UI as a deployed v4 ensemble. [Full interface evidence guide](DASHBOARD_EVIDENCE.md).
-
-**Model card:** [`MODEL_CARD.md`](../MODEL_CARD.md) - what the model is, what it is for, the numbers, and the limits, every figure checked against `results/` by a test.
-
-> **For research only. Not investment advice.**
-> The backtesting module exists to measure the model's ranking power, not to propose a strategy.
-
----
+This archive preserves the original experiments, forecasts and falsified hypotheses.
+For the current project overview, use the [README](../README.md); for the newer retrospective
+run and its limitations, use [full-data revalidation](REVALIDATION.md). Setup and serving
+commands live in the [operations reference](OPERATIONS.md).
 
 ## Headline result
 
 | | cosine | what it is |
 |---|---:|---|
-| Walk-forward CV mean | **+0.14088** | **the honest internal estimate** — averaged over 5 periods |
+| Walk-forward CV mean | **+0.14088** | historical same-fold fitted-blend diagnostic — averaged over 5 periods |
 | Hold-out, months 65–70 | +0.15171 | measured once, untouched — but a *lucky* period |
 | Leaderboard, first submission | +0.12800 | single LightGBM, months 0–63 |
 | **Leaderboard, shipped model** | **+0.12900** | ensemble, months 0–67 |
 
-Trained on all 1,257,637 samples and 292 features — though only **264 are actually distinct**; see [Feature redundancy](#feature-redundancy). On the hold-out, Pearson (0.15236) is
+The source training table contains 1,257,637 samples and 292 features; each model uses its documented month window. Only **264 features are actually distinct**; see [Feature redundancy](#feature-redundancy). On the hold-out, Pearson (0.15236) is
 almost identical to cosine, confirming predictions are centred on zero — what a
 shift-sensitive metric rewards. Directional accuracy 0.5516, RMSE 0.003364.
 
@@ -79,9 +24,10 @@ shift-sensitive metric rewards. Directional accuracy 0.5516, RMSE 0.003364.
 on months never touched by feature design, model selection, tuning or early stopping. That
 is all true, and it is not the right number. Holding a model fixed and scoring it on every
 period in turn shows difficulty swinging from 0.117 to 0.148 — and months 65–70 sit at the
-**83rd percentile**. De-biasing for that gives +0.14084; the walk-forward mean, computed a
-completely different way, gives +0.14088. Purity was never the binding constraint: a single
-contiguous stretch is a sample of size one in the dimension that actually varies.
+**83rd percentile**. The historical period-difficulty adjustment gives +0.14084, while the historical fitted-blend
+walk-forward diagnostic gives +0.14088. Their numerical agreement does not establish an
+unbiased estimate: blend weights were fitted on the scored folds. A single contiguous
+stretch also samples only one part of the changing period difficulty.
 
 ### A prediction, its falsification, and what followed
 
@@ -266,20 +212,11 @@ measured → what I changed.**
 
 ## The dashboard
 
-Seven pages, grouped the way the work happened - what the data turned out to be, what the
-model does, and then why the leaderboard disagreed with the hold-out. The last one is the
-one worth opening first: six hypotheses, four falsified, laid out as a scoreboard rather
-than a narrative.
-
-```bash
-make streamlit          # :8501
-```
-
-It runs anywhere, with no pipeline and no API. Everything it shows travels in
-[`results/`](../results/): derived aggregates only - fold scores, backtest curves, SHAP
-importances, the investigation tables - plus the trained artefact and a 4,970-row sample
-of the feature table. No competition data is redistributed. `make export-results`
-refreshes it from a live pipeline run.
+The current interface has eight research pages, including an evidence inventory. See the
+[dashboard evidence guide](DASHBOARD_EVIDENCE.md) for page coverage, historical screenshots
+and the unverified live/mobile visual boundary. Ordinary viewing reads committed derived
+results, a bounded feature sample and the v3 inference bundle; it needs no live warehouse.
+The separately submitted v4 ensemble is not the default served model.
 
 That sample is drawn **evenly across all 71 months**, and the reason is a defect worth
 recording. It used to be `head(5000)`, and because `sample_id` is chronological those rows
@@ -289,57 +226,15 @@ caption claiming a 2.69x swing. Per-month statistics are now computed on the ful
 rows and exported alongside, because a standard deviation from seventy sampled rows is
 noise presented as a regime.
 
-The Predictions page scores **in-process** when no API is reachable, using the same bundle
-the API would have loaded, so a published dashboard is interactive rather than a page of
-error messages. With `make api` running it uses the real serving path instead.
-
-**It is running here: [ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)**
-
-**Deploying it** (free): [Streamlit Community Cloud](https://share.streamlit.io) reads this
-repository directly - point it at `streamlit_app/app.py` on `main`, and **set the Python
-version to 3.11** under Advanced settings. That last part is not cosmetic: the default is
-currently 3.14, for which the pinned wheels do not exist, so the build silently falls back
-to compiling pandas and numpy from source and stalls. Root `requirements.txt` is
-deliberately lean for the same class of reason - the pipeline-only packages (MLflow, SHAP,
-DuckDB, Polars, Kaggle) sit in `requirements-pipeline.txt` so the deployed app does not
-install them to draw a bar chart.
-
-> Vercel is not an option here and it is worth saying why: it runs serverless functions,
-> while Streamlit is a long-lived server holding a WebSocket per viewer. The hacks that
-> claim otherwise are fragile, and a broken link in a portfolio is worse than no link.
-
----
+The Predictions page can score in process using the bundled model or use the configured API.
+Current startup and deployment commands are in the [operations reference](OPERATIONS.md).
 
 ## Run it in 30 seconds
 
-The real pipeline needs Kaggle credentials, a GCP project, ~20 GB of disk and hours of
-upload. So there is a second path that needs none of it:
-
-```bash
-pip install -r requirements-dev.txt
-make demo
-```
-
-That generates synthetic data **with the real schema and the real quirks** — one Arrow
-record batch per file, a 600 s market window against 60 s elsewhere, `price = 0`
-sentinels paired with zero volume, mid-normalised prices — and then drives the genuine
-code: the column-group converter, the walk-forward harness with its embargo and runtime
-leakage guard, every model, the closed-form ensemble, the hold-out measurement, and
-artefact save/reload in the format the API serves. It finishes in about half a minute and
-prints the commands to start the API and dashboard on the result.
-
-What it does *not* cover is the BigQuery feature SQL, which needs GCP. That layer is
-tested structurally instead (`tests/test_feature_sql.py`), and the demo's feature table
-takes its column names from the same SQL generators, so the two schemas cannot drift apart.
-
-It writes to `<repo>/.demo` (override with `MSCAPITAL_DEMO_ROOT`), deliberately **not** to
-the configured `data_root` — that points at a large local disk with a platform-specific
-absolute path, and using it made the demo Windows-only until CI caught it on Linux.
-
-> The demo's data is synthetic and its signal is planted, so its scores are meaningless
-> as results. **No number reported anywhere in this repository comes from it.**
-
----
+This historical section title referred to a local synthetic smoke run, not a timing guarantee.
+Use the [reproducibility guide](REPRODUCIBILITY.md) for `make demo`: it exercises the local
+pipeline and artifact reload without competition credentials. Its planted synthetic signal
+is not scientific performance evidence, and it does not execute the live BigQuery SQL.
 
 ## The data: measured facts, not assumptions
 
@@ -772,55 +667,21 @@ optimistic, and only the measurement settles it.
 
 ## Setup and usage
 
-See the [reproducibility guide](REPRODUCIBILITY.md) for a clean setup and the
-[operations reference](OPERATIONS.md) for model releases, experiments and credentials.
+Use the [reproducibility guide](REPRODUCIBILITY.md) and [operations reference](OPERATIONS.md)
+for maintained commands, dependency sets, model releases and credentials.
 
 ## Cost
 
-Ordinary viewing uses committed results and local compute, with no cloud calls or paid API.
-Historical full-data runs are not a guarantee of a free rebuild: raw, staging and feature
-layers can exceed account allowances. The BigQuery client defaults to a 1 GB per-query
-ceiling; monthly usage and storage require separate controls. See the
-[integration and cost guide](INTEGRATIONS.md) before running cloud jobs.
-
----
+Use the dated [integration and cost guide](INTEGRATIONS.md) before any cloud operation.
+Ordinary dashboard viewing uses bundled evidence; warehouse storage exceeds the free allowance
+in the recorded audit. A historical successful run does not guarantee a free rebuild.
 
 ## Licence
 
-[MIT](../LICENSE) for the code. The competition data is **not** redistributed here and remains
-subject to the
-[Kaggle competition rules](https://www.kaggle.com/competitions/ms-capital-real-financial-market-forecasting).
-
-[`CONTRIBUTING.md`](../CONTRIBUTING.md) says what a change has to do, [`SECURITY.md`](../SECURITY.md)
-how to report a vulnerability and what to harden before exposing the API, and
-[`CHANGELOG.md`](../CHANGELOG.md) what has changed. Pushing a `v*` tag from `main` - or running
-*Actions -> Release images -> Run workflow* with a version such as `v1.1.0`, which creates the tag
-itself - publishes the `api` and `app` images to GitHub Container Registry and then creates the GitHub
-release, whose notes are that version's section of the changelog
-(`.github/workflows/release.yml`). Either way only a commit on `main` is published, and a by-hand run
-must start from `main`.
-
-Nothing here is investment advice: the backtesting module measures a model's ranking power
-for research, and was never evaluated as a trading strategy.
-
----
+Code: [MIT](../LICENSE). Data and artifact restrictions: [NOTICE](../NOTICE.md).
+This research was not evaluated as an investment or trading service.
 
 ## Project layout
 
-```
-src/
-  config.py              single source of paths and constants
-  data/                  ingestion (column groups) · bq_loader · staging · mart · test_pipeline
-  features/              market (159) · order (81) · transaction (52) · assemble
-  evaluation/            metrics (cosine) · temporal_validation · backtesting · explain · the diagnostics and
-                         experiments behind the findings (period_difficulty, feature_prune, split_order,
-                         regime_clusters, ...)
-  models/                baseline · lightgbm · xgboost · ensemble · train (CLI) · finalize · ship, plus the
-                         experiments: sequence_cnn · extra_members · ensemble_probe
-  inference/             predictor — used by the API, which never imports training code
-api/main.py              FastAPI: /health /model-info /predict /batch-predict /metrics /reload (token-gated)
-api/guards.py            rate limiter + Prometheus metrics (standard library only)
-streamlit_app/           eight-page dashboard (st.navigation router + pages/)
-sql/                     BigQuery staging DDL
-tests/                   deterministic and regression checks; no live BigQuery or downloaded data required
-```
+The current [project overview](../README.md) and [documentation index](README.md) replace
+this archive's former duplicate setup instructions and directory tree.

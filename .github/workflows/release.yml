@@ -4,7 +4,8 @@ name: Release images
 #   - push a v* tag, or
 #   - run this workflow by hand (Actions -> Release images -> Run workflow) and give the version;
 #     the workflow then creates the tag itself, on the head of main.
-# Nothing runs on an ordinary push, and an image holds only code: no model, no data, no credentials.
+# Nothing runs on an ordinary push. The API image has no model; the app image includes
+# the derived results/model bundle. Neither packages raw competition files or credentials.
 #
 # Either way, only a commit that is on main (and so went through CI) is published, and the version
 # must look like v1.2.3 - a by-hand run cannot publish from another branch or under an arbitrary name.

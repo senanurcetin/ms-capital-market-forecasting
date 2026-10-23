@@ -70,7 +70,7 @@ evaluation evidence. Research limitations remain explicit in [Where this stands]
 | Leaderboard, first submission | +0.12800 | single LightGBM, months 0–63 |
 | **Leaderboard, shipped model** | **+0.12900** | ensemble, months 0–67 |
 
-Trained on all 1,257,637 samples and 292 features — though only **264 are actually distinct**; see [Feature redundancy](#feature-redundancy). On the hold-out, Pearson (0.15236) is
+The source training table contains 1,257,637 samples and 292 features; models use their documented month windows. Only **264 features are actually distinct**; see [Feature redundancy](docs/RESEARCH.md#feature-redundancy). On the hold-out, Pearson (0.15236) is
 almost identical to cosine, confirming predictions are centred on zero — what a
 shift-sensitive metric rewards. Directional accuracy 0.5516, RMSE 0.003364.
 

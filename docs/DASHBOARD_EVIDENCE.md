@@ -1,49 +1,51 @@
-# MSCapital Streamlit dashboard — visual evidence and model-version boundary
+# Dashboard evidence and model boundaries
 
-**Review date:** 12 October 2026. This document records *what the repository can substantiate* about its portfolio dashboard and what requires a separate browser/inference check. It does not certify the live deployment.
+**Source status reviewed:** 22 October 2026. **Screenshot captured:** 12 October 2026.
+This document distinguishes the current source, historical image and unverified live
+deployment. [Latest recorded checks](VERIFICATION.md).
 
-## Verified repository evidence
+## What is established
 
-- The committed dashboard image is [`docs/assets/mscapital-research-dashboard.png`](assets/mscapital-research-dashboard.png) (97,227 bytes in the GitHub repository listing). The [README](../README.md) describes it as a **12 October 2026 capture rendered from Streamlit source** for portfolio documentation, not an independently verified screenshot of the publicly deployed URL.
-- The historical capture shows the earlier seven-page app. The current source has **eight research pages**; one overview image cannot validate all pages, their interactions, numerical values or the deployment's currently running commit.
-- The dashboard reads derived results, model artifacts and an evenly sampled **4,970-row** feature subset from [`results/`](../results/), *not* live financial prices. Competition raw data is not redistributed.
-- The [model card](../MODEL_CARD.md) distinguishes the **default served LightGBM v3** model from the **v4 blend submitted to the leaderboard**. A screenshot of the predictions page is not evidence of serving the leaderboard ensemble.
+- The [committed screenshot](assets/mscapital-research-dashboard.png) is a historical
+  source-rendered capture of the earlier seven-page layout. It does not validate the
+  current interface, interactions or publicly deployed commit.
+- Current source contains a router and **eight research pages**. Ordinary viewing reads
+  derived reports, the bundled model and a bounded 4,970-row feature sample from
+  [results/](../results/); it does not fetch live financial prices or query the cloud.
+- The Evidence page separates historical metrics, the warehouse snapshot, completed
+  Kaggle publication readback and fixed-fit full-data revalidation. The static report
+  compares the new models on shared periods.
+- The default prediction artifact is **LightGBM v3**. The **v4 ensemble** submitted to
+  Kaggle is separate; showing the prediction UI does not prove that it serves v4.
+- The current interface uses the official Drive NEXUS 2.0 logos and palette.
+  [Brand identity and asset provenance](BRAND_IDENTITY.md).
 
-## Keep these scores separate
+## Keep measurement scopes separate
 
-| Experiment / interface | Score or model | Interpretation |
-| --- | --- | --- |
-| Historical walk-forward, five folds | Ensemble cosine **+0.14088** | Same-fold fitted-blend diagnostic; optimistic, not an unbiased estimate |
-| Untouched hold-out, months 65–70 | LightGBM cosine **+0.15171** | Favorable period; not ensemble performance |
-| Submitted leaderboard result | v4 ensemble cosine **+0.12900** | External competition measurement, below recorded median |
-| Interactive demo inference | Default LightGBM v3 per current model card | Inference demo; **not** the scored leaderboard ensemble |
+| Measurement | Result | Interpretation |
+|---|---:|---|
+| Historical five-fold ensemble | +0.14088 | Same-fold fitted-blend diagnostic; optimistic, not an unbiased estimate |
+| Historical LightGBM holdout, months 65–70 | +0.15171 | Favorable period; not ensemble performance |
+| Captured external leaderboard | +0.12900 | Submitted v4 ensemble; historical standing |
+| New fixed-fit LightGBM, shared folds 2–5 | +0.138046 | Retrospective full-data revalidation |
+| New prior-fold blend, shared folds 2–5 | +0.138299 | Same shared periods; small gain is sensitive to resampling assumptions |
 
-These are **historical research results** documented by the [README](../README.md#headline-result), [model card](../MODEL_CARD.md), and [leaderboard record](../results/leaderboard.json), not investment-performance claims. The dashboard screenshot itself does not verify their numerical reproduction.
+[Model card](../MODEL_CARD.md) · [Revalidation and uncertainty](REVALIDATION.md) ·
+[Historical leaderboard capture](../results/leaderboard.json).
+Neither a screenshot nor headless rendering proves numerical reproduction or trading profitability.
 
-## Acceptance checklist before claiming a refreshed dashboard or Social Preview
+## Visual acceptance boundary
 
-1. Run the repository's documented local checks (`make check`) against the current code and verify results/data contracts. Do not change or re-label historical metrics simply because a backtesting fix lands.
-2. Start Streamlit using `make streamlit`; inspect all eight page routes and match text, charts and tooltips against the current versioned `results/` sources.
-3. Confirm the public Streamlit deployment actually serves the intended commit and verify the offline prediction fallback versus the FastAPI path where applicable.
-4. Explicitly identify whether a given chart concerns a CV fold, hold-out, leaderboard entry, synthetic `make demo` run or a derived aggregate. Never promote the synthetic demo's planted signal as a model result.
-5. Check display legibility on desktop/mobile, empty states, broken media, and access to original notebook/model-card evidence.
-6. Capture a **fresh, authentic** dashboard screenshot with its date and code revision, remove client/personal data, and only then replace the README image or approve a new GitHub Social Preview.
-7. Keep the non-investment-advice notice visible. Do not imply that rank correlation/backtesting proves trading profitability after costs, liquidity and execution constraints.
+The browser bridge could not attach during the 22 October pass. No refreshed live
+desktop/mobile screenshot or public-deployment certification is claimed. Runtime-only
+Streamlit rendering and Docker/API checks passed, as recorded in [verification](VERIFICATION.md).
 
-**Current image release status:** historical *source-rendered* portfolio capture retained. Seven-page live visual/regression review is **not** established by the repository screenshot alone. No new image, backtest or deployment is produced by this documentation change.
+Before replacing the screenshot or certifying a public revision:
 
-## Current source revision — 18 October 2026
+1. Identify the deployed commit and inspect all eight routes against their result sources.
+2. Exercise local prediction and the configured API path separately.
+3. Check desktop/mobile legibility, theme behavior, charts, media, empty states and downloads.
+4. Capture a genuine dated image with its code revision and no personal data.
 
-The current source has eight research pages, including Research evidence. The image above
-remains a historical capture of the earlier seven-page layout. The current interface uses
-the official NEXUS 2.0 assets from the owner’s Drive Logo folder. Source-render checks and
-browser captures do not establish which commit Streamlit Cloud currently serves.
-
-## Verification boundary — 22 October 2026
-
-The Evidence page now separates the warehouse snapshot, completed Kaggle publication
-readback and fixed-fit full-data revalidation. The static report compares the new models
-on shared periods; the historical headline cards remain explicitly labeled.
-The browser bridge could not attach during this pass, so no refreshed live desktop or
-mobile screenshot is certified. Source rendering through Streamlit AppTest and Docker
-checks do not replace that visual review. The official logo files remain unchanged.
+Retain the research-only notice and identify whether each view concerns historical CV,
+holdout, leaderboard, synthetic data or the separate retrospective revalidation.

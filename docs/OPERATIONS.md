@@ -16,9 +16,10 @@ python -m src.inference.registry activate <release>   # a deliberate jump to any
 
 then `POST /reload` on the API. Releases are copies, not symlinks (this is developed on Windows,
 where a symlink needs elevated rights); promotion refuses an artefact the API could not load; if
-the swap fails the previous `current` is restored. Each artefact also records its provenance in
-`model_meta.json` - git revision (and whether the tree was dirty), a hash of the *ordered*
-feature list, training rows and months - which `/model-info` reports.
+the swap fails the previous `current` is restored. New artifacts written by the demo, `ship.py` and `finalize.py` record provenance in
+`model_meta.json`: git revision and dirty state, ordered feature-list hash, training rows
+and months. `/model-info` reports it when present; the legacy bundled v3 artifact does not
+carry every newer provenance field. Training CLI `.run.json` records are separate evidence.
 
 ## Setup and usage
 
@@ -118,8 +119,8 @@ an artefact and score a row.
 
 **Which artefact is published, and why the dashboard shows two models' numbers.** Both
 models were submitted and both were graded: the single LightGBM on months 0-63 scored
-**0.128**, and the ship.py ensemble on months 0-67 scored **0.129**. The ensemble is the
-better model and its score is the one quoted as the leaderboard result.
+**0.128**, and the ship.py ensemble on months 0-67 scored **0.129**. The ensemble has the higher
+captured submission score; this does not establish superiority across periods or protocols.
 
 What travels in `results/` is nonetheless the LightGBM. The reason is the hold-out: it was
 trained on months 0-63, so months 65-70 are untouched for it and the 0.15171 cosine, the
@@ -143,7 +144,11 @@ because unwrapping it once lost those and `predict()` then raised `Input X conta
 on the first gap in the test set. `predict_test()` loads that same artefact, so the
 submission and the endpoint cannot drift apart.
 
-| Image | Size | Contents |
+The sizes below are historical measurements, not measurements of the current HEAD images.
+The current app also bundles derived results, the feature sample, the v3 model, brand assets
+and theme configuration; ordinary viewing does not require a warehouse connection.
+
+| Image | Historical size | Runtime contents |
 |---|---:|---|
 | `mscapital:api` | **777 MB** | serving deps + `src/inference` only |
 | `mscapital:app` | 2.49 GB | + Streamlit and read-only BigQuery |
@@ -160,7 +165,8 @@ confirms `predictor` never reaches into `src.models` or `src.evaluation`.
 
 ### Credentials
 
-- **Kaggle**: `~/.kaggle/kaggle.json`
+- **Kaggle**: bearer token through `KAGGLE_API_TOKEN` or `~/.kaggle/access_token`;
+  legacy API credentials can use `~/.kaggle/kaggle.json`. Never commit either credential format.
 - **GCP**: `MSCAPITAL_GCP_KEY` or `GOOGLE_APPLICATION_CREDENTIALS` (these override
   `configs/config.yaml`). Keep the key file outside the repository.
 
