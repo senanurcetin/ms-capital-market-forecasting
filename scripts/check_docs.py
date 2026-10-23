@@ -8,7 +8,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main() -> int:
     errors = []
-    documents = [*ROOT.glob("*.md"), *sorted((ROOT / "docs").rglob("*.md"))]
+    documents = sorted(ROOT.glob("*.md"))
+    for directory in ("docs", "kaggle", ".github"):
+        documents.extend(sorted((ROOT / directory).rglob("*.md")))
     for document in documents:
         content = re.sub(r"```.*?```", "", document.read_text(encoding="utf-8"), flags=re.S)
         for target in re.findall(r"\]\(([^)]+)\)", content):

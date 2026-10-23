@@ -7,6 +7,11 @@ Notable changes to the code, the serving API and the published results. The form
 ## [Unreleased]
 
 ### Research validation correction
+- Completed full-data fixed-fit revalidation on 1,257,637 rows and 292 features; published
+  raw run records, aligned four-period comparisons and uncertainty without promoting a new model.
+- Re-executed both public Kaggle notebooks and verified their published source against tracked copies.
+- Corrected future blend stability summaries to report actual fold IDs; retained original hashed run outputs.
+- Consolidated historical research boilerplate and updated verification, packaging and reviewer documentation.
 - New ensemble validation fits blend weights only on earlier out-of-fold predictions.
   The historical +0.14088 remains recorded but is explicitly labelled a same-fold fitted diagnostic.
 - Added aligned paired temporal bootstrap comparisons, lightweight hashed training run records,

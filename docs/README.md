@@ -28,7 +28,7 @@ historical evaluation evidence, not a subscription product or a market data serv
 | `src/models/`, `src/evaluation/` | Model experiments, temporal validation and evidence audit |
 | `src/inference/`, `api/` | Model registry, prediction and API guards |
 | `streamlit_app/` | Eight research pages; local outputs preferred to bundled results |
-| `results/` | Historical measurements, derived aggregates and the bounded demo artifact |
+| `results/` | Historical measurements, derived reports, a bounded feature sample and the inference bundle |
 | `notebooks/` | Five executed narratives and their reproducible builders |
 | `kaggle/` | Versioned sources and metadata of the two corrected public notebooks |
 | `site/` | Generated, self-contained HTML research report |

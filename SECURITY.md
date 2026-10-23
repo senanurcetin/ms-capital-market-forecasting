@@ -2,9 +2,10 @@
 
 ## Scope
 
-This is a research project, not a service. The one component that listens on a network is the
-serving API (`api/`), and the published dashboard is read-only over derived results. **There is no
-live deployment of the API run by the project**, so a report is about the code and its defaults.
+This is a research project. The serving API lives in `api/`; the published Streamlit
+dashboard displays derived results and supports inference. The repository does not
+configure a project-operated public API endpoint, so reports should identify the code,
+defaults and actual exposure being assessed. Optional MLflow exposure is described below.
 
 ## Reporting
 
@@ -32,15 +33,21 @@ if you do.
 
 Terminate TLS in front of the API: it does not do so itself, and the credentials are sent as
 headers. The container runs as a non-root user. `/health` and `/metrics` are unauthenticated by
-design and carry counts only, never request contents.
+design. `/health` reports readiness and a load-error detail when degraded; `/metrics`
+reports aggregate operational measurements. Neither returns submitted prediction rows.
 
 ## Published images
 
 The `api` and `app` images are public on GitHub Container Registry
-(`ghcr.io/senanurcetin/ms-capital-market-forecasting/api` and `.../app`), tagged `v1.2.3` and `1.2.3`.
-They are built by `.github/workflows/release.yml`, only from a commit on `main`, and hold **code and
-configuration only: no model, no data and no keys**. The API image starts without a model and reports
-`degraded` until you mount one, so you supply the artefact, and the credentials above, yourself.
+(`ghcr.io/senanurcetin/ms-capital-market-forecasting/api` and `.../app`). Releases use both
+prefixed and plain version tags, for example `v1.2.3` and `1.2.3`; these are naming examples,
+not claims that this particular release exists. The workflow publishes commits on `main`.
+
+The **API image** contains serving code and configuration. It starts without a model and
+reports `degraded` until you mount an artifact. The **dashboard image** also contains the
+bundled derived reports, bounded feature sample, LightGBM artifact, brand assets and theme
+configuration for offline viewing. Neither image should contain raw competition files or
+credential files. Supply runtime credentials externally when an integration requires them.
 
 ## Not a security boundary
 

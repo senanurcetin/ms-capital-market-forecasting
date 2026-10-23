@@ -13,8 +13,8 @@ make deploy-check         # the dashboard on its runtime dependencies ALONE (slo
 make demo                 # the whole pipeline on synthetic data, ~15 s
 ```
 
-`make check` needs no credentials, no BigQuery and no competition data. If a change needs any of
-those to be tested, the change is probably testing the wrong thing.
+`make check` needs no credentials, BigQuery or competition data. Remote integration and
+full-data experiments are separate opt-in checks; report their scope and results explicitly.
 
 ## What a change has to do
 
@@ -30,11 +30,12 @@ those to be tested, the change is probably testing the wrong thing.
 - **State what was not measured.** An experiment that has not been run on the real data says so
   (see `make prune`). A decision rule is written down *before* the run, not fitted afterwards.
 - **No secrets, no data.** `.gitignore` excludes keys and the competition data; do not add either.
-  `results/` carries derived aggregates only.
+  `results/` carries derived reports, a bounded feature sample and the bundled inference
+  artifact. Never add raw competition files or credential files.
 
 ## Dependencies
 
-Every requirements file is pinned exactly. Dependabot proposes updates, grouped (dev tools,
+Preserve the explicit version pins in the requirements files. Dependabot proposes updates, grouped (dev tools,
 dashboard, serving, cloud clients), and CI decides. The numerics stack - numpy, pandas, scipy,
 scikit-learn, lightgbm, xgboost, pyarrow, joblib, shap, optuna - is excluded on purpose:
 `results/` and the shipped artefact were produced with those exact versions, and a bump can change
