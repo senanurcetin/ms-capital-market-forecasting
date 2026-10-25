@@ -5,7 +5,7 @@ historical evaluation evidence, not a subscription product or a market data serv
 
 | Reader task | Authoritative document |
 |---|---|
-| Assess the work in two minutes | [Reviewer brief](hiring-summary.md) |
+| Validate the modeling research | [Methodology and limitations](VALIDATION.md) · [Executed revalidation](REVALIDATION.md) |
 | Understand the question, findings and failed hypotheses | [Research case study](../README.md#headline-result) |
 | Reproduce from a clean clone | [Reproducibility](REPRODUCIBILITY.md) |
 | Trace Kaggle → BigQuery → model → dashboard | [Integration and cost boundaries](INTEGRATIONS.md) |
