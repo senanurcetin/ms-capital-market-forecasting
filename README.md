@@ -7,7 +7,7 @@
 
 **Documentation:** [Start here](docs/README.md) · [Reproduce](docs/REPRODUCIBILITY.md) · [Kaggle / BigQuery](docs/INTEGRATIONS.md) · [Brand identity](docs/BRAND_IDENTITY.md).
 
-**Technical reviewer brief:** [Problem, quantitative evidence and limitations](docs/hiring-summary.md).
+**Research evidence:** [Validation protocol](docs/VALIDATION.md) · [revalidation](docs/REVALIDATION.md) · [model card](MODEL_CARD.md).
 
 ![MSCapital research dashboard — captured source-rendered Streamlit overview](docs/assets/mscapital-research-dashboard.png)
 
