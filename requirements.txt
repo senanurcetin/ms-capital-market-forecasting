@@ -18,5 +18,8 @@ pyyaml==6.0.3
 fastapi==0.143.0
 uvicorn==0.54.0
 pydantic==2.14.1
-streamlit==1.65.0
+streamlit==1.66.1
+# Explicit security floor: Pillow 13 repairs the October 2026 advisories.
+# Streamlit 1.66.1 permits Pillow 13 (1.65.0 had pillow<13).
+pillow==13.0.0
 plotly==7.1.0
