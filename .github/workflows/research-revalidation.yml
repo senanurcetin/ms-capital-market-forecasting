@@ -29,7 +29,7 @@ jobs:
         env:
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
         run: python scripts/check_kaggle_publications.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: kaggle-publication-readback
@@ -73,7 +73,7 @@ jobs:
       - name: Run locked full-data fixed-fit protocol
         run: python -u -m src.evaluation.revalidate --output .artifacts/revalidation/walkforward_fixed.json
       - name: Retain derived reports only
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: success()
         with:
           name: full-data-revalidation
