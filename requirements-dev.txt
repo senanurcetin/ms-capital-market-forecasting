@@ -1,10 +1,10 @@
 -r requirements-pipeline.txt
-pytest==9.1.1
+pytest==9.2.0
 pytest-cov==7.1.0
-ruff==0.17.0
-mypy==2.4.0
+ruff==0.17.3
+mypy==2.4.1
 pandas-stubs==2.2.3.250308
-types-PyYAML==6.0.12.20260906
+types-PyYAML==6.0.12.20261030
 pip-audit==2.10.1
 pre-commit==4.7.0
 httpx
