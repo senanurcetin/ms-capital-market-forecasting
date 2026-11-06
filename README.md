@@ -45,7 +45,22 @@ prior-fold calibrated blend.
 
 **▶ [Open the Streamlit dashboard](https://ms-capital-market-forecasting-mfy6rngulq4fpaovzrhntf.streamlit.app/)** — eight research pages, including source provenance and a downloadable evidence report.
 
-![MSCapital research dashboard — Streamlit overview](docs/assets/mscapital-research-dashboard.png)
+These **three genuine Streamlit application screenshots** were provided directly by
+the project owner on **6 November 2026**. They replace the old source-rendered
+placeholder. The visible data describes historical research, not live market
+trading or an independently audited deployment commit.
+
+**Overview — research metrics and model comparison**
+
+![Actual MSCapital Streamlit overview, showing walk-forward CV, hold-out, leaderboard results and model comparison](docs/assets/streamlit-overview-20261106.png)
+
+**Market state — feature-sample distribution and monthly volatility**
+
+![Actual MSCapital Streamlit market microstructure page, including target distribution and target volatility across 71 months](docs/assets/streamlit-market-state-20261106.png)
+
+**Pipeline — architecture displayed inside the Streamlit app**
+
+![Actual MSCapital Streamlit page showing the project data and forecasting pipeline architecture](docs/assets/streamlit-pipeline-20261106.png)
 
 - [Portfolio case study](https://senanur-cetin.vercel.app/projects/mscapital-market-forecasting) · [dashboard capture notes](docs/DASHBOARD_EVIDENCE.md)
 - Model on Hugging Face: [senanurcetin/ms-capital-market-forecasting](https://huggingface.co/senanurcetin/ms-capital-market-forecasting) — the v4 ensemble, the model card and every result file
@@ -110,7 +125,7 @@ source hashes are recorded in [publication readback](results/kaggle_publications
 - **The hold-out is one lucky stretch** (83rd percentile of period difficulty); a single contiguous period underrepresents variation across periods.
 - **The served model is not the leaderboard model.** The dashboard serves LightGBM v3; the v4 ensemble earned the +0.129 leaderboard score. See the [model card](MODEL_CARD.md).
 - **Scores are historical.** The revalidation is retrospective: no hold-out remeasurement, no model promotion, no new competition score.
-- **The screenshot is a source-rendered capture**, not a live-market feed.
+- **The three screenshots are owner-supplied Streamlit interface captures (6 November 2026)**, not AI-generated imagery or a live-market feed. They do not certify the exact deployed commit, ongoing availability, or newly validated model scores.
 - **Cloud rebuilds cost money.** The client caps individual queries, full feature downloads exceed the default query ceiling, and a zero monthly bill is not guaranteed. [Cost boundaries](docs/INTEGRATIONS.md#cost-boundaries).
 
 ## Licence

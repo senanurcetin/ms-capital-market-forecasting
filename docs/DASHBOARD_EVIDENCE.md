@@ -1,14 +1,17 @@
 # Dashboard evidence and model boundaries
 
-**Source status reviewed:** 22 October 2026. **Screenshot captured:** 12 October 2026.
-This document distinguishes the current source, historical image and unverified live
-deployment. [Latest recorded checks](VERIFICATION.md).
+**Source status reviewed:** 22 October 2026. **Owner-supplied Streamlit screenshots:** 6 November 2026.
+This document separates historical source/model measurements, user-provided UI images and
+unverified exact-commit deployment status. [Latest recorded checks](VERIFICATION.md).
 
 ## What is established
 
-- The [committed screenshot](assets/mscapital-research-dashboard.png) is a historical
-  source-rendered capture of the earlier seven-page layout. It does not validate the
-  current interface, interactions or publicly deployed commit.
+- The old seven-page source-rendered screenshot has been removed. The three
+  [owner-supplied Streamlit captures](assets/streamlit-overview-20261106.png)
+  show the Overview, [Market state](assets/streamlit-market-state-20261106.png)
+  and [Pipeline](assets/streamlit-pipeline-20261106.png) portions of the actual
+  application UI on 6 November 2026. They are not AI mockups. Their visual provenance
+  is the owner's screenshots, **not** an independently audited hosted git SHA.
 - Current source contains a router and **eight research pages**. Ordinary viewing reads
   derived reports, the bundled model and a bounded 4,970-row feature sample from
   [results/](../results/); it does not fetch live financial prices or query the cloud.
@@ -36,16 +39,19 @@ Neither a screenshot nor headless rendering proves numerical reproduction or tra
 
 ## Visual acceptance boundary
 
-The browser bridge could not attach during the 22 October pass. No refreshed live
-desktop/mobile screenshot or public-deployment certification is claimed. Runtime-only
-Streamlit rendering and Docker/API checks passed, as recorded in [verification](VERIFICATION.md).
+The browser bridge could not attach during the 22 October independent audit.
+Owner-provided desktop screenshots from 6 November have now been published, but
+there has been no fresh independent browser inspection of all deployed routes
+or exact-commit certification. Runtime-only Streamlit rendering and Docker/API
+checks from the earlier pass remain recorded in [verification](VERIFICATION.md).
 
-Before replacing the screenshot or certifying a public revision:
+Before certifying a public revision or treating an image as independent live proof:
 
 1. Identify the deployed commit and inspect all eight routes against their result sources.
 2. Exercise local prediction and the configured API path separately.
 3. Check desktop/mobile legibility, theme behavior, charts, media, empty states and downloads.
-4. Capture a genuine dated image with its code revision and no personal data.
+4. Capture a genuine dated image with its code revision and no personal data;
+   the current images establish appearance only, without an independently bound SHA.
 
 Retain the research-only notice and identify whether each view concerns historical CV,
 holdout, leaderboard, synthetic data or the separate retrospective revalidation.
