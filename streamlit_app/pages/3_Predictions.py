@@ -29,6 +29,7 @@ from streamlit_app.lib import (
     load_local_model,
     missing,
     page_header,
+    score_in_process,
 )
 
 st.set_page_config(page_title="MSCapital · Prediction", page_icon="📈", layout="wide")
@@ -82,12 +83,7 @@ if st.button("Predict", type="primary"):
         status, body = api_post("/predict", {"features": features})
     else:
         assert local is not None    # no API and no local artefact already ended in st.stop()
-        value = float(local.predict([features])[0])
-        status, body = 200, {
-            "predicted_return": value,
-            "direction": local.direction(value),
-            "model_name": name, "model_version": version,
-        }
+        status, body = 200, score_in_process(local, features)
     if status == 200 and body:
         a, b, d = st.columns(3)
         a.metric("Predicted return", f"{body['predicted_return'] * 1e4:+.2f} bps")

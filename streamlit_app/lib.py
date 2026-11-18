@@ -329,6 +329,23 @@ def load_local_model():
     return None
 
 
+def score_in_process(local, features: dict) -> dict:
+    """Score one feature row with the in-process model, shaped like the API's /predict.
+
+    Uses the same direction deadband as the API so both paths label a prediction the
+    same way (tests/test_scoring_parity.py).
+    """
+    from src.inference.predictor import direction_deadband
+
+    value = float(local.predict([features])[0])
+    return {
+        "predicted_return": value,
+        "direction": local.direction(value, direction_deadband()),
+        "model_name": local.bundle.name,
+        "model_version": local.bundle.version,
+    }
+
+
 def api_get(path: str) -> dict | None:
     """Call the FastAPI service, or return None when it is not configured.
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -72,6 +73,16 @@ def _load_booster(path: Path, kind: str):
     import joblib
 
     return joblib.load(path)
+
+
+def direction_deadband() -> float:
+    """The UP/DOWN/FLAT deadband, shared by the API and the dashboard's in-process path.
+
+    Read from MSCAPITAL_DIRECTION_DEADBAND (default 0). Both scoring paths must use the
+    same value, or the same prediction is labelled differently depending on whether an
+    API happens to be running.
+    """
+    return float(os.environ.get("MSCAPITAL_DIRECTION_DEADBAND", "0"))
 
 
 def load_bundle(model_dir: str | Path) -> ModelBundle:
