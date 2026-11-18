@@ -21,14 +21,14 @@ from api.guards import Metrics, RateLimiter
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
-from src.inference.predictor import ModelNotLoadedError, Predictor
+from src.inference.predictor import ModelNotLoadedError, Predictor, direction_deadband
 
 log = logging.getLogger(__name__)
 
 # One variable decides where everything lives; MSCAPITAL_MODEL_DIR overrides just the model.
 DATA_ROOT = os.environ.get("MSCAPITAL_DATA_ROOT", "C:/mscapital_data")
 MODEL_DIR = os.environ.get("MSCAPITAL_MODEL_DIR", f"{DATA_ROOT}/models/current")
-DEADBAND = float(os.environ.get("MSCAPITAL_DIRECTION_DEADBAND", "0"))
+DEADBAND = direction_deadband()
 # /reload swaps the served model, so it is not open by default: with no token configured the
 # endpoint answers 403, and with one it needs a matching X-Admin-Token header.
 ADMIN_TOKEN = os.environ.get("MSCAPITAL_ADMIN_TOKEN", "")
